@@ -82,7 +82,7 @@ function RaceStage({ game, now, muted, children, notification, betsPanel, celebr
     </div>
     {phase === 'betting' && !assembling && children}
     {celebration}
-    {betsPanel}
+    {(phase === 'result' || bettingOpen(game, now)) && betsPanel}
     {notification}
     <button className="fullscreen" aria-label="賽場全螢幕" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void shell.current?.requestFullscreen().catch(() => {}) }}><Maximize2 size={16} /></button>
   </div>
