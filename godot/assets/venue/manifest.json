@@ -1,0 +1,204 @@
+{
+  "license": "CC0-1.0",
+  "sources": [
+    {
+      "author": "Kenney",
+      "pack": "Racing Kit 2.0",
+      "url": "https://kenney.nl/assets/racing-kit",
+      "archiveSha256": "8a71ea16219315a01d00d5a90c4f6b5c090faddbc56d80ecf727e2b3b853c6c0"
+    },
+    {
+      "author": "Quaternius",
+      "pack": "Background Posed Humans",
+      "url": "https://quaternius.com/packs/backgroundposedhumans.html",
+      "downloadPage": "https://opengameart.org/content/lowpoly-posed-humans",
+      "archiveSha256": "31bb7e3ce0a43e6b48e81390ffc37ba0fa64f192b8e4133164df0862c9fe7193"
+    }
+  ],
+  "files": [
+    {
+      "path": "crowd/Female_Hairstyle_1.mtl",
+      "sha256": "d908b378b209a5aeb66158ae7beba0fcfcff449f26e5b4209782455cb34ae3ac"
+    },
+    {
+      "path": "crowd/Female_Hairstyle_1.obj",
+      "sha256": "7cc4dc5fc09317c82e645d59dc9de02be951e184d9650373ab3a5b28da7f3b8b"
+    },
+    {
+      "path": "crowd/Female_Hairstyle_3.mtl",
+      "sha256": "2db363199dd8da041f3759f1040167c57627bae5d251645700d82e7be06900a7"
+    },
+    {
+      "path": "crowd/Female_Hairstyle_3.obj",
+      "sha256": "a8c072ce051a71e3d9e6a5704107581cd2f193e0d2eb80facaf818acc87961b6"
+    },
+    {
+      "path": "crowd/Female_Sitting.mtl",
+      "sha256": "16e1e3bfd5e4ab206b0e2b0ecec9e320165d9b7ee1cef3d6061c6427b3fc6f53"
+    },
+    {
+      "path": "crowd/Female_Sitting.obj",
+      "sha256": "b9488206def8218d93d4326ae2990ee4af7e94f771d1dcc14e7fe384440cb5f8"
+    },
+    {
+      "path": "crowd/Female_Sitting_Cheering.mtl",
+      "sha256": "5da1509195935014ee88136610f13a86256f446ce2dc4359642335db4dd485f1"
+    },
+    {
+      "path": "crowd/Female_Sitting_Cheering.obj",
+      "sha256": "07f1f51623e5c7115818142af1b18ae5752a78b3700562a66a26126c606bc9a0"
+    },
+    {
+      "path": "crowd/License.txt",
+      "sha256": "d26d24393ccf99517fe161cbd304a2fc847f1a017328be94d92c7bc1d289cce3"
+    },
+    {
+      "path": "crowd/Male_Hairstyle_1.mtl",
+      "sha256": "4e5b7fa7918856ea0e23265e61558d56735734cc3c997ce6e621ad3d3986f2d7"
+    },
+    {
+      "path": "crowd/Male_Hairstyle_1.obj",
+      "sha256": "e49019079467be52bbf5fbe2133aaed5bf6bf1a2fb526625a745aa782aa8c29d"
+    },
+    {
+      "path": "crowd/Male_Hairstyle_3.mtl",
+      "sha256": "1c28f0277ca3929cfe8dd6ccda12891191ae42702656ae1dbdc5bff01a323926"
+    },
+    {
+      "path": "crowd/Male_Hairstyle_3.obj",
+      "sha256": "839c21fa3a47ae4dd29694a24c46e15a09691fd87797a5fc6bc7aa30c71c4d8e"
+    },
+    {
+      "path": "crowd/Male_Sitting.mtl",
+      "sha256": "7c3a69206c95d4079daaeed48c2b636b5361be93f3d203c758cc95f7b711526e"
+    },
+    {
+      "path": "crowd/Male_Sitting.obj",
+      "sha256": "b84719a16eb744178cdef559cdc2c2084e9c20100159bd00a47b19ea3b9ce72a"
+    },
+    {
+      "path": "crowd/Male_Sitting_Cheering.mtl",
+      "sha256": "81898858d4e2df4148c9cea5d501c62b262ac503cffdba02c784098c78bb95d3"
+    },
+    {
+      "path": "crowd/Male_Sitting_Cheering.obj",
+      "sha256": "f70ce5ff8b895f142d0b6d6813bab542fc52843ee17eff1fcdcc5ec3ebd5acc5"
+    },
+    {
+      "path": "crowd/Male_Standing_Waving.mtl",
+      "sha256": "58ba27f653aaaacba6ce9dd6fb64f76b909418e01eb1ffb22ba361f4aa68e3b0"
+    },
+    {
+      "path": "crowd/Male_Standing_Waving.obj",
+      "sha256": "86044386edfc7e950c6d325297195e61d6fdf38c43a3dfd084d78a703e422d1d"
+    },
+    {
+      "path": "crowd/Woman_Standing_Waving.mtl",
+      "sha256": "a5f4bd9b0b131d52194551d7b2230d61ea8bd70ca39ca40529e8bca1d40b5f01"
+    },
+    {
+      "path": "crowd/Woman_Standing_Waving.obj",
+      "sha256": "9b0ef5196470e5d6116c96f34af36126be1ece4a74de1c7cc166a1f1d196b40f"
+    },
+    {
+      "path": "kenney/bannerTowerGreen.mtl",
+      "sha256": "17c73e57a87bf6766e6fea12410a53b301bef489110cb3e0bce3f33399cd5bde"
+    },
+    {
+      "path": "kenney/bannerTowerGreen.obj",
+      "sha256": "88b8059797870854e964ad762927d9e0f00c38f1ca14a481bd1ffdca992e2ae9"
+    },
+    {
+      "path": "kenney/billboard.mtl",
+      "sha256": "91811fddd2411b799632a9da02985d7daec856eee22edf8c05ec7af21a347735"
+    },
+    {
+      "path": "kenney/billboard.obj",
+      "sha256": "a628cd92d7681f8314e47e07df0a558c592f41f48e3b6717220a300931c84008"
+    },
+    {
+      "path": "kenney/grandStand.mtl",
+      "sha256": "5e884372085d7302f40475a4fe07ea5b9ea2011b43e5ac0f80a0ffd5111e64cc"
+    },
+    {
+      "path": "kenney/grandStand.obj",
+      "sha256": "f837282c2f6d5e10d420c66a8157cb90cbd6d3960ce1a90c6194984de39114a7"
+    },
+    {
+      "path": "kenney/grandStandAwning.mtl",
+      "sha256": "b516a8e15a9004bc98fdcef6b7d7d0f8cb17387a14a257740f44dcf24a21c93e"
+    },
+    {
+      "path": "kenney/grandStandAwning.obj",
+      "sha256": "bb85a081773e7e39d1664c69d023bd9bc0e048cdcc3cbd0e3dfcc4ca4d8824a4"
+    },
+    {
+      "path": "kenney/grandStandCovered.mtl",
+      "sha256": "3ef5e927b46f05abf5679ab12a408a749eb39aa0eb63ecbe4c36c55a7fba8066"
+    },
+    {
+      "path": "kenney/grandStandCovered.obj",
+      "sha256": "b1d698102572778b694c4005bc3af53e6598285cc39f9f33d732fa69e0871988"
+    },
+    {
+      "path": "kenney/grandStandCoveredRound.mtl",
+      "sha256": "922011b190b13085b50f531af4171f48d1dbbb0b2fd901cf02ea0170d6db6a06"
+    },
+    {
+      "path": "kenney/grandStandCoveredRound.obj",
+      "sha256": "b319e75922d196c46514a3dcb93b651238ccb42db4e5f4aecd0badf5a7ae10f4"
+    },
+    {
+      "path": "kenney/grandStandRound.mtl",
+      "sha256": "57c58dab56982d769f107509114ae3c8b0e5bd8a398c25496b4e379145a1399d"
+    },
+    {
+      "path": "kenney/grandStandRound.obj",
+      "sha256": "3383dc8762e951cbd01a5b22d2710b86a73ed130e02b0abad53e93fb842b639e"
+    },
+    {
+      "path": "kenney/License.txt",
+      "sha256": "905627df4313a9eb7fa9337129e572979ef51cc3857c8d2942e57ae84736096c"
+    },
+    {
+      "path": "kenney/lightPostLarge.mtl",
+      "sha256": "05212d8ef0a329b91fab9ffefd40dfb560920341203a868ddea1b89fb779591b"
+    },
+    {
+      "path": "kenney/lightPostLarge.obj",
+      "sha256": "7739f1f926af03cf53b6da9a867d822929522d645fc0d6bd1b88f47989eefc88"
+    },
+    {
+      "path": "kenney/pitsOffice.mtl",
+      "sha256": "e8e044f680532fd688b4aeb6d1754e501356abb80361a9a2b8143662e95b531d"
+    },
+    {
+      "path": "kenney/pitsOffice.obj",
+      "sha256": "64f64872f7ceb52e3d3361e5b18de6df18b257dec2a3a8b8de19014ab01af023"
+    },
+    {
+      "path": "kenney/tent.mtl",
+      "sha256": "096430546a36fa7f66a22c47f473d52a33a1b92650237f0849eb8b9902498ae2"
+    },
+    {
+      "path": "kenney/tent.obj",
+      "sha256": "c257d6cd0af9b96e2a25d0070c06f13a8600271802f467e385c04d60a549a4ae"
+    },
+    {
+      "path": "kenney/tentLong.mtl",
+      "sha256": "096430546a36fa7f66a22c47f473d52a33a1b92650237f0849eb8b9902498ae2"
+    },
+    {
+      "path": "kenney/tentLong.obj",
+      "sha256": "f3354d9c99ab0f805fe3c46398647c913a6aad47ac2155abfb2832eb15f4ad8f"
+    },
+    {
+      "path": "kenney/tentRoofDouble.mtl",
+      "sha256": "7add4d7ebe8b2cf46508e80c0f36d9aecc6ab5ea8d3e0dc2518098ca201aa85d"
+    },
+    {
+      "path": "kenney/tentRoofDouble.obj",
+      "sha256": "54c3c7a1538844b18423b16be8c6c230cdee679f786dabcaf715e204dda998d1"
+    }
+  ]
+}

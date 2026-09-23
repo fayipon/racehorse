@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://dd5j7g4v3srwf"
+path="res://.godot/imported/Male_Hairstyle_1.obj-b7cab46b81f18752e49727c04f31abd6.mesh"
+
+[deps]
+
+files=["res://.godot/imported/Male_Hairstyle_1.obj-b7cab46b81f18752e49727c04f31abd6.mesh"]
+
+source_file="res://assets/venue/crowd/Male_Hairstyle_1.obj"
+dest_files=["res://.godot/imported/Male_Hairstyle_1.obj-b7cab46b81f18752e49727c04f31abd6.mesh", "res://.godot/imported/Male_Hairstyle_1.obj-b7cab46b81f18752e49727c04f31abd6.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false

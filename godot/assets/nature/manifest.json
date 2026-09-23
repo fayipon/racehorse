@@ -1,0 +1,135 @@
+{
+  "author": "Quaternius",
+  "pack": "Stylized Nature MegaKit (free assets)",
+  "source": "https://quaternius.com/packs/stylizednaturemegakit.html",
+  "bundle": "https://poly.pizza/bundle/Stylized-Nature-MegaKit-T34GZFA0fm",
+  "retrieved": "2026-09-23",
+  "assets": [
+    {
+      "file": "bush.glb",
+      "title": "Bush",
+      "page": "https://poly.pizza/m/EoTERLq3z2",
+      "download": "https://static.poly.pizza/5d3066f4-58ac-46d4-899c-39d9e566e9df.glb",
+      "license": "CC0 1.0",
+      "triangles": 900,
+      "sha256": "1e73125867d602884365e891158c4ed80772ea1a1ed764a5ae267f3687568d28"
+    },
+    {
+      "file": "bush_flowers.glb",
+      "title": "Bush with Flowers",
+      "page": "https://poly.pizza/m/U1ymDy8tbY",
+      "download": "https://static.poly.pizza/af83abca-9b41-4229-9652-e336a5f5eaba.glb",
+      "license": "CC0 1.0",
+      "triangles": 1368,
+      "sha256": "a7f0e022aa77a70a4681d4d435ddada1992b36f32c762cf6c3d0cab794dcf13a"
+    },
+    {
+      "file": "tree_oak.glb",
+      "title": "Tree",
+      "page": "https://poly.pizza/m/QVOop92WmG",
+      "download": "https://static.poly.pizza/2c5938cb-4005-4958-829b-e191be39b3b9.glb",
+      "license": "CC0 1.0",
+      "triangles": 3505,
+      "sha256": "f38d3e28803609be98fc0fe2d3315f505ae2cd338168f12fec1f93299b4d39b6"
+    },
+    {
+      "file": "tree_broadleaf.glb",
+      "title": "Tree",
+      "page": "https://poly.pizza/m/YWjGDJ9F7g",
+      "download": "https://static.poly.pizza/856b5db4-21c1-406b-a800-d96843d1ec69.glb",
+      "license": "CC0 1.0",
+      "triangles": 3280,
+      "sha256": "2bbb3d68b88f9d05cddcc1d6d9cd1ec83c8652eda62bc26e973dee2b870415a9"
+    },
+    {
+      "file": "tree_leaning.glb",
+      "title": "Tree",
+      "page": "https://poly.pizza/m/aVOxaHRPWe",
+      "download": "https://static.poly.pizza/7bf2aa94-cc44-40d9-a93c-9489eb09e008.glb",
+      "license": "CC0 1.0",
+      "triangles": 5648,
+      "sha256": "b591827c6aad32ec9fd964d878f3925c302d2a144597f1d5e84068df99b880ba"
+    },
+    {
+      "file": "tree_round.glb",
+      "title": "Tree",
+      "page": "https://poly.pizza/m/qZtx0AHhcy",
+      "download": "https://static.poly.pizza/24cf9df9-435f-408e-971b-640d670ce973.glb",
+      "license": "CC0 1.0",
+      "triangles": 6265,
+      "sha256": "cac32bae011effbb327cf650b5a3cb82ab7d4c4334151955d30814b2faaaaf98"
+    },
+    {
+      "file": "tree_young.glb",
+      "title": "Tree",
+      "page": "https://poly.pizza/m/t9KbsfYdXz",
+      "download": "https://static.poly.pizza/7f84a768-ac30-48d4-9c5d-f760492e7867.glb",
+      "license": "CC0 1.0",
+      "triangles": 3182,
+      "sha256": "6ddb7b1d81a325cfbe3053f43c96ce8b6a871dc866702ef3993dbecc79430b70"
+    },
+    {
+      "file": "grass.glb",
+      "title": "Grass",
+      "page": "https://poly.pizza/m/vUJjrRsFp4",
+      "download": "https://static.poly.pizza/0a84d74b-eb09-4794-ad58-dd10eed6b11e.glb",
+      "license": "CC0 1.0",
+      "triangles": 155,
+      "sha256": "aaeb71f0d56dcd7b952ea9341d222ea3cd76525b6fc0afddf0a6321502ccaab5"
+    },
+    {
+      "file": "grass_wispy.glb",
+      "title": "Grass Wispy",
+      "page": "https://poly.pizza/m/Msr9zx66VU",
+      "download": "https://static.poly.pizza/12298e95-47ef-4af3-bfde-1241dd5ecbb9.glb",
+      "license": "CC0 1.0",
+      "triangles": 494,
+      "sha256": "5b52b380be4faeaf0d6e7a0efdc85dd74310935ed410c82968b4e2a82479e6a0"
+    },
+    {
+      "file": "grass_fine.glb",
+      "title": "Grass Wispy",
+      "page": "https://poly.pizza/m/6EzB7VA6vb",
+      "download": "https://static.poly.pizza/b81bea53-a5a8-4c01-a43c-e1f6a3d5d170.glb",
+      "license": "CC0 1.0",
+      "triangles": 622,
+      "sha256": "0d9df3e3cd280ed45aa5b62760ff58100508834d434bf4d2e98e1853d53d05b8"
+    },
+    {
+      "file": "flowers_a.glb",
+      "title": "Flower Group",
+      "page": "https://poly.pizza/m/hfPzQAedOe",
+      "download": "https://static.poly.pizza/89f163b2-af28-4dd7-bd09-ed7b80fde2b7.glb",
+      "license": "CC0 1.0",
+      "triangles": 755,
+      "sha256": "4b944bea371dda0c133dc46a0aea7d41dc78c1fc656e3facd337a372aa6a0154"
+    },
+    {
+      "file": "flowers_b.glb",
+      "title": "Flower Group",
+      "page": "https://poly.pizza/m/LqTljN6Wg2",
+      "download": "https://static.poly.pizza/48045fd1-cc1b-410d-871e-3501db7262fd.glb",
+      "license": "CC0 1.0",
+      "triangles": 1690,
+      "sha256": "f15532740ff5d60bcab5ce6b53a18829a23131cbfcafb19b6e9feb2c622c9962"
+    },
+    {
+      "file": "rock_a.glb",
+      "title": "Rock Medium",
+      "page": "https://poly.pizza/m/KZdEP3uUpa",
+      "download": "https://static.poly.pizza/aaf0aaa7-c244-430a-908b-2ac57567d81c.glb",
+      "license": "CC0 1.0",
+      "triangles": 244,
+      "sha256": "c2ab966f16264b4e77de53b61a8a310028eb0a0a74ee40603dba7cf23ca3f322"
+    },
+    {
+      "file": "rock_b.glb",
+      "title": "Rock Medium",
+      "page": "https://poly.pizza/m/s1OJ3bBzqc",
+      "download": "https://static.poly.pizza/be5fef3a-4fa1-4d08-b2d4-82e02284588d.glb",
+      "license": "CC0 1.0",
+      "triangles": 342,
+      "sha256": "99881282aa8ee2bc89ac782911b90909c84e33d693c3a9c2ef5085f1d8214ffe"
+    }
+  ]
+}
