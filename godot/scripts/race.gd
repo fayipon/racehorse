@@ -130,19 +130,17 @@ func _ready() -> void:
 
 func build_environment() -> void:
 	var env := Environment.new()
-	var sky_material := ProceduralSkyMaterial.new()
-	sky_material.sky_top_color=Color("7eabc5")
-	sky_material.sky_horizon_color=Color("d3ddd6")
-	sky_material.ground_bottom_color=Color("63704d")
-	sky_material.ground_horizon_color=Color("bdc6b9")
+	var sky_material := ShaderMaterial.new()
+	sky_material.shader = preload("res://shaders/sunny_sky.gdshader")
+	sky_material.set_shader_parameter("drift_speed",0.0 if reduced_motion else 0.001)
 	var sky := Sky.new()
 	sky.sky_material=sky_material
 	env.background_mode = Environment.BG_SKY
 	env.sky=sky
 	env.fog_enabled=true
-	env.fog_light_color=Color("adbcae")
+	env.fog_light_color=Color("c5ddeb")
 	env.fog_density=.0014
-	env.fog_sky_affect=.12
+	env.fog_sky_affect=0.0
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color("aebac6")
 	env.ambient_light_energy = 0.25
