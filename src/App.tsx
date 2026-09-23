@@ -24,11 +24,13 @@ function MiniTrack({ positions }: { positions: number[] }) {
     <path d={`M-1.5 ${COURSE.innerRadius-1}v${COURSE.trackWidth+2}m3 0v-${COURSE.trackWidth+2}`} stroke="white" strokeWidth="1" />
   </svg>
 }
-function RaceStage({ game, now, muted, children, notification, betsPanel, celebration }: { game: Game; now: number; muted: boolean; children?: React.ReactNode; notification?: React.ReactNode; betsPanel?: React.ReactNode; celebration?: React.ReactNode }) {
+function RaceStage({ game, now, muted, children, notification, betsPanel, celebration, onReady }: { game: Game; now: number; muted: boolean; children?: React.ReactNode; notification?: React.ReactNode; betsPanel?: React.ReactNode; celebration?: React.ReactNode; onReady: (ready: boolean) => void }) {
   const frame = useRef<HTMLIFrameElement>(null)
   const shell = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [finishRound, setFinishRound] = useState(0)
   const phase = phaseAt(game, now)
   const seconds = Math.max(0, (now - game.startedAt - BET_MS) / 1000)
@@ -45,19 +47,26 @@ function RaceStage({ game, now, muted, children, notification, betsPanel, celebr
   useEffect(() => {
     const listener = (event: MessageEvent) => {
       if (event.origin !== location.origin || event.source !== frame.current?.contentWindow) return
-      if (event.data?.type === 'godot-ready') { setReady(true); setFailed(false) }
-      if (event.data?.type === 'godot-error') setFailed(true)
+      if (event.data?.type === 'game-visible') { setReady(true); setFailed(false); onReady(true) }
+      if (event.data?.type === 'godot-progress' && Number.isFinite(event.data.progress)) setProgress(Math.max(0, Math.min(100, event.data.progress)))
+      if (event.data?.type === 'godot-error') { setFailed(true); setReady(false); onReady(false) }
       if (event.data?.type === 'race-finish' && Number.isSafeInteger(event.data.round)) setFinishRound(event.data.round)
     }
     window.addEventListener('message', listener)
     return () => window.removeEventListener('message', listener)
-  }, [])
+  }, [onReady])
+  useEffect(() => {
+    if (ready || failed) return
+    const timeout = setTimeout(() => setFailed(true), 90000)
+    return () => clearTimeout(timeout)
+  }, [ready, failed, loadAttempt])
   useEffect(() => {
     frame.current?.contentWindow?.postMessage({ type: 'race-state', phase, seconds, bettingElapsed: Math.max(0, (now-game.startedAt)/1000), positions, paradePlan, finishTimes: HORSES.map(h => 44.5 + order.indexOf(h.id) * .65), winner: order[0], camera: shot.id, round: game.round, muted }, location.origin)
   }, [game.round, game.startedAt, muted, now, order, phase, positions, seconds, shot.id, ready, paradePlan])
-  return <div ref={shell} className={`race-stage phase-${phase} ${assembling ? 'is-assembling' : ''} ${finishing ? 'has-finished' : ''}`}>
-    {!ready && <div className="engine-loading"><span className="loader" /><b>{failed ? '3D 賽場載入失敗' : '正在準備陽光賽場…'}</b>{failed && <button onClick={() => { setFailed(false); if (frame.current) frame.current.src = `${import.meta.env.BASE_URL}game/index.html` }}>重新載入</button>}</div>}
-    <iframe ref={frame} title="Godot 3D 即時賽馬" src={`${import.meta.env.BASE_URL}game/index.html`} allow="autoplay; fullscreen" className={ready ? 'ready' : ''} />
+  return <div ref={shell} className={`race-stage phase-${phase} ${!ready ? 'is-loading' : ''} ${assembling ? 'is-assembling' : ''} ${finishing ? 'has-finished' : ''}`}>
+    {!ready && <div className="engine-loading" role="status" aria-live="polite"><div className="loading-emblem" aria-hidden="true">♞</div><span className="loading-brand">SUNNY CUP</span><h2>{failed ? '賽場暫時無法載入' : '正在準備你的陽光賽場'}</h2><p>{failed ? '連線可能中斷或載入逾時，請重試。' : progress >= 100 ? '資源下載完成，正在啟動 3D 賽場…' : '正在下載小馬與賽場資源…'}</p><div className="loading-progress" role="progressbar" aria-label="賽場下載進度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div><strong>{Math.floor(progress)}<small>%</small></strong><small>首次載入約 49 MB · 準備完成後開放操作</small>{failed && <button onClick={() => { setFailed(false); setProgress(0); setReady(false); onReady(false); setLoadAttempt(value => value + 1); if (frame.current) frame.current.src = `${import.meta.env.BASE_URL}game/index.html` }}>重新載入賽場</button>}</div>}
+
+    <iframe tabIndex={ready ? 0 : -1} ref={frame} title="Godot 3D 即時賽馬" src={`${import.meta.env.BASE_URL}game/index.html`} allow="autoplay; fullscreen" className={ready ? 'ready' : ''} />
     <div className="stage-vignette" />
     <div className="race-title"><div>RACE <em>{String(game.round).padStart(2, '0')}</em></div><span /><p>SUNNY CUP<small>陽光盃 · 1200 M</small></p></div>
     <div className="stage-status"><span className={`status-dot ${phase}`} />{phase === 'betting' ? (assembling ? '集合中 · 已封盤' : '開放投注') : phase === 'racing' ? 'LIVE 賽事進行中' : '賽事結束'}</div>
@@ -80,9 +89,9 @@ function RaceStage({ game, now, muted, children, notification, betsPanel, celebr
       <div className="race-progress"><div><span>{phase === 'betting' ? '準備就緒 · 等待開跑' : 'RACE PROGRESS'}</span><b>{phase === 'betting' ? '1200 M' : `${Math.round(Math.max(...positions) * 1200)} / 1200 M`}</b></div><div className="progress-rail"><span style={{ width: `${phase === 'betting' ? 0 : Math.max(...positions) * 100}%` }} /></div><small><i />{shot.label} <span>自動分鏡</span></small></div>
       <MiniTrack positions={phase === 'betting' ? paradePositions((now-game.startedAt)/1000,paradePlan) : positions} />
     </div>
-    {phase === 'betting' && !assembling && children}
+    {ready && phase === 'betting' && !assembling && children}
     {celebration}
-    {(phase === 'result' || bettingOpen(game, now)) && betsPanel}
+    {ready && (phase === 'result' || bettingOpen(game, now)) && betsPanel}
     {notification}
     <button className="fullscreen" aria-label="賽場全螢幕" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void shell.current?.requestFullscreen().catch(() => {}) }}><Maximize2 size={16} /></button>
   </div>
@@ -93,6 +102,7 @@ function Dialog({ title, children, onClose }: { title: string; children: React.R
   return <dialog ref={ref} onCancel={onClose} onClick={e => { if (e.target === ref.current) onClose() }}><div className="dialog-head"><h2>{title}</h2><button className="icon-button" aria-label="關閉" onClick={onClose}><X size={20} /></button></div>{children}</dialog>
 }
 export default function App() {
+  const [gameReady, setGameReady] = useState(false)
   const { game, now, bet, cancel, refill } = useGame()
   const [selected, setSelected] = useState<Pick | null>(null)
   const [amount, setAmount] = useState(100)
@@ -104,7 +114,7 @@ export default function App() {
   const previous = useRef<Phase>('betting')
   const finishSoundRound = useRef(0)
   const phase = phaseAt(game, now)
-  const locked = !bettingOpen(game, now)
+  const locked = !gameReady || !bettingOpen(game, now)
   const totalStake = game.bets.reduce((sum, b) => sum + b.amount, 0)
   const result = game.history.find(r => r.round === game.round)
   useEffect(() => {
@@ -133,7 +143,7 @@ export default function App() {
   }, [phase, muted])
   useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 4500); return () => clearTimeout(timer) }, [message])
   async function submit() {
-    if (!selected || pending) return
+    if (!gameReady || !selected || pending) return
     setPending(true)
     try { const error = await bet(selected, amount); setMessage(error || `投注成功！${pickLabel(selected)} · ${fmt(amount)} 籌碼`) }
     finally { setPending(false) }
@@ -145,7 +155,7 @@ export default function App() {
     <main className="app-main"><div className="page-heading"><div><span className="overline">THE SUNNY CUP EXPERIENCE</span><h1>每一場，都有新的可能<span>。</span></h1></div><p><span className="online-dot" />陽光賽場開放中 <span className="divider">/</span> 每 2 分鐘一場</p></div>
       <div className="game-layout"><section className="main-column">
         <div className="race-card"><div className="race-toolbar"><div><span className="live-tag"><Radio size={12} />LIVE</span><b>陽光盃</b><span className="toolbar-detail">SUNNY CUP · 草地晴朗 · 1200 公尺</span></div><button className="icon-button" onClick={toggleSound} aria-label={muted ? '開啟賽事音效' : '關閉賽事音效'}>{muted ? <VolumeX size={17} /> : <Volume2 size={17} />}</button></div>
-        <RaceStage game={game} now={now} muted={muted} celebration={phase === 'result' && result && result.payout > 0 ? <div className="payout-celebration" key={game.round} role="status"><div className="payout-sparks" aria-hidden="true">{Array.from({ length: 12 }, (_, i) => <i key={i} style={{ '--spark': i } as CSSProperties} />)}</div><span className="payout-kicker">WIN! · 中獎啦</span><strong><Coins size={24} />+{fmt(result.payout)}</strong><span>派彩含本金 · 已加入籌碼</span><small>本局淨盈虧 {result.payout - result.stake >= 0 ? '+' : ''}{fmt(result.payout - result.stake)}</small></div> : null} betsPanel={<section aria-label="本局投注" className={`stage-bets placed-bets ${phase === 'result' && result && result.payout > 0 ? 'has-payout' : ''}`}><div className="ticket-strip-heading"><h3>本局投注 <span>{game.bets.length}</span></h3><b>{fmt(totalStake)}<Coins size={12} /></b></div>{game.bets.length === 0 ? <p className="empty-bets">尚無注單，選匹小馬一起加油吧。</p> : <ul>{game.bets.map(b => <li key={`${b.id}-${phase}`} className={phase === 'result' && result && wins(b.pick, result.winner) ? 'winning-bet' : ''}><span>{pickLabel(b.pick)}<small>{fmt(b.amount)} × {odds(b.pick).toFixed(2)}</small></span>{phase === 'result' && result ? <b className={wins(b.pick, result.winner) ? 'ticket-payout' : 'muted'}>{wins(b.pick, result.winner) ? <><span><Check size={10} />中獎</span><strong>+{fmt(Math.round(b.amount * odds(b.pick)))}</strong><small>派彩含本金</small></> : '未中獎'}</b> : <button disabled={locked} onClick={() => void cancel(b.id)} aria-label={`撤回 ${pickLabel(b.pick)} 投注`}><X size={14} /></button>}</li>)}</ul>}</section>} notification={message && <div key={message} className="toast" role="status" aria-live="polite"><span>{message}</span><button aria-label="關閉提示" onClick={() => setMessage('')}><X size={15} /></button></div>}><div className="stage-betting"><section className="markets"><div className="section-heading"><h2><span className="section-number">01</span>選擇你的好運</h2><span>{locked ? <><LockKeyhole size={13} />本場已封盤</> : '所有馬匹機率相同'}</span></div>
+        <RaceStage onReady={setGameReady} game={game} now={now} muted={muted} celebration={phase === 'result' && result && result.payout > 0 ? <div className="payout-celebration" key={game.round} role="status"><div className="payout-sparks" aria-hidden="true">{Array.from({ length: 12 }, (_, i) => <i key={i} style={{ '--spark': i } as CSSProperties} />)}</div><span className="payout-kicker">WIN! · 中獎啦</span><strong><Coins size={24} />+{fmt(result.payout)}</strong><span>派彩含本金 · 已加入籌碼</span><small>本局淨盈虧 {result.payout - result.stake >= 0 ? '+' : ''}{fmt(result.payout - result.stake)}</small></div> : null} betsPanel={<section aria-label="本局投注" className={`stage-bets placed-bets ${phase === 'result' && result && result.payout > 0 ? 'has-payout' : ''}`}><div className="ticket-strip-heading"><h3>本局投注 <span>{game.bets.length}</span></h3><b>{fmt(totalStake)}<Coins size={12} /></b></div>{game.bets.length === 0 ? <p className="empty-bets">尚無注單，選匹小馬一起加油吧。</p> : <ul>{game.bets.map(b => <li key={`${b.id}-${phase}`} className={phase === 'result' && result && wins(b.pick, result.winner) ? 'winning-bet' : ''}><span>{pickLabel(b.pick)}<small>{fmt(b.amount)} × {odds(b.pick).toFixed(2)}</small></span>{phase === 'result' && result ? <b className={wins(b.pick, result.winner) ? 'ticket-payout' : 'muted'}>{wins(b.pick, result.winner) ? <><span><Check size={10} />中獎</span><strong>+{fmt(Math.round(b.amount * odds(b.pick)))}</strong><small>派彩含本金</small></> : '未中獎'}</b> : <button disabled={locked} onClick={() => void cancel(b.id)} aria-label={`撤回 ${pickLabel(b.pick)} 投注`}><X size={14} /></button>}</li>)}</ul>}</section>} notification={message && <div key={message} className="toast" role="status" aria-live="polite"><span>{message}</span><button aria-label="關閉提示" onClick={() => setMessage('')}><X size={15} /></button></div>}><div className="stage-betting"><section className="markets"><div className="section-heading"><h2><span className="section-number">01</span>選擇你的好運</h2><span>{locked ? <><LockKeyhole size={13} />本場已封盤</> : '所有馬匹機率相同'}</span></div>
           <div className="horse-grid">{HORSES.map(h => <button key={h.id} className={`horse-card ${selected === `horse:${h.id}` ? 'selected' : ''}`} style={{ '--horse': h.color } as CSSProperties} disabled={locked} onClick={() => pick(`horse:${h.id}`)} aria-pressed={selected === `horse:${h.id}`}><HorseNumber id={h.id} small /><HorsePortrait id={h.id} /><span className="horse-card-name">{h.name}</span><span className="horse-odds">× 7.60</span>{selected === `horse:${h.id}` && <span className="selection-check"><Check size={10} /></span>}</button>)}</div><div className="stage-side-picks" role="group" aria-label="大小單雙投注">{(['big', 'small', 'odd', 'even'] as const).map(v => <button key={v} className={selected === v ? 'selected' : ''} disabled={locked} onClick={() => pick(v)} aria-pressed={selected === v}><b>{{ big: '大', small: '小', odd: '單', even: '雙' }[v]}</b><span>{{ big: '5–8', small: '1–4', odd: '1·3·5·7', even: '2·4·6·8' }[v]}</span><em>× 1.90</em></button>)}</div>
           <p className="market-hint"><CircleHelp size={12} />選擇項目與籌碼，確認後完成投注。賠率含本金。</p></section><div className="stage-wager"><span>{selected ? pickLabel(selected) : '選擇你的投注項目'}<small>餘額 {fmt(game.balance)} · 已投注 {fmt(totalStake)}</small></span><div className="stage-chips" role="group" aria-label="快速選擇投注籌碼">{[100, 500, 1000].map(n => <button key={n} type="button" disabled={locked || pending} aria-pressed={amount === n} className={amount === n ? 'active' : ''} onClick={() => setAmount(n)}>{fmt(n)}</button>)}</div><label htmlFor="stage-amount">籌碼<input id="stage-amount" type="number" min="10" max="10000" step="10" value={Number.isNaN(amount) ? '' : amount} onChange={e => setAmount(e.currentTarget.valueAsNumber)} /></label><button className="place-bet" disabled={locked || !selected || pending || !Number.isSafeInteger(amount) || amount < 10 || amount > 10000 || amount % 10 !== 0 || amount > game.balance} onClick={() => void submit()}>{pending ? '處理中…' : '確認投注'}<ArrowUpRight size={16} /></button></div></div></RaceStage>
         <div className="timeline"><div className={phase === 'betting' ? 'current' : 'done'}><span>{phase !== 'betting' ? <Check size={12} /> : '1'}</span>投注／集合 <small>48s + 12s</small></div><i /><div className={phase === 'racing' ? 'current' : phase === 'result' ? 'done' : ''}><span>{phase === 'result' ? <Check size={12} /> : '2'}</span>賽事進行 <small>50s</small></div><i /><div className={phase === 'result' ? 'current' : ''}><span>3</span>賽果結算 <small>10s</small></div><div className="next-round"><Clock3 size={13} />自動循環開賽</div></div></div>

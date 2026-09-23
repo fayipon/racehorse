@@ -5,5 +5,5 @@ window.addEventListener('message',event=>{if(event.source===window.parent&&event
 const config=$GODOT_CONFIG;
 const engine=new Engine(config);
 let gameLoaded=false;
-engine.startGame({canvas:document.getElementById('canvas'),onProgress:(current,total)=>{if(gameLoaded)return;document.getElementById('status').textContent=total?'準備賽場 '+Math.round(current/total*100)+'%':'準備 3D 賽場…';}}).then(()=>{gameLoaded=true;document.getElementById('status').textContent='';}).catch(error=>{document.getElementById('status').textContent='3D 賽場無法載入，請重新整理';console.error(error);window.parent.postMessage({type:'godot-error'},window.location.origin);});
+engine.startGame({canvas:document.getElementById('canvas'),onProgress:(current,total)=>{if(gameLoaded)return;window.parent.postMessage({type:'godot-progress',progress:total?Math.round(current/total*100):0},window.location.origin);document.getElementById('status').textContent=total?'準備賽場 '+Math.round(current/total*100)+'%':'準備 3D 賽場…';}}).then(()=>{gameLoaded=true;document.getElementById('status').textContent='';requestAnimationFrame(()=>requestAnimationFrame(()=>window.parent.postMessage({type:'game-visible'},window.location.origin)));}).catch(error=>{document.getElementById('status').textContent='3D 賽場無法載入，請重新整理';console.error(error);window.parent.postMessage({type:'godot-error'},window.location.origin);});
 </script></body></html>
