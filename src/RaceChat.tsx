@@ -25,12 +25,13 @@ export function RaceChat({ chat, round }: { chat: Chat; round: number }) {
   </section>
 }
 
-// Phones float the latest lines over the stage; older ones fade out rather than scroll.
-export function StageChatFeed({ messages }: { messages: Message[] }) {
+const lineLife = 10_000
+// Phones float recent lines over the stage; each fades out after ten seconds instead of scrolling away.
+export function StageChatFeed({ messages, now }: { messages: Message[]; now: number }) {
   return <div className="stage-chat" role="log" aria-label="賽事聊天訊息" aria-live="polite">
-    {messages.slice(-6).map(message => {
+    {messages.filter(message => now - message.time < lineLife).slice(-6).map(message => {
       const person = speaker(message)
-      return <p key={message.id} className={message.person < 0 ? 'is-self' : ''}><b style={message.person < 0 ? undefined : { color: person.color }}>{person.name}</b>{message.text}</p>
+      return <p key={message.id} className={`${message.person < 0 ? 'is-self' : ''} ${now - message.time > lineLife - 800 ? 'is-leaving' : ''}`}><b style={message.person < 0 ? undefined : { color: person.color }}>{person.name}</b>{message.text}</p>
     })}
   </div>
 }
