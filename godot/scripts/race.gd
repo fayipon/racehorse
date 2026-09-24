@@ -6,8 +6,12 @@ extends Node3D
 # gallops about 2.4 m ahead of its origin, rather than the middle of its body.
 const NOSE := 2.4
 const IDLE_CLIPS = ["Idle","Idle_2","Idle_Headlow","Eating"]
-# On an upright phone stage a race shot spans this much more than its lens angle.
+# On an upright phone stage a shot spans this much more than its lens angle, and
+# its subject sits this far above the picture's centre (in picture heights).
 const UPRIGHT_WIDTH := 1.15
+const UPRIGHT_BETTING_SHIFT := .25
+const UPRIGHT_RACE_SHIFT := .08
+const UPRIGHT_PODIUM_SHIFT := .135
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df")]
 var horses: Array[Node3D] = []
 var camera: Camera3D
@@ -82,6 +86,9 @@ var warmup: Array = []
 var warmup_step := 0
 # The shot's lens angle before any adjustment for an upright phone stage.
 var lens_fov := 52.0
+# Current upright lens shift, and the phase it was framed for.
+var frame_shift := 0.0
+var frame_phase := ""
 
 func fullscreen_rect(mat: ShaderMaterial) -> ColorRect:
 	var rect := ColorRect.new()
@@ -211,6 +218,34 @@ func build_environment() -> void:
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
 	venue.build(reduced_motion,COLORS,low_power)
+
+# Shots are framed as a vertical angle on a wide stage. An upright phone stage
+# turns a race or paddock shot into a horizontal angle a little wider than the
+# shot, so the runners fill the width and the extra height adds turf and sky
+# instead of cropping them; the podium shot already backs off to fit the three
+# horses across. The picture fills the whole stage there with the controls laid
+# over its lower part, so the lens also shifts the subject up into the open
+# picture: well up while the betting panel is open, a little during the race
+# and above the podium's standings.
+func frame_upright(delta: float) -> void:
+	var view:=get_viewport().get_visible_rect().size
+	if view.x>=view.y:
+		camera.projection=Camera3D.PROJECTION_PERSPECTIVE
+		camera.keep_aspect=Camera3D.KEEP_HEIGHT
+		camera.fov=lens_fov
+		frame_phase=""
+		return
+	var target:=UPRIGHT_PODIUM_SHIFT if phase=="result" else UPRIGHT_BETTING_SHIFT if phase=="betting" and betting_clock<48.0 else UPRIGHT_RACE_SHIFT
+	# Phase changes cut the camera, so the framing cuts with it.
+	frame_shift=target if frame_phase!=phase else lerpf(frame_shift,target,1.0-exp(-delta*2.5))
+	frame_phase=phase
+	var lens:=2.0*camera.near*tan(deg_to_rad(lens_fov)*.5)
+	if phase=="result":
+		camera.keep_aspect=Camera3D.KEEP_HEIGHT
+		camera.set_frustum(lens,Vector2(0,-frame_shift*lens),camera.near,camera.far)
+	else:
+		camera.keep_aspect=Camera3D.KEEP_WIDTH
+		camera.set_frustum(lens*UPRIGHT_WIDTH,Vector2(0,-frame_shift*lens*UPRIGHT_WIDTH*view.y/view.x),camera.near,camera.far)
 
 func warm_up() -> void:
 	if warmup_step<warmup.size():
@@ -550,14 +585,7 @@ func _process(delta: float) -> void:
 		focus_offset=focus_offset.lerp(focus-mount,1.0 if fixed else framing)
 		lens_fov=lerpf(lens_fov,fov,1.0-exp(-delta*4.0))
 		camera_roll=lerpf(camera_roll,roll,framing)
-	# Shots are framed as a vertical angle on a wide stage. An upright phone stage
-	# turns that into a horizontal angle a little wider than the shot, so the
-	# runners fill the width and the extra height adds turf and sky instead of
-	# cropping the pack. The podium keeps its own framing.
-	var view:=get_viewport().get_visible_rect().size
-	var upright:=phase=="racing" and view.x<view.y
-	camera.keep_aspect=Camera3D.KEEP_WIDTH if upright else Camera3D.KEEP_HEIGHT
-	camera.fov=rad_to_deg(2.0*atan(tan(deg_to_rad(lens_fov)*.5)*UPRIGHT_WIDTH)) if upright else lens_fov
+	frame_upright(delta)
 	camera.position=mount+camera_offset
 	camera_focus=mount+focus_offset
 	if impact_shake and not reduced_motion and impact_clock<.28:

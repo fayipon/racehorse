@@ -50,9 +50,10 @@ func _ready() -> void:
 func build_ground() -> void:
 	var lawn := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
-	plane.size=Vector2(60,50)
+	# Deep enough toward the camera that a tall phone frame still ends on lawn.
+	plane.size=Vector2(140,150)
 	lawn.mesh=plane
-	lawn.position=Vector3(0,-.01,0)
+	lawn.position=Vector3(0,-.01,40)
 	var mat := ShaderMaterial.new()
 	mat.shader=GROUND
 	mat.set_shader_parameter("color_dark",Color("3d7433"))

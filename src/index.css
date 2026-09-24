@@ -139,10 +139,13 @@
 .ranking-row .horse-number.small{width:15px;height:15px;font-size:9px}
 /* Narrow stages keep the same upright list as wide ones. */
 @container(max-width:650px){.live-ranking{min-width:150px;flex:none}.race-progress{min-width:0}}
-/* Upright screens: the stage keeps its betting height through the race, the
-   picture fills the top and the standings sit in a panel beneath it instead
-   of over the runners. */
-@media(max-width:700px){.race-stage.phase-racing{height:580px;aspect-ratio:auto}.race-stage.phase-result{min-height:580px}.phase-racing iframe{height:calc(100% - 204px)}.phase-racing .stage-vignette,.phase-racing .finish-shot-bars,.phase-racing .start-sequence,.phase-racing .sprint-cut-in,.phase-racing .finish-sequence{bottom:204px}.race-stage.phase-racing .stage-bottom{left:0;right:0;bottom:0;height:204px;padding:14px 16px 16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto 1fr;align-items:start;gap:12px 18px;background:linear-gradient(180deg,#1a3d30,#12301f);border-top:1px solid #d5eab42e}.phase-racing .live-ranking{grid-row:1/3;min-width:0}.phase-racing .live-ranking b{font-size:9px}.phase-racing .race-progress{max-width:none;padding-bottom:0}.phase-racing .minitrack{display:block;width:100%;height:auto;max-height:96px}.race-stage.phase-racing.is-cut-in .stage-bottom{opacity:1}.race-stage.phase-racing.is-cinematic .stage-bottom{display:grid}}
+/* Upright screens: the stage keeps its betting height through the race. The
+   picture fills the whole stage and the standings, progress and minimap sit
+   over its lower edge; the finish cinematic hides them as on wide screens. */
+@media(max-width:700px){.race-stage.phase-racing{height:580px;aspect-ratio:auto}.race-stage.phase-result{min-height:580px}.race-stage.phase-racing .stage-bottom{left:0;right:0;bottom:0;padding:44px 16px 16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto auto;align-content:end;align-items:end;gap:12px 18px;background:linear-gradient(180deg,transparent,#0d2118a6 42%,#0b1d15cc)}.phase-racing .live-ranking{grid-row:1/3;min-width:0}.phase-racing .live-ranking b{font-size:9px}.phase-racing .race-progress{max-width:none;padding-bottom:0}.phase-racing .minitrack{display:block;width:100%;height:auto;max-height:96px}}
 @media(max-width:580px){.race-stage.phase-racing{height:650px}.race-stage.phase-result{min-height:650px}}
+/* Betting and results on upright screens: the picture fills the stage too, and
+   the betting panel and lower standings float over it, letting it show through. */
+@media(max-width:700px){div.race-stage.phase-betting iframe,div.race-stage.phase-result iframe{height:100%}div.race-stage.phase-betting .stage-vignette,div.race-stage.phase-result .stage-vignette{bottom:0}.race-stage.phase-betting .stage-vignette{background:linear-gradient(180deg,#16252a45,transparent 30%,transparent 42%,#0d201899 62%)}div.race-stage.phase-result .stage-vignette{background:linear-gradient(180deg,#081c2340,transparent 30%,transparent 60%,#0a1d1699 78%)}.race-stage .stage-betting{background:linear-gradient(180deg,#153a2dc2,#0f281edb);box-shadow:0 10px 30px #071c2340}.race-stage .podium-rest{background:#0f251dc2}}
 /* On touch devices, blurring what sits behind these panels means re-blurring the 3D stage every frame. */
 @media(pointer:coarse){.race-stage *{backdrop-filter:none!important}}
