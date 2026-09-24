@@ -41,6 +41,7 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 - 檔案：`godot/assets/quaternius/horse.glb`，保留下載原檔。
 - `godot/scripts/asset_horse.gd` 調整比例、朝向、自然馬色、原八色識別，以及跟隨背部骨架的一整片號碼布，使用原檔內的 Idle / Walk / Gallop 動畫並平滑切換。
 - 選馬卡片使用 `public/assets/horse-1.png` 至 `horse-8.png`，由 `scripts/render_horse_portraits.gd` 直接渲染目前的 3D 模型、自然毛色與號碼布，原圖集保留供參考。
+- 手機結算的前三名橫幅使用 `public/assets/horse-head-1.webp` 至 `horse-head-8.webp`，由 `scripts/render_horse_heads.gd` 從同一個 3D 模型渲染頭頸特寫（`godot --path godot -s ../scripts/render_horse_heads.gd`）。
 
 ## 自然植栽素材
 
