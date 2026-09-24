@@ -10,7 +10,6 @@ const MARBLE = Color("f3eee3")
 const STONE = Color("e2d9c6")
 const GOLD = Color("dcb45c")
 const STUDIO = Color("4d8d6c")
-const SUN_GOLD = Color("f5c85a")
 const MEDALS = [Color("e2bb55"),Color("c9d2d3"),Color("c98f60")]
 var runners: Array[Node3D] = []
 var order: Array[int] = []
@@ -87,19 +86,6 @@ func build_backdrop() -> void:
 			KIT.vertex(st,corner[0],normal,corner[1])
 		KIT.cylinder(st,p1+Vector3(0,.8,0),p1+Vector3(0,15,0),.05,GOLD.darkened(.1),6)
 		KIT.box(st,p0.lerp(p1,.5)+Vector3(0,14.6,0),Vector3(p0.distance_to(p1)+.1,.8,.5),STONE,Basis(Vector3.UP,-(a0+a1)*.5))
-	# The club's golden sun rises behind the champion like a halo, below the
-	# React ceremony heading that sits over the top of the stage.
-	var sun := Vector3(0,2.9,-4.85)
-	KIT.disc(st,sun,1.45,SUN_GOLD,Vector3.BACK,32)
-	KIT.disc(st,sun+Vector3(0,0,.02),1.18,Color("ffe08a"),Vector3.BACK,32)
-	var frame := KIT.axis_frame(Vector3.BACK)
-	for i in range(16):
-		var angle := TAU*i/16.0
-		var reach := 2.75 if i%2==0 else 2.25
-		var tip: Vector3=sun+(frame[0]*cos(angle)+frame[1]*sin(angle))*reach
-		var left: Vector3=sun+(frame[0]*cos(angle-.13)+frame[1]*sin(angle-.13))*1.62
-		var right: Vector3=sun+(frame[0]*cos(angle+.13)+frame[1]*sin(angle+.13))*1.62
-		KIT.triangle(st,right,left,tip,SUN_GOLD)
 	var studio := KIT.painted()
 	studio.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
 	KIT.finish(st,studio,self,false)
