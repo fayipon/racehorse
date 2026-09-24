@@ -93,7 +93,6 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     <iframe tabIndex={ready ? 0 : -1} ref={frame} title="Godot 3D 即時賽馬" src={gameSource} allow="autoplay; fullscreen" className={ready ? 'ready' : ''} />
     <div className="stage-vignette" />
     <div className="race-title"><div>RACE <em>{String(game.round).padStart(2, '0')}</em></div><span /><p>SUNNY CUP<small>陽光盃 · 1200 M</small></p></div>
-    <div className="stage-status"><span className={`status-dot ${phase}`} />{phase === 'betting' ? (assembling ? '集合中 · 已封盤' : '開放投注') : phase === 'racing' ? 'LIVE 賽事進行中' : '賽事結束'}</div>
     {phase === 'betting' && !assembling && <div className="betting-hero"><span className="hero-kicker">A LITTLE LUCK. A LOT OF HEART.</span><h2>好運，即將起跑。</h2><p>選擇你的小馬，讓心跳跟著賽道加速。</p><div className="countdown-pill"><Clock3 size={16} />投注倒數 <strong>{clock(Math.max(0, Math.ceil((game.startedAt + BET_CLOSE_MS - now) / 1000)))}</strong></div></div>}
     {assembling && !startCue && <div className="assembly-caption"><span>TO THE STARTING LINE</span><strong>小馬集合中</strong><small>本場已封盤，準備迎接起跑！</small></div>}
     {startCue && <div className={`start-sequence ${startCue === 'GO!' ? 'is-go' : ''}`}>

@@ -35,7 +35,6 @@
 .race-stage.phase-result .payout-celebration{top:12px;left:auto;right:18px;min-width:0;padding:7px 10px;display:flex;align-items:center;gap:8px;transform:none;animation:ceremony-reveal .6s ease both}
 .race-stage.phase-result .payout-celebration strong{font-size:20px;margin:0}
 .race-stage.phase-result .payout-kicker{font-size:10px;letter-spacing:1px}
-.race-stage.phase-result:has(.payout-celebration) .stage-status{visibility:hidden}
 .race-stage.phase-result .payout-celebration strong svg{width:16px;height:16px}
 .race-stage.phase-result .payout-celebration>span:not(.payout-kicker),.race-stage.phase-result .payout-celebration>small{position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .race-stage.is-cinematic .stage-bottom{display:none}
@@ -44,7 +43,6 @@
 .race-stage.is-cinematic .race-title>span{height:20px}
 .race-stage.is-cinematic .race-title p{font-size:9px}
 .race-stage.is-cinematic .race-title small{display:none}
-.race-stage.is-cinematic .stage-status{z-index:2;top:8px;padding:5px 9px;font-size:9px;background:none;border-color:#ffffff20}
 .race-stage.is-cinematic .finish-shot-bars{z-index:1;pointer-events:none}
 .race-stage.is-cinematic .finish-announcement{top:auto;bottom:12%;left:5%;right:auto;width:auto;transform:none;animation:ceremony-reveal .65s ease both;text-align:left;background:none;border:0;box-shadow:none;padding:0;text-shadow:0 2px 12px #0009}
 .race-stage.is-cinematic .finish-announcement>strong{font-size:clamp(26px,4.2cqw,48px);font-weight:500;font-style:normal;-webkit-text-stroke:0;filter:none;letter-spacing:4px;line-height:1.2;margin:8px 0 12px;color:#fff1cd;animation:none}
