@@ -33,7 +33,9 @@ func build(index: int, _color: Color) -> void:
 		mesh.layers = 3
 		for surface in range(mesh.mesh.get_surface_count()):
 			var original: Material = mesh.mesh.surface_get_material(surface)
+			# Vertex colour (white here) matches the course paint, so both share one shader.
 			var mat := StandardMaterial3D.new()
+			mat.vertex_color_use_as_albedo = true
 			mat.roughness = .9
 			mat.metallic_specular = .16
 			match original.resource_name:
@@ -113,13 +115,12 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 	var source_from_meters:=Transform3D(Basis(Vector3.RIGHT,PI/2)*.01,Vector3.ZERO)
 	cloth.transform=skeleton.get_bone_global_rest(skeleton.find_bone("Back")).affine_inverse()*source_from_meters
 	attachment.add_child(cloth)
-	var mat := StandardMaterial3D.new()
+	# Double-sided vertex-colour paint, the same shader as the stand's sails.
+	var mat := KIT.painted(.96,.5)
 	mat.albedo_color=color
-	mat.roughness=.96
 	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-	var trim := StandardMaterial3D.new()
+	var trim := KIT.painted(.95,.5)
 	trim.albedo_color=Color("ddd0ac")
-	trim.roughness=.95
 	trim.cull_mode=BaseMaterial3D.CULL_DISABLED
 	# One connected sheet goes from the left hem, over the spine, to the
 	# right hem. The lower sides hang vertically, like a racing saddlecloth.

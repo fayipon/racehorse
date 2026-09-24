@@ -39,8 +39,8 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 
 - 採用 [Quaternius Stylized Nature MegaKit](https://quaternius.com/packs/stylizednaturemegakit.html) 免費模型：五種闊葉樹、兩種灌木、三種草叢、兩種花叢、兩種石頭。
 - 由作者的 [Poly Pizza 素材集](https://poly.pizza/bundle/Stylized-Nature-MegaKit-T34GZFA0fm) 取得，授權 CC0；各模型來源與原始 SHA-256 記錄於 `godot/assets/nature/manifest.json`，授權說明於同目錄 `LICENSE.md`。
-- 模型重新封裝為 glTF／BIN，共用相同的原始貼圖，未改動模型幾何或貼圖像素。重建工具：`scripts/prepare_nature_assets.py`。
-- `godot/scripts/landscape.gd` 負責分群種植與 MultiMesh 空間批次；`foliage.gdshader`／`meadow.gdshader` 為專案自製風動與草地材質，未使用付費版 Shader。
+- 模型重新封裝為 glTF／BIN，共用相同的原始貼圖，未改動模型幾何或貼圖像素。重建工具：`scripts/prepare_nature_assets.py`。原始 PNG 保留不變，Godot 匯入時轉為品質 0.85 的有損 WebP，以縮小 Web 資源包。
+- `godot/scripts/landscape.gd` 負責分群種植與 MultiMesh 空間批次；`foliage.gdshader`／`ground.gdshader` 為專案自製風動與草地材質，未使用付費版 Shader。
 
 ## 看台與觀眾素材
 
@@ -53,8 +53,8 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 
 ## 草地跑道、欄杆與內場
 
-- `godot/scripts/race_track.gd` 程序生成草地跑道、沙地訓練道、白色圓管欄杆（內欄鵝頸柱）、終點柱、距離桿與樹籬；材質為自製 `racing_turf`、`dirt_track`、`hedge` shader。修剪條紋沿橢圓連續銜接，近景有細微紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
-- `godot/scripts/infield.gd` 與自製 `lawn`、`water`、`hedge` shader 建立內場斜格草坪、噴泉池與造型馬花園；造型馬沿用 Quaternius 馬模型，套上樹籬材質。噴泉以 CPUParticles3D 繪製。冠軍圈的盆栽樹沿用 Nature MegaKit 的 `tree_round`。
+- `godot/scripts/race_track.gd` 程序生成草地跑道、沙地訓練道、白色圓管欄杆（內欄鵝頸柱）、終點柱、距離桿與樹籬；材質為自製 `ground`（草皮、沙道）與 `foliage`（樹籬）shader；同類表面共用一個 shader，以減少 Web 首次載入的編譯時間。修剪條紋沿橢圓連續銜接，近景有細微紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
+- `godot/scripts/infield.gd` 與自製 `ground`、`water`、`foliage` shader 建立內場斜格草坪、噴泉池與造型馬花園；造型馬沿用 Quaternius 馬模型，套上樹籬材質。噴泉以 CPUParticles3D 繪製。冠軍圈的盆栽樹沿用 Nature MegaKit 的 `tree_round`。
 - 先前的欄杆模型：3D Assets 的 [Horse Stables and Equestrian Yard — Arena Rail](https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48)（CC0 1.0，發布者標示為 AI 製作素材）。原始與轉換後的 GLB、`manifest.json`、`LICENSE.md` 保留在 `godot/assets/equestrian/` 供參考，`scripts/prepare_equestrian_assets.mjs` 仍可重建；現已由 `export_presets.cfg` 排除，不打包進 Web 匯出。
 - 馬蹄後的粒子調整為較小、較淡的草綠色揚屑，取代原本沙地的黃褐色塵霧。
 

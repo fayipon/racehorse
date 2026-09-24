@@ -3,9 +3,9 @@ extends Node3D
 # The infield garden behind the runners: a diamond-mown lawn, a fountain pond
 # on the centre line and a topiary horse at the final-bend end.
 const KIT = preload("res://scripts/mesh_kit.gd")
-const LAWN = preload("res://shaders/lawn.gdshader")
+const GROUND = preload("res://shaders/ground.gdshader")
 const WATER = preload("res://shaders/water.gdshader")
-const HEDGE = preload("res://shaders/hedge.gdshader")
+const FOLIAGE = preload("res://shaders/foliage.gdshader")
 const HORSE_MODEL = preload("res://assets/quaternius/horse.glb")
 const STONE = Color("e4dccb")
 const POOL = Color("8fc3c9")
@@ -16,9 +16,9 @@ func build(course: RefCounted, reduced: bool) -> void:
 	var lawn := MeshInstance3D.new()
 	lawn.mesh=KIT.course_band(course,.02,13.9,.008,256)
 	var lawn_mat := ShaderMaterial.new()
-	lawn_mat.shader=LAWN
-	lawn_mat.set_shader_parameter("grass_dark",Color("4b843b"))
-	lawn_mat.set_shader_parameter("grass_light",Color("80ad56"))
+	lawn_mat.shader=GROUND
+	lawn_mat.set_shader_parameter("color_dark",Color("4b843b"))
+	lawn_mat.set_shader_parameter("color_light",Color("80ad56"))
 	lawn.material_override=lawn_mat
 	add_child(lawn)
 	build_pond()
@@ -29,7 +29,8 @@ func build(course: RefCounted, reduced: bool) -> void:
 # box hedge, faces the runners as they come off the final bend.
 func build_topiary() -> void:
 	var leaves := ShaderMaterial.new()
-	leaves.shader=HEDGE
+	leaves.shader=FOLIAGE
+	leaves.set_shader_parameter("style",1)
 	leaves.set_shader_parameter("leaf_dark",Color("2a5323"))
 	leaves.set_shader_parameter("leaf_light",Color("6f9d45"))
 	var ring := KIT.begin()

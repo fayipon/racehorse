@@ -5,7 +5,7 @@ extends Node3D
 # spectators use Quaternius posed people (CC0, see assets/venue/crowd).
 const KIT = preload("res://scripts/mesh_kit.gd")
 const CROWD_SHADER = preload("res://shaders/spectators.gdshader")
-const PENNANT = preload("res://shaders/pennant.gdshader")
+const FOLIAGE = preload("res://shaders/foliage.gdshader")
 const POSES = ["Male_Sitting","Female_Sitting","Male_Sitting_Cheering","Female_Sitting_Cheering","Male_Standing_Waving","Woman_Standing_Waving"]
 const HAIR_CENTERS = [Vector3(0,2.82,-.73),Vector3(0,2.72,-.71),Vector3(-.16,2.76,-.88),Vector3(.02,2.72,-.82),Vector3(.09,3.55,-.10),Vector3(.09,3.46,-.07)]
 const CREAM = Color("f2ead8")
@@ -301,7 +301,8 @@ func build_flags() -> void:
 	var flags := MeshInstance3D.new()
 	flags.mesh=st.commit()
 	var mat := ShaderMaterial.new()
-	mat.shader=PENNANT
+	mat.shader=FOLIAGE
+	mat.set_shader_parameter("style",2)
 	mat.set_shader_parameter("wind",.25 if reduce_motion else 1.0)
 	flags.material_override=mat
 	flags.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

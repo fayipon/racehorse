@@ -6,6 +6,8 @@ extends Node3D
 # gallops about 2.4 m ahead of its origin, rather than the middle of its body.
 const NOSE := 2.4
 const IDLE_CLIPS = ["Idle","Idle_2","Idle_Headlow","Eating"]
+# On an upright phone stage a race shot spans this much more than its lens angle.
+const UPRIGHT_WIDTH := 1.15
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df")]
 var horses: Array[Node3D] = []
 var camera: Camera3D
@@ -20,6 +22,9 @@ var track_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var elapsed := 0.0
 var bridge_timer := 0.0
 var venue: Node3D
+var landscape_node: Node3D
+var infield_node: Node3D
+var track_node: Node3D
 var standings: Array = [0,1,2,3,4,5,6,7]
 var confetti_rain = preload("res://scripts/confetti_rain.gd").new()
 var previous_shot := -1
@@ -72,6 +77,11 @@ var winner_nose := NOSE
 var paddock_shift := PackedFloat32Array([0,0,0,0,0,0,0,0])
 var paddock_clock := 0.0
 var paddock_settled := false
+# Scene parts shown one per frame while the web build warms up its shaders.
+var warmup: Array = []
+var warmup_step := 0
+# The shot's lens angle before any adjustment for an upright phone stage.
+var lens_fov := 52.0
 
 func fullscreen_rect(mat: ShaderMaterial) -> ColorRect:
 	var rect := ColorRect.new()
@@ -140,6 +150,14 @@ func _ready() -> void:
 	if OS.has_feature("web"):
 		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
 		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-ready'},window.location.origin)")
+		# WebGL compiles each material's shaders the first time it draws, all on the
+		# page's main thread. Revealing the scene a part per frame spreads that work,
+		# so the page keeps painting and the loading bar keeps moving.
+		# The first frame only reports that the build is done; each later part
+		# brings a few new shaders.
+		warmup=[[],[landscape_node],[infield_node,track_node],[venue],horses.duplicate()]
+		for group: Array in warmup:
+			for node: Node3D in group: node.visible=false
 
 func build_environment() -> void:
 	var env := Environment.new()
@@ -180,19 +198,28 @@ func build_environment() -> void:
 	sun.shadow_opacity = .82
 	sun.directional_shadow_max_distance = 70.0 if low_power else 110.0
 	add_child(sun)
-	var landscape=preload("res://scripts/landscape.gd").new()
-	add_child(landscape)
-	landscape.build(course,reduced_motion,low_power)
-	var infield=preload("res://scripts/infield.gd").new()
-	add_child(infield)
-	infield.build(course,reduced_motion or low_power)
-	var racing_track=preload("res://scripts/race_track.gd").new()
-	add_child(racing_track)
+	landscape_node=preload("res://scripts/landscape.gd").new()
+	add_child(landscape_node)
+	landscape_node.build(course,reduced_motion,low_power)
+	infield_node=preload("res://scripts/infield.gd").new()
+	add_child(infield_node)
+	infield_node.build(course,reduced_motion or low_power)
+	track_node=preload("res://scripts/race_track.gd").new()
+	add_child(track_node)
 	# The physical finish and minimap both lie at x=0 on the near straight.
-	racing_track.build(course)
+	track_node.build(course)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
 	venue.build(reduced_motion,COLORS,low_power)
+
+func warm_up() -> void:
+	if warmup_step<warmup.size():
+		for node: Node3D in warmup[warmup_step]: node.visible=true
+		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-warmup',step:%d,total:%d},window.location.origin)" % [warmup_step+1,warmup.size()])
+	else:
+		# The last part has drawn once; the stage can now fade in hitch-free.
+		JavaScriptBridge.eval("window.parent.postMessage({type:'game-visible'},window.location.origin)")
+	warmup_step+=1
 
 func build_horse(index: int) -> void:
 	var pony = PONY.new()
@@ -214,6 +241,8 @@ func build_finish_effects() -> void:
 	var dust_mat := StandardMaterial3D.new()
 	dust_mat.albedo_color=Color("8a9862")
 	dust_mat.albedo_texture=soft_disc
+	# Same flags as the fountain spray, so both share one shader.
+	dust_mat.vertex_color_use_as_albedo=true
 	dust_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
 	dust_mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
 	dust_mat.billboard_mode=BaseMaterial3D.BILLBOARD_ENABLED
@@ -279,6 +308,7 @@ func read_bridge() -> void:
 	positions = data.get("positions",positions)
 
 func _process(delta: float) -> void:
+	if warmup_step<=warmup.size() and not warmup.is_empty(): warm_up()
 	elapsed+=delta
 	bridge_timer+=delta
 	if phase!="betting" and not preview_paused:
@@ -510,7 +540,7 @@ func _process(delta: float) -> void:
 	if not camera_initialized or cut or crisp:
 		camera_offset=cam_pos-mount
 		focus_offset=focus-mount
-		camera.fov=fov
+		lens_fov=fov
 		camera_roll=roll
 		camera_initialized=true
 	else:
@@ -518,8 +548,16 @@ func _process(delta: float) -> void:
 		camera_offset=camera_offset.lerp(cam_pos-mount,framing)
 		# A fixed lens pans onto its subject directly; easing it would lag behind.
 		focus_offset=focus_offset.lerp(focus-mount,1.0 if fixed else framing)
-		camera.fov=lerpf(camera.fov,fov,1.0-exp(-delta*4.0))
+		lens_fov=lerpf(lens_fov,fov,1.0-exp(-delta*4.0))
 		camera_roll=lerpf(camera_roll,roll,framing)
+	# Shots are framed as a vertical angle on a wide stage. An upright phone stage
+	# turns that into a horizontal angle a little wider than the shot, so the
+	# runners fill the width and the extra height adds turf and sky instead of
+	# cropping the pack. The podium keeps its own framing.
+	var view:=get_viewport().get_visible_rect().size
+	var upright:=phase=="racing" and view.x<view.y
+	camera.keep_aspect=Camera3D.KEEP_WIDTH if upright else Camera3D.KEEP_HEIGHT
+	camera.fov=rad_to_deg(2.0*atan(tan(deg_to_rad(lens_fov)*.5)*UPRIGHT_WIDTH)) if upright else lens_fov
 	camera.position=mount+camera_offset
 	camera_focus=mount+focus_offset
 	if impact_shake and not reduced_motion and impact_clock<.28:

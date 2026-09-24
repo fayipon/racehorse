@@ -10,6 +10,7 @@ var materials: Dictionary = {}
 var plant_count := 0
 var batch_count := 0
 var reduce_motion := false
+static var flat_normal: ImageTexture
 
 func build(course: RefCounted, reduced: bool, sparse := false) -> void:
 	reduce_motion = reduced
@@ -22,9 +23,10 @@ func build(course: RefCounted, reduced: bool, sparse := false) -> void:
 	ground.mesh = plane
 	ground.position.y = -.045
 	var meadow := ShaderMaterial.new()
-	meadow.shader = preload("res://shaders/meadow.gdshader")
-	meadow.set_shader_parameter("grass_dark",Color("527440"))
-	meadow.set_shader_parameter("grass_light",Color("799451"))
+	meadow.shader = preload("res://shaders/ground.gdshader")
+	meadow.set_shader_parameter("pattern",1)
+	meadow.set_shader_parameter("color_dark",Color("527440"))
+	meadow.set_shader_parameter("color_light",Color("799451"))
 	ground.material_override = meadow
 	add_child(ground)
 	# Informal planted borders follow the infield edge inside the sand track.
@@ -132,9 +134,27 @@ func adapt_material(source: StandardMaterial3D, asset: String) -> Material:
 		solid.roughness=1.0
 		solid.metallic_specular=0.08
 		solid.vertex_color_use_as_albedo=true
+		# A flat normal map on the plain solids keeps every textured solid on one
+		# shader, which the web build then compiles only once.
+		if not solid.normal_enabled:
+			solid.normal_enabled=true
+			solid.normal_texture=flat_normal_texture()
 		result=solid
 	materials[key]=result
 	return result
+
+static func flat_normal_texture() -> ImageTexture:
+	if flat_normal==null:
+		var image := Image.create(1,1,false,Image.FORMAT_RGB8)
+		image.fill(Color(.5,.5,1.0))
+		flat_normal=ImageTexture.create_from_image(image)
+	return flat_normal
+
+# Gives a single placed nature model the planted ones' materials, and shaders.
+func dress(model: Node3D, asset: String) -> void:
+	for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+		for surface in range(mesh.mesh.get_surface_count()):
+			mesh.set_surface_override_material(surface,adapt_material(mesh.get_active_material(surface),asset))
 
 func mesh_parts(node: Node3D, parent_transform: Transform3D, parts: Array) -> void:
 	var transform := parent_transform*node.transform

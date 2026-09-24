@@ -32,6 +32,9 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
   const [progress, setProgress] = useState(0)
+  // Downloading fills the first 70% of the bar; the staged shader warm-up the rest.
+  const [warmup, setWarmup] = useState(0)
+  const loaded = Math.min(100, progress * .7 + warmup * 30)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [finishRound, setFinishRound] = useState(0)
   // Off screen, Godot idles at a few frames a second to spare the battery.
@@ -63,6 +66,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
       if (event.origin !== location.origin || event.source !== frame.current?.contentWindow) return
       if (event.data?.type === 'game-visible') { setReady(true); setFailed(false); onReady(true) }
       if (event.data?.type === 'godot-progress' && Number.isFinite(event.data.progress)) setProgress(Math.max(0, Math.min(100, event.data.progress)))
+      if (event.data?.type === 'godot-warmup' && Number.isFinite(event.data.step) && event.data.total > 0) { setProgress(100); setWarmup(Math.max(0, Math.min(1, event.data.step / event.data.total))) }
       if (event.data?.type === 'godot-error') { setFailed(true); setReady(false); onReady(false) }
       if (event.data?.type === 'race-finish' && Number.isSafeInteger(event.data.round)) setFinishRound(event.data.round)
     }
@@ -78,7 +82,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     frame.current?.contentWindow?.postMessage({ type: 'race-state', phase, seconds, bettingElapsed: Math.max(0, (now-game.startedAt)/1000), positions, paradePlan, finishTimes: HORSES.map(h => 44.5 + order.indexOf(h.id) * .65), winner: order[0], camera: shot.id, round: game.round, muted, paused, visible: onScreen }, location.origin)
   }, [game.round, game.startedAt, muted, now, order, phase, positions, seconds, shot.id, ready, paradePlan, paused, onScreen])
   return <div ref={shell} className={`race-stage phase-${phase} ${!ready ? 'is-loading' : ''} ${assembling ? 'is-assembling' : ''} ${finishing ? 'has-finished' : ''} ${cinematic ? 'is-cinematic' : ''} ${winnerCutIn ? 'is-cut-in' : ''}`}>
-    {!ready && <div className="engine-loading" role="status" aria-live="polite"><div className="loading-emblem" aria-hidden="true">♞</div><span className="loading-brand">SUNNY CUP</span><h2>{failed ? '賽場暫時無法載入' : '正在準備你的陽光賽場'}</h2><p>{failed ? '連線可能中斷或載入逾時，請重試。' : progress >= 100 ? '資源下載完成，正在啟動 3D 賽場…' : '正在下載小馬與賽場資源…'}</p><div className="loading-progress" role="progressbar" aria-label="賽場下載進度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div><strong>{Math.floor(progress)}<small>%</small></strong><small>首次載入約 46 MB · 準備完成後開放操作</small>{failed && <button onClick={() => { setFailed(false); setProgress(0); setReady(false); onReady(false); setLoadAttempt(value => value + 1); if (frame.current) frame.current.src = `${import.meta.env.BASE_URL}game/index.html` }}>重新載入賽場</button>}</div>}
+    {!ready && <div className="engine-loading" role="status" aria-live="polite"><div className="loading-emblem" aria-hidden="true">♞</div><span className="loading-brand">SUNNY CUP</span><h2>{failed ? '賽場暫時無法載入' : '正在準備你的陽光賽場'}</h2><p>{failed ? '連線可能中斷或載入逾時，請重試。' : progress >= 100 ? '資源下載完成，正在啟動 3D 賽場…' : '正在下載小馬與賽場資源…'}</p><div className="loading-progress" role="progressbar" aria-label="賽場載入進度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.floor(loaded)}><i style={{ width: `${loaded}%` }} /></div><strong>{Math.floor(loaded)}<small>%</small></strong><small>首次載入約 13 MB · 準備完成後開放操作</small>{failed && <button onClick={() => { setFailed(false); setProgress(0); setWarmup(0); setReady(false); onReady(false); setLoadAttempt(value => value + 1); if (frame.current) frame.current.src = `${import.meta.env.BASE_URL}game/index.html` }}>重新載入賽場</button>}</div>}
 
     <iframe tabIndex={ready ? 0 : -1} ref={frame} title="Godot 3D 即時賽馬" src={`${import.meta.env.BASE_URL}game/index.html`} allow="autoplay; fullscreen" className={ready ? 'ready' : ''} />
     <div className="stage-vignette" />

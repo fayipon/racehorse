@@ -3,9 +3,8 @@ extends Node3D
 # Racecourse furniture built from the shared course path: turf, an inner sand
 # training track, white running rails, the winning post and distance poles.
 const KIT = preload("res://scripts/mesh_kit.gd")
-const TURF = preload("res://shaders/racing_turf.gdshader")
-const DIRT = preload("res://shaders/dirt_track.gdshader")
-const HEDGE = preload("res://shaders/hedge.gdshader")
+const GROUND = preload("res://shaders/ground.gdshader")
+const FOLIAGE = preload("res://shaders/foliage.gdshader")
 const RAIL_WHITE = Color("f6f4ec")
 const POST_WHITE = Color("e9e5d9")
 const RACING_RED = Color("c63f36")
@@ -30,18 +29,20 @@ func build_surfaces() -> void:
 	var turf := MeshInstance3D.new()
 	turf.mesh=KIT.course_band(course,inner,outer,.012)
 	var mat := ShaderMaterial.new()
-	mat.shader=TURF
+	mat.shader=GROUND
+	mat.set_shader_parameter("pattern",2)
 	mat.set_shader_parameter("lap_length",4.0*float(course.config.halfStraight)+TAU*(inner+outer)*.5)
-	mat.set_shader_parameter("grass_dark",Color("2f672f"))
-	mat.set_shader_parameter("grass_light",Color("6c9c49"))
+	mat.set_shader_parameter("color_dark",Color("2f672f"))
+	mat.set_shader_parameter("color_light",Color("6c9c49"))
 	turf.material_override=mat
 	add_child(turf)
 	var sand := MeshInstance3D.new()
 	sand.mesh=KIT.course_band(course,SAND_INNER,SAND_OUTER,.01)
 	var dirt := ShaderMaterial.new()
-	dirt.shader=DIRT
-	dirt.set_shader_parameter("sand_dark",Color("b18a61"))
-	dirt.set_shader_parameter("sand_light",Color("d9bd93"))
+	dirt.shader=GROUND
+	dirt.set_shader_parameter("pattern",3)
+	dirt.set_shader_parameter("color_dark",Color("b18a61"))
+	dirt.set_shader_parameter("color_light",Color("d9bd93"))
 	dirt.set_shader_parameter("width",SAND_OUTER-SAND_INNER)
 	sand.material_override=dirt
 	add_child(sand)
@@ -134,7 +135,8 @@ func build_hedge() -> void:
 	var hedge := MeshInstance3D.new()
 	hedge.mesh=st.commit()
 	var mat := ShaderMaterial.new()
-	mat.shader=HEDGE
+	mat.shader=FOLIAGE
+	mat.set_shader_parameter("style",1)
 	mat.set_shader_parameter("leaf_dark",Color("27471f"))
 	mat.set_shader_parameter("leaf_light",Color("5d8a3a"))
 	hedge.material_override=mat

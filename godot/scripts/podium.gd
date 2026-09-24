@@ -4,9 +4,10 @@ extends Node3D
 # intact. Only the top three horses stand here; the champion wears the garland.
 const HORSE = preload("res://scripts/asset_horse.gd")
 const KIT = preload("res://scripts/mesh_kit.gd")
-const LAWN = preload("res://shaders/lawn.gdshader")
-const HEDGE = preload("res://shaders/hedge.gdshader")
+const GROUND = preload("res://shaders/ground.gdshader")
+const FOLIAGE = preload("res://shaders/foliage.gdshader")
 const TREE = preload("res://assets/nature/tree_round.gltf")
+const LANDSCAPE = preload("res://scripts/landscape.gd")
 const MARBLE = Color("f3eee3")
 const STONE = Color("e2d9c6")
 const GOLD = Color("dcb45c")
@@ -53,9 +54,9 @@ func build_ground() -> void:
 	lawn.mesh=plane
 	lawn.position=Vector3(0,-.01,0)
 	var mat := ShaderMaterial.new()
-	mat.shader=LAWN
-	mat.set_shader_parameter("grass_dark",Color("3d7433"))
-	mat.set_shader_parameter("grass_light",Color("6f9d4a"))
+	mat.shader=GROUND
+	mat.set_shader_parameter("color_dark",Color("3d7433"))
+	mat.set_shader_parameter("color_light",Color("6f9d4a"))
 	mat.set_shader_parameter("band",3.0)
 	lawn.material_override=mat
 	add_child(lawn)
@@ -92,6 +93,7 @@ func build_backdrop() -> void:
 	KIT.finish(st,studio,self,false)
 	# Trees from the course's own nature kit, potted in white planters.
 	var planters := KIT.begin()
+	var nature: Node3D=LANDSCAPE.new()
 	for x in [-9.2,9.2]:
 		var pot := Vector3(x,0,-1.2)
 		KIT.cylinder(planters,pot,pot+Vector3(0,1.1,0),.62,MARBLE,16,.78)
@@ -101,7 +103,9 @@ func build_backdrop() -> void:
 		tree.position=pot+Vector3(0,1.15,0)
 		tree.rotation.y=.6 if x<0 else 2.4
 		tree.scale=Vector3.ONE*.42
+		nature.dress(tree,"tree_round")
 		add_child(tree)
+	nature.free()
 	KIT.finish(planters,KIT.painted(.82,.22),self)
 	var hedge := KIT.begin()
 	for i in range(18):
@@ -112,7 +116,8 @@ func build_backdrop() -> void:
 		var tangent := (p1-p0).normalized()
 		KIT.box(hedge,(p0+p1)*.5+Vector3(0,.55,0),Vector3(p0.distance_to(p1)+.08,1.1,1.1),Color.WHITE,Basis(tangent,Vector3.UP,tangent.cross(Vector3.UP)))
 	var leaves := ShaderMaterial.new()
-	leaves.shader=HEDGE
+	leaves.shader=FOLIAGE
+	leaves.set_shader_parameter("style",1)
 	leaves.set_shader_parameter("leaf_dark",Color("2a5323"))
 	leaves.set_shader_parameter("leaf_light",Color("6c9a45"))
 	KIT.finish(hedge,leaves,self)
