@@ -1,6 +1,12 @@
 .podium-results{position:absolute;inset:0;pointer-events:none;color:#f3ead5;z-index:2}
 .race-stage:not(.phase-result) .podium-results{display:none}
-.podium-heading{position:absolute;top:6%;left:0;right:0;text-align:center;animation:ceremony-reveal .8s ease both}
+.race-stage.phase-result{--results-bet-space:0px;--results-footer:calc(174px + var(--results-bet-space));height:calc(470px + var(--results-footer));min-height:calc(644px + var(--results-bet-space));aspect-ratio:auto;background:#183029}
+.race-stage.phase-result:has(.stage-bets li){--results-bet-space:90px}
+.race-stage.phase-result iframe{height:calc(100% - var(--results-footer))}
+.race-stage.phase-result .stage-vignette{bottom:var(--results-footer)}
+.race-stage.phase-result:fullscreen{height:100vh;min-height:0}
+.podium-featured{position:absolute;inset:0 0 var(--results-footer)}
+.podium-heading{position:absolute;top:14%;left:0;right:0;text-align:center;animation:ceremony-reveal .8s ease both}
 .podium-heading>span{font-size:9px;letter-spacing:3px;color:#d2b474}
 .podium-heading h2{font-size:clamp(21px,3cqw,34px);font-weight:500;letter-spacing:8px;margin:7px 0 12px}
 .podium-heading i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,#d5b978,transparent);margin:auto}
@@ -15,6 +21,13 @@
 .podium-number{display:grid;place-items:center;flex-shrink:0;width:30px;height:34px;border-radius:5px;background:var(--horse);font-size:22px;color:white}
 .podium-place h3{font-size:clamp(12px,1.7cqw,19px);font-weight:500;letter-spacing:1px;margin:0;text-align:left}
 .podium-place h3 small{display:block;font-size:8px;letter-spacing:1px;color:#c4c8b3;margin-top:4px}
+.podium-rest{position:absolute;left:50%;bottom:calc(14px + var(--results-bet-space));transform:translateX(-50%);width:86%;max-width:650px;list-style:none;margin:0;padding:6px 12px;border-top:1px solid #b5b99445;background:#122a22e8}
+.podium-rest li{height:29px;display:grid;grid-template-columns:52px 23px 1fr auto;align-items:center;gap:10px;border-bottom:1px solid #ffffff0c;text-align:left}
+.podium-rest li:last-child{border-bottom:0}
+.result-rank{font-size:10px;color:#b8c3b1;letter-spacing:1px}
+.result-number{display:grid;place-items:center;width:21px;height:22px;border-radius:4px;background:var(--horse);font-size:14px;color:white}
+.podium-rest strong{font-size:12px;font-weight:500;letter-spacing:1px}
+.podium-rest small{font-size:8px;letter-spacing:1px;color:#a3b09f}
 .race-stage.phase-result .stage-bottom{display:none}
 .race-stage.phase-result .stage-bets{bottom:14px}
 .race-stage.phase-result .stage-bets:has(.empty-bets){display:none}
