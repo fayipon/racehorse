@@ -50,6 +50,14 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 - `venue.gd` 依模型階梯高度排列觀眾，合併人物與髮型並以 MultiMesh 分批繪製；衣服／膚色由自製 `spectators.gdshader` 隨機配置，保留原模型姿勢。
 - 遠景山丘由現有 Nature MegaKit 石頭模型拉寬、壓低並分層排列，使用低對比霧色材質。
 
+## 草地跑道與馬場欄杆
+
+- 欄杆採用 3D Assets 的 [Horse Stables and Equestrian Yard — Arena Rail](https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48)：白色雙橫桿與底部擋板，原模組為 3 公尺柱距、1.1 公尺高，授權 CC0 1.0。發布者標示為 AI 製作素材。
+- 原始 GLB 保存在 `godot/assets/equestrian/source/arena_rail.glb`；來源、授權與原檔及轉換檔雜湊記錄於同目錄上一層的 `manifest.json`、`LICENSE.md`。
+- `scripts/prepare_equestrian_assets.mjs` 將 KHR_mesh_quantization 的量化向量還原成 Float32，供目前 Godot 匯入，保留原幾何、材質及節點變換。遊戲使用轉換後的 `arena_rail.glb`，以暖白色材質及內外圈 MultiMesh 批次沿既有路線拼接。
+- `godot/scripts/race_track.gd` 與自製 `racing_turf.gdshader` 建立草地跑道，修剪條紋沿橢圓連續銜接，近景有細微草色紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
+- 馬蹄後的粒子調整為較小、較淡的草綠色揚屑，取代原本沙地的黃褐色塵霧。
+
 ## 保留的原程式模型
 
 `godot/assets/pony_body.obj` 與 `pony_head.obj` 由 `scripts/sculpt_pony.py` 以平滑融合橢球與 marching tetrahedra 建構。`godot/shaders/knit.gdshader` 程序產生針織表面，不依賴外部模型或貼圖服務。這些為專案內生成的 3D 幾何，不是生成圖片的平面替代。

@@ -81,30 +81,6 @@ func box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> MeshInsta
 	parent.add_child(node)
 	return node
 
-func beam(a: Vector3, b: Vector3, radius: float, color: Color) -> void:
-	var node := box(self, (a+b)*0.5, Vector3(radius, radius, a.distance_to(b)), color)
-	node.look_at(b, Vector3.UP)
-
-func ring(radius: float, width: float, color: Color, y: float) -> void:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for i in range(192):
-		var a := i/192.0
-		var b := (i+1)/192.0
-		var pts: Array[Vector3] = [course.sample(a,radius).position,course.sample(a,radius+width).position,course.sample(b,radius).position,course.sample(b,radius+width).position]
-		for idx in [0,2,1,1,2,3]:
-			var pos := pts[idx]
-			pos.y = y
-			st.set_normal(Vector3.UP)
-			st.set_uv(Vector2(pos.x,pos.z)*0.25)
-			st.add_vertex(pos)
-	var instance := MeshInstance3D.new()
-	instance.mesh = st.commit()
-	var mat := material(color).duplicate() as StandardMaterial3D
-	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	instance.material_override = mat
-	add_child(instance)
-
 func course_point(progress: float, lane: int) -> Vector3:
 	return course.sample(progress,course.lane_radius(lane)).position
 
@@ -178,16 +154,9 @@ func build_environment() -> void:
 	var landscape=preload("res://scripts/landscape.gd").new()
 	add_child(landscape)
 	landscape.build(course,reduced_motion)
-	ring(float(course.config.innerRadius),float(course.config.trackWidth),Color("a77c54"),0.01)
-	# Sand grooves and lane markings form a single continuous course.
-	for i in range(18): ring(float(course.config.innerRadius)+.3+i*.72,.035,Color("956d48"),.026)
-	for r in [float(course.config.innerRadius)-.4,float(course.config.innerRadius)+float(course.config.trackWidth)+.4]:
-		for i in range(128):
-			var p: Vector3 = course.sample(i/128.0,r).position
-			var q: Vector3 = course.sample((i+1)/128.0,r).position
-			box(self,p+Vector3(0,.65,0),Vector3(.14,1.3,.14),Color("c5c0ac"))
-			beam(p+Vector3(0,1.15,0),q+Vector3(0,1.15,0),.17,Color("d0c9b5"))
-			beam(p+Vector3(0,.60,0),q+Vector3(0,.60,0),.1,Color("b6b09e"))
+	var racing_track=preload("res://scripts/race_track.gd").new()
+	add_child(racing_track)
+	racing_track.build(course)
 	# The physical finish and minimap both lie at x=0 on the near straight.
 	for lane in range(27):
 		for column in range(4):
@@ -222,7 +191,7 @@ func build_finish_effects() -> void:
 	soft_disc.fill_from=Vector2(.5,.5)
 	soft_disc.fill_to=Vector2(.5,1.0)
 	var dust_mat := StandardMaterial3D.new()
-	dust_mat.albedo_color=Color("c6a57a")
+	dust_mat.albedo_color=Color("8a9862")
 	dust_mat.albedo_texture=soft_disc
 	dust_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
 	dust_mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -494,9 +463,9 @@ func update_effects(delta: float) -> void:
 				dust_outwards[i]=path.outward
 				dust_origins[i]=horses[owner].position-path.tangent*.45+path.outward*sin(i*7.3)*.38
 			# Leave dust behind in world space instead of attaching it to the horse.
-			dust[i].position=dust_origins[i]-dust_forwards[i]*t*lerpf(.7,1.6,sprint)+dust_outwards[i]*sin(i*2.1)*t*.4+Vector3(0,.12+t*lerpf(.35,.7,sprint),0)
-			var size: float=.2+sin(t*PI)*lerpf(.85,1.55,sprint)
+			dust[i].position=dust_origins[i]-dust_forwards[i]*t*lerpf(.7,1.6,sprint)+dust_outwards[i]*sin(i*2.1)*t*.4+Vector3(0,.08+t*lerpf(.2,.4,sprint),0)
+			var size: float=.12+sin(t*PI)*lerpf(.4,.75,sprint)
 			dust[i].scale=Vector3(size*1.3,size,size)
-			var tint:=Color("c6a57a")
-			tint.a=sin(t*PI)*lerpf(.17,.3,sprint)
+			var tint:=Color("8a9862")
+			tint.a=sin(t*PI)*lerpf(.10,.18,sprint)
 			dust_materials[i].albedo_color=tint

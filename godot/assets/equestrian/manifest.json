@@ -1,0 +1,53 @@
+{
+  "title": "Arena Rail (Horse Stables and Equestrian Yard)",
+  "url": "https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48",
+  "cdnUrl": "https://cdn.3dassets.dev/assets/23792/v1/model.glb",
+  "license": {
+    "slug": "cc0-1.0",
+    "name": "CC0 1.0 Universal",
+    "url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attributionRequired": false
+  },
+  "contributor": {
+    "username": "3dassets",
+    "name": "3D Assets",
+    "url": "https://3dassets.dev/u/3dassets"
+  },
+  "aiGenerated": true,
+  "aiModel": "Claude Fable 5.1",
+  "stats": {
+    "fileSize": 6476,
+    "triangles": 100,
+    "vertices": 300,
+    "meshes": 2,
+    "materials": 2,
+    "textures": 0,
+    "animations": [],
+    "boundingBox": {
+      "min": [
+        -1.562000036239624,
+        0.00001068222337465008,
+        -0.11989684788500596
+      ],
+      "max": [
+        1.562000036239624,
+        1.0999677971346056,
+        0.1598968469909363
+      ]
+    },
+    "sizeMeters": [
+      3.124,
+      1.1,
+      0.28
+    ],
+    "hasDraco": false,
+    "hasMeshopt": false,
+    "hasKTX2": false,
+    "extensionsUsed": [
+      "KHR_mesh_quantization"
+    ]
+  },
+  "sha256": "276a7f75ee25aa327baf7d8b541be70283178dc653eb7f79280e534d0b5b4cf4",
+  "convertedSha256": "77f75bd0a93c9d9e9333b425b036a6dd378e42fe68bc339aaf5ceaac55a24414",
+  "conversion": "KHR_mesh_quantization vectors expanded to Float32; original geometry, materials and transforms retained."
+}
