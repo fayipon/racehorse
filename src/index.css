@@ -79,9 +79,9 @@
 .ranking-row{position:absolute;top:0;left:0;right:0;height:27px;display:flex;align-items:center;gap:8px;padding:3px 7px;background:#253327b8;border-left:2px solid var(--rank-color);border-radius:4px;transform:translateY(calc(var(--rank)*30px));transition:transform .65s cubic-bezier(.22,.75,.25,1),opacity .4s ease;will-change:transform}
 .ranking-row .ranking-place{width:9px;font-size:10px;font-weight:600}.ranking-row b{white-space:nowrap}
 @media(prefers-reduced-motion:reduce){.ranking-row{transition:none;will-change:auto}}
-/* Assembly has no betting dock: give the full stage back to the camera. */
-.race-stage.is-assembling iframe{height:100%}
-.race-stage.is-assembling .stage-vignette,.race-stage.is-assembling .start-sequence{bottom:0}
+/* Assembly, or a collapsed betting dock, leaves no panel: give the full stage back to the camera. */
+.race-stage.is-assembling iframe,.race-stage:has(.dock-open) iframe{height:100%}
+.race-stage.is-assembling .stage-vignette,.race-stage:has(.dock-open) .stage-vignette,.race-stage.is-assembling .start-sequence{bottom:0}
 /* Toast belongs to the game stage, including its fullscreen subtree. */
 .race-stage .toast{position:absolute;top:64px;right:16px;left:auto;bottom:auto;max-width:min(420px,calc(100% - 32px));z-index:10}
 @media(max-width:580px){.race-stage .toast{top:54px;right:12px;max-width:calc(100% - 24px)}}
