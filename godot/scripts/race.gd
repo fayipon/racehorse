@@ -38,6 +38,15 @@ var reduced_motion := false
 var crossed_at: Array = [-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0]
 var camera_focus := Vector3.ZERO
 var camera_initialized := false
+var sprint_grade: ColorRect
+var sprint_material: ShaderMaterial
+var dust_materials: Array[StandardMaterial3D] = []
+var dust_cycles: PackedInt32Array = []
+var dust_origins: Array[Vector3] = []
+var dust_forwards: Array[Vector3] = []
+var dust_outwards: Array[Vector3] = []
+var podium = preload("res://scripts/podium.gd").new()
+var featured_runner := 0
 
 func material(color: Color) -> StandardMaterial3D:
 	var key := color.to_html()
@@ -107,6 +116,7 @@ func _ready() -> void:
 	if not OS.has_feature("web"): parade_plan=PARADE.preview_plan(61293)
 	build_environment()
 	for i in range(8): build_horse(i)
+	add_child(podium)
 	camera = Camera3D.new()
 	camera.fov = 52
 	camera.far = 480
@@ -124,6 +134,16 @@ func _ready() -> void:
 	celebration_layer.add_child(confetti_rain)
 	confetti_rain.configure(COLORS)
 	build_finish_effects()
+	var lens_layer := CanvasLayer.new()
+	lens_layer.layer=1
+	add_child(lens_layer)
+	sprint_grade=ColorRect.new()
+	sprint_grade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sprint_grade.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	sprint_material=ShaderMaterial.new()
+	sprint_material.shader=preload("res://shaders/sprint_lens.gdshader")
+	sprint_grade.material=sprint_material
+	lens_layer.add_child(sprint_grade)
 	if OS.has_feature("web"):
 		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
 		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-ready'},window.location.origin)")
@@ -194,7 +214,7 @@ func build_horse(index: int) -> void:
 func build_finish_effects() -> void:
 	var gradient := Gradient.new()
 	gradient.offsets=PackedFloat32Array([0.0,.35,1.0])
-	gradient.colors=PackedColorArray([Color(1,1,1,.23),Color(1,1,1,.13),Color(1,1,1,0)])
+	gradient.colors=PackedColorArray([Color(1,1,1,.65),Color(1,1,1,.25),Color(1,1,1,0)])
 	var soft_disc := GradientTexture2D.new()
 	soft_disc.gradient=gradient
 	soft_disc.width=64
@@ -203,7 +223,7 @@ func build_finish_effects() -> void:
 	soft_disc.fill_from=Vector2(.5,.5)
 	soft_disc.fill_to=Vector2(.5,1.0)
 	var dust_mat := StandardMaterial3D.new()
-	dust_mat.albedo_color=Color("b19776")
+	dust_mat.albedo_color=Color("c6a57a")
 	dust_mat.albedo_texture=soft_disc
 	dust_mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
 	dust_mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -211,14 +231,20 @@ func build_finish_effects() -> void:
 	dust_mat.cull_mode=BaseMaterial3D.CULL_DISABLED
 	var dust_mesh := QuadMesh.new()
 	dust_mesh.size=Vector2(.8,.65)
-	for i in range(64):
+	for i in range(96):
 		var puff := MeshInstance3D.new()
 		puff.mesh=dust_mesh
-		puff.material_override=dust_mat
+		var particle_mat := dust_mat.duplicate() as StandardMaterial3D
+		puff.material_override=particle_mat
 		add_child(puff)
 		puff.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		puff.visible=false
 		dust.append(puff)
+		dust_materials.append(particle_mat)
+		dust_cycles.append(-1)
+		dust_origins.append(Vector3.ZERO)
+		dust_forwards.append(Vector3.RIGHT)
+		dust_outwards.append(Vector3.BACK)
 
 func trigger_finish() -> void:
 	finished=true
@@ -241,6 +267,7 @@ func read_bridge() -> void:
 		finished=false
 		previous_shot=-1
 		camera_initialized=false
+		dust_cycles.fill(-1)
 		crossed_at=[-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0]
 	phase = str(data.get("phase","betting"))
 	var snapshot := float(data.get("seconds",0.0))
@@ -291,6 +318,7 @@ func _process(delta: float) -> void:
 	var playback: Vector2=motion_clock.presentation(race_clock)
 	var presentation_clock:=playback.x
 	var slow_motion:=playback.y if phase=="racing" else 1.0
+	var sprint_effort:=smoothstep(34.0,41.5,race_clock) if phase=="racing" else 0.0
 	animation_clock+=delta*slow_motion
 	for i in range(8):
 		visual_positions[i]=MOTION.progress(presentation_clock,i+1,float(finish_times[i])) if phase!="betting" else 0.0
@@ -332,7 +360,12 @@ func _process(delta: float) -> void:
 			var tangent: Vector3=sample.tangent
 			horses[i].rotation.y=atan2(-tangent.x,-tangent.z)
 		var celebration := phase=="result" and i==winner-1
-		horses[i].call("animate",animation_clock,moving,running,celebration,delta*slow_motion)
+		horses[i].visible=phase!="result"
+		horses[i].call("animate",animation_clock,moving,running,celebration,delta*slow_motion,sprint_effort)
+	podium.visible=phase=="result"
+	if phase=="result":
+		podium.present(finish_times,COLORS,race_round)
+		podium.animate(animation_clock,delta)
 	if phase=="racing" and not finished and float(visual_positions[winner-1])>=.9997:
 		trigger_finish()
 	var focus_index := winner-1
@@ -343,6 +376,21 @@ func _process(delta: float) -> void:
 	for i in range(8):
 		target+=horses[i].position/8.0
 		mean_progress+=float(visual_positions[i])/8.0
+	# Ease toward the front group without cutting to the preselected winner
+	# or jumping whenever the live leader changes.
+	if phase=="racing":
+		var leading_progress:=float(visual_positions.max())
+		var front_target:=Vector3.ZERO
+		var front_progress:=0.0
+		var total_weight:=0.0
+		for i in range(8):
+			var weight: float=pow(clampf(1.0-(leading_progress-float(visual_positions[i]))/.085,0.0,1.0),2)
+			front_target+=horses[i].position*weight
+			front_progress+=float(visual_positions[i])*weight
+			total_weight+=weight
+		var frame_front:=smoothstep(34.0,39.0,race_clock)
+		target=target.lerp(front_target/total_weight,frame_front)
+		mean_progress=lerpf(mean_progress,front_progress/total_weight,frame_front)
 	target.y=1.45
 	var path: Dictionary=course.sample(mean_progress,course.lane_radius(3)+.65)
 	if finished or phase=="result":
@@ -353,7 +401,14 @@ func _process(delta: float) -> void:
 	var forward: Vector3=path.tangent
 	var cam_pos: Vector3
 	var focus := target
-	var active_shot := 6 if race_clock>=42.8 and phase=="racing" else shot
+	var active_shot := shot
+	if phase=="racing":
+		if race_clock>=48.75 and finished: active_shot=9
+		elif finished and race_clock<46.05: active_shot=10
+		elif race_clock>=42.8: active_shot=6
+		elif race_clock>=39.5: active_shot=8
+	if active_shot==8 and previous_shot!=8:
+		featured_runner=visual_positions.find(visual_positions.max())
 	var fov := 49.0
 	match active_shot:
 		0:
@@ -370,27 +425,68 @@ func _process(delta: float) -> void:
 			focus=target+forward*2.0
 			cam_pos=target-forward*10+outward*6+Vector3(0,5.0,0)
 		4:
-			cam_pos=target+outward*5.5+forward*6.0+Vector3(0,1.45,0)
-			focus=target-outward*1.2
-			fov=43.0
-		6:
-			# The line stays the focal point; horses cross through the composition.
-			var push:=smoothstep(42.8,47.5,race_clock)
-			focus=Vector3(0,1.25,float(course.config.laneStart)+3.5*float(course.config.laneSpacing))
-			cam_pos=Vector3(8.5,3.8,42).lerp(Vector3(7.5,3.3,40.5),push)
+			var reveal:=0.5 if reduced_motion else smoothstep(50.0,60.0,race_clock)
+			fov=34.0
+			var aspect:=get_viewport().get_visible_rect().size.aspect()
+			var distance:=maxf(19.0,15.5/(2.0*tan(deg_to_rad(fov*.5))*aspect))
+			focus=podium.position+Vector3(0,2.6,0)
+			cam_pos=podium.position+Vector3(lerpf(.8,-.5,reveal),4.8,distance+lerpf(1.2,0.0,reveal))
+		5:
+			# Low side dolly: the rail and hoof-level dust slide past the runners.
+			var push:=smoothstep(37.0,42.8,race_clock)
+			focus=target+forward*3.4
+			focus.y=1.5
+			cam_pos=focus+outward*lerpf(12.0,10.8,push)+forward*lerpf(3.0,1.5,push)+Vector3(0,1.0,0)
 			fov=lerpf(54.0,49.0,push)
+		6:
+			# Continue tracking into a low photo finish instead of whipping
+			# away to an empty stripe before the horses enter the composition.
+			var lock_to_line:=smoothstep(42.8,45.6,race_clock)
+			var middle_lane:=float(course.config.laneStart)+3.5*float(course.config.laneSpacing)
+			var line_focus:=Vector3(0,1.3,lerpf(middle_lane,target.z,.75))
+			focus=(target+forward*3.4).lerp(line_focus,lock_to_line)
+			var carry:=smoothstep(.8,3.5,finish_age)*.65 if finished else 0.0
+			focus=focus.lerp(target,carry)
+			cam_pos=focus+Vector3(lerpf(1.5,3.0,lock_to_line),lerpf(.5,1.0,lock_to_line),lerpf(9.4,8.4,lock_to_line))
+			fov=lerpf(46.0,42.0,smoothstep(43.0,47.5,race_clock))
+			# Open the frame as motion releases so the following runners surge through.
+			var rush:=smoothstep(45.8,46.05,race_clock)*lerpf(.65,1.0,smoothstep(46.05,50.0,race_clock))
+			fov+=rush*5.0 if not reduced_motion else 0.0
 		7:
 			cam_pos=Vector3(0,100,5)
 			focus=Vector3.ZERO
 			fov=70.0
+		8:
+			# Editorial cut to the live leader's face and shoulder, then dolly alongside.
+			var close_path: Dictionary=course.sample(float(visual_positions[featured_runner]),course.lane_radius(featured_runner))
+			var close_forward: Vector3=close_path.tangent
+			var push:=0.5 if reduced_motion else smoothstep(39.5,42.8,race_clock)
+			focus=horses[featured_runner].position+close_forward*.75+Vector3(0,1.85,0)
+			cam_pos=focus+close_path.outward*5.0+close_forward*lerpf(2.7,1.8,push)+Vector3(0,.15,0)
+			fov=lerpf(42.0,37.0,push)
+		9:
+			# Winner portrait after the line has visibly been crossed.
+			var portrait:=0.5 if reduced_motion else smoothstep(48.75,50.0,race_clock)
+			focus=horses[winner-1].position+forward*.7+Vector3(0,1.85,0)
+			cam_pos=focus+outward*5.2+forward*lerpf(3.0,1.8,portrait)+Vector3(0,.3,0)
+			fov=36.0
+		10:
+			# The race clock holds the crossing pose while the camera keeps moving.
+			var orbit:=0.5 if reduced_motion else smoothstep(44.6,45.8,race_clock)
+			var angle:=lerpf(-.20,.45,orbit)
+			focus=horses[winner-1].position+forward*.5+Vector3(0,1.65,0)
+			cam_pos=focus+outward*cos(angle)*6.5+forward*sin(angle)*6.5+Vector3(0,.6,0)
+			fov=40.0
 		_:
 			cam_pos=target+outward*9+forward*7+Vector3(0,2.1,0)
-	if not camera_initialized:
+	var edit_cut:=active_shot!=previous_shot and (active_shot in [4,6,8,9,10] or previous_shot==4)
+	if not camera_initialized or edit_cut:
 		camera.position=cam_pos
 		camera_focus=focus
+		camera.fov=fov
 		camera_initialized=true
 	else:
-		var damping := 1.0-exp(-delta*2.8)
+		var damping := 1.0-exp(-delta*(12.0 if active_shot==10 else 2.8))
 		camera.position=camera.position.lerp(cam_pos,damping)
 		camera_focus=camera_focus.lerp(focus,damping)
 	previous_shot=active_shot
@@ -401,14 +497,34 @@ func _process(delta: float) -> void:
 func update_effects(delta: float) -> void:
 	var celebrate := finished or phase=="result"
 	confetti_rain.advance(delta,celebrate,race_round,reduced_motion)
+	var sprint:=smoothstep(34.0,42.0,race_clock) if phase=="racing" else 0.0
+	var lens_strength:=sprint*(1.0-smoothstep(42.8,45.0,race_clock)*.8)*(1.0-smoothstep(47.0,50.0,race_clock))
+	var rush:=smoothstep(45.8,46.05,race_clock)*lerpf(.65,1.0,smoothstep(46.05,50.0,race_clock)) if phase=="racing" else 0.0
+	if race_clock>=44.6 and race_clock<45.8: lens_strength=0.0
+	lens_strength=maxf(lens_strength,rush)
+	sprint_grade.visible=not reduced_motion and lens_strength>.001
+	sprint_material.set_shader_parameter("strength",lens_strength)
+	sprint_material.set_shader_parameter("rush",rush)
+	var presentation_clock: float=motion_clock.presentation(race_clock).x
 	for i in range(dust.size()):
 		var owner := i%8
 		var p := float(visual_positions[owner])
-		dust[i].visible=phase=="racing" and p>.002 and (p<.9998 or (finish_age>=0 and finish_age<1.7))
+		var since_finish:=maxf(0.0,presentation_clock-float(finish_times[owner]))
+		dust[i].visible=phase=="racing" and p>.002 and (p<.9998 or since_finish<1.4) and (not reduced_motion or i<48)
 		if dust[i].visible:
-			var t := fmod(animation_clock*1.6+i*.17,1.0)
+			var particle_clock:=animation_clock*(1.2+float(i%3)*.09)+i*.173
+			var cycle:=int(floor(particle_clock))
+			var t:=fposmod(particle_clock,1.0)
 			var path: Dictionary=course.sample(p,course.lane_radius(owner))
-			var forward: Vector3=path.tangent
-			var outward: Vector3=path.outward
-			dust[i].position=horses[owner].position-forward*(.8+t*1.3)+outward*sin(i*7.3)*.25+Vector3(0,.12+t*.32,0)
-			dust[i].scale=Vector3.ONE*(.3+sin(t*PI)*1.5)
+			if cycle!=dust_cycles[i]:
+				dust_cycles[i]=cycle
+				dust_forwards[i]=path.tangent
+				dust_outwards[i]=path.outward
+				dust_origins[i]=horses[owner].position-path.tangent*.45+path.outward*sin(i*7.3)*.38
+			# Leave dust behind in world space instead of attaching it to the horse.
+			dust[i].position=dust_origins[i]-dust_forwards[i]*t*lerpf(.7,1.6,sprint)+dust_outwards[i]*sin(i*2.1)*t*.4+Vector3(0,.12+t*lerpf(.35,.7,sprint),0)
+			var size: float=.2+sin(t*PI)*lerpf(.85,1.55,sprint)
+			dust[i].scale=Vector3(size*1.3,size,size)
+			var tint:=Color("c6a57a")
+			tint.a=sin(t*PI)*lerpf(.17,.3,sprint)*(1.0-smoothstep(.25,1.4,since_finish))
+			dust_materials[i].albedo_color=tint

@@ -8,7 +8,10 @@ var initialized := false
 var cinematic: Array=JSON.parse_string(FileAccess.get_file_as_string("res://assets/cinematic.json"))
 
 func presentation(time: float) -> Vector2:
-	if time<=float(cinematic[0][0]) or time>=float(cinematic[-1][0]): return Vector2(time,1)
+	if time<=float(cinematic[0][0]): return Vector2(time,1)
+	if time>=float(cinematic[-1][0]):
+		var last: Array=cinematic[-1]
+		return Vector2(float(last[1])+(time-float(last[0]))*float(last[2]),float(last[2]))
 	for i in range(1,cinematic.size()):
 		if time>float(cinematic[i][0]): continue
 		var a: Array=cinematic[i-1]

@@ -109,8 +109,11 @@ export function racePositions(seed: number, round: number, seconds: number) {
 }
 export function cameraShot(phase: Phase, seconds: number) {
   if (phase === 'betting') return { id: 0, label: '賽前巡禮' }
-  if (phase === 'result') return { id: 4, label: '冠軍時刻' }
-  return seconds < 7 ? { id: 1, label: '起跑鏡頭' } : seconds < 24 ? { id: 2, label: '側面追拍' } : seconds < 37 ? { id: 3, label: '彎道追逐' } : { id: 5, label: '終點衝刺' }
+  if (phase === 'result') return { id: 4, label: '前三名頒獎' }
+  if (seconds < 7) return { id: 1, label: '起跑鏡頭' }
+  if (seconds < 24) return { id: 2, label: '側面追拍' }
+  if (seconds < 37) return { id: 3, label: '彎道追逐' }
+  return { id: 5, label: seconds < 39.5 ? '終點衝刺' : seconds < 42.8 ? '衝刺特寫' : seconds < 45.8 ? '衝線時刻' : seconds < 48.75 ? '衝刺加速' : '勝出特寫' }
 }
 export function isGame(value: unknown): value is Game {
   if (!value || typeof value !== 'object') return false

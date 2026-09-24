@@ -1,0 +1,39 @@
+.podium-results{position:absolute;inset:0;pointer-events:none;color:#f3ead5;z-index:2}
+.race-stage:not(.phase-result) .podium-results{display:none}
+.podium-heading{position:absolute;top:14%;left:0;right:0;text-align:center;animation:ceremony-reveal .8s ease both}
+.podium-heading>span{font-size:9px;letter-spacing:3px;color:#d2b474}
+.podium-heading h2{font-size:clamp(21px,3cqw,34px);font-weight:500;letter-spacing:8px;margin:7px 0 12px}
+.podium-heading i{display:block;width:64px;height:1px;background:linear-gradient(90deg,transparent,#d5b978,transparent);margin:auto}
+.podium-places{position:absolute;left:7%;right:7%;bottom:16%;margin:0;padding:0;display:grid;grid-template-columns:1fr 1.1fr 1fr;gap:16px;list-style:none;align-items:end}
+.podium-place{--metal:#bbccca;min-width:0;padding:13px 10px;border-top:1px solid var(--metal);background:linear-gradient(180deg,#112720e8,#142c2370);text-align:center;animation:ceremony-reveal .75s ease both;animation-delay:.45s}
+.podium-place.place-1{--metal:#e2bf74;grid-column:2;grid-row:1;padding:18px 10px;background:linear-gradient(180deg,#504727c9,#152c238c);animation-delay:.75s}
+.podium-place.place-2{grid-column:1;grid-row:1}
+.podium-place.place-3{--metal:#c59876;grid-column:3;grid-row:1;animation-delay:.15s}
+.podium-medal{display:flex;align-items:center;justify-content:center;gap:6px;color:var(--metal);font-size:12px;letter-spacing:2px}
+.podium-medal small{font-size:9px;letter-spacing:1px;margin-left:3px;opacity:.7}
+.podium-place>div{display:flex;align-items:center;justify-content:center;gap:9px;margin-top:10px}
+.podium-number{display:grid;place-items:center;flex-shrink:0;width:30px;height:34px;border-radius:5px;background:var(--horse);font-size:22px;color:white}
+.podium-place h3{font-size:clamp(12px,1.7cqw,19px);font-weight:500;letter-spacing:1px;margin:0;text-align:left}
+.podium-place h3 small{display:block;font-size:8px;letter-spacing:1px;color:#c4c8b3;margin-top:4px}
+.race-stage.phase-result .stage-bottom{display:none}
+.race-stage.phase-result .stage-bets{bottom:14px}
+.race-stage.phase-result .stage-bets:has(.empty-bets){display:none}
+.race-stage.phase-result .stage-vignette{background:linear-gradient(180deg,#081c2340,transparent 30%,transparent 65%,#081d1f60)}
+.race-stage.phase-result .payout-celebration{top:22%;left:auto;right:18px;min-width:0;padding:10px 14px;transform:none;animation:ceremony-reveal .6s ease both}
+.race-stage.phase-result .payout-celebration strong{font-size:25px}
+.race-stage.phase-result .payout-kicker{font-size:10px;letter-spacing:1px}
+.race-stage.is-cinematic .stage-bottom{display:none}
+.race-stage.is-cinematic .race-title{z-index:2;top:9px;gap:9px}
+.race-stage.is-cinematic .race-title>div{font-size:18px}
+.race-stage.is-cinematic .race-title>span{height:20px}
+.race-stage.is-cinematic .race-title p{font-size:9px}
+.race-stage.is-cinematic .race-title small{display:none}
+.race-stage.is-cinematic .stage-status{z-index:2;top:8px;padding:5px 9px;font-size:9px;background:none;border-color:#ffffff20}
+.race-stage.is-cinematic .finish-shot-bars{z-index:1;pointer-events:none}
+.race-stage.is-cinematic .finish-announcement{top:auto;bottom:12%;left:5%;right:auto;width:auto;transform:none;animation:ceremony-reveal .65s ease both;text-align:left;background:none;border:0;box-shadow:none;padding:0;text-shadow:0 2px 12px #0009}
+.race-stage.is-cinematic .finish-announcement>strong{font-size:clamp(26px,4.2cqw,48px);font-weight:500;font-style:normal;-webkit-text-stroke:0;filter:none;letter-spacing:4px;line-height:1.2;margin:8px 0 12px;color:#fff1cd;animation:none}
+.race-stage.is-cinematic .finish-announcement>div{justify-content:flex-start;font-size:12px}
+.race-stage.is-cinematic .finish-announcement .finish-kicker{font-size:9px;letter-spacing:2.5px;color:#ead097}
+@keyframes ceremony-reveal{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@container(max-width:650px){.podium-heading{top:17%}.podium-heading>span{font-size:7px;letter-spacing:1.8px}.podium-heading h2{font-size:23px;letter-spacing:5px}.podium-places{left:4%;right:4%;gap:7px;bottom:19%}.podium-place{padding:10px 4px}.podium-place.place-1{padding:14px 4px}.podium-medal{font-size:10px;gap:3px;letter-spacing:1px}.podium-medal small{display:none}.podium-place>div{gap:5px}.podium-number{width:23px;height:29px;font-size:18px}.podium-place h3{font-size:11px;letter-spacing:0}.podium-place h3 small{font-size:6px;letter-spacing:0}.race-stage.phase-result .payout-celebration{top:30%;right:12px;padding:7px 10px}.race-stage.phase-result .payout-celebration strong{font-size:20px}.race-stage.is-cinematic .finish-announcement>strong{font-size:27px}}
+@media(prefers-reduced-motion:reduce){.podium-heading,.podium-place,.race-stage.is-cinematic .finish-announcement,.race-stage.phase-result .payout-celebration{animation:none}}

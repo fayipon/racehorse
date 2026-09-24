@@ -27,10 +27,17 @@ func _initialize() -> void:
 	for frame in range(1,481):
 		var time:=42.0+frame/60.0
 		var playback: Vector2=clock.presentation(time)
-		assert(playback.x>previous_visual,"Cinematic playback must never reverse")
-		assert(playback.y>.4 and playback.y<1.8,"Cinematic speed must change within natural bounds")
+		assert(playback.x>=previous_visual-.00001,"Cinematic playback may hold but must never reverse")
+		assert(playback.y>=-.00001 and playback.y<1.901,"Acceleration must stay within the intended playback range")
 		previous_visual=playback.x
-	assert(is_equal_approx(clock.presentation(44.7).x,43.9))
-	assert(clock.presentation(50.0)==Vector2(50,1),"Cinematic playback must rejoin the settlement clock")
+	for frame in range(73):
+		assert(clock.presentation(44.6+frame/60.0).is_equal_approx(Vector2(44.5,0)),"Hold the crossing pose for the full 1.2-second camera orbit")
+	var previous_speed:=0.0
+	for frame in range(253):
+		var playback: Vector2=clock.presentation(45.8+frame/60.0)
+		assert(playback.y>=previous_speed-.00001,"The release must keep accelerating, never return to normal speed")
+		previous_speed=playback.y
+	assert(is_equal_approx(clock.presentation(50.0).y,1.9),"Acceleration reaches 1.9x at settlement")
+	assert(clock.presentation(50.0).x>49.05,"All eight horses must cross before settlement")
 	print("PASS: continuous movement with 4 Hz jittered snapshots; max/min frame distance=",largest/smallest)
 	quit()

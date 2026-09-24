@@ -1,5 +1,14 @@
 # 視覺素材
 
+## 觀眾歡呼音效
+
+- 作者：Gregor Quendel；來源：[Free Crowd Cheering Sounds](https://opengameart.org/content/free-crowd-cheering-sounds)，授權 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。
+- 使用 10（Ambience）、05（Soft cheering - I）、03（Strong cheering - I）與 01（Strong cheering and strong rhythmic cheering），保存為 `public/audio/crowd/ambient.ogg`、`cheer.ogg`、`roar.ogg`。
+- `scripts/prepare_crowd_audio.py` 擷取、濾除低頻、壓縮動態並製成無縫循環；高潮採兩段錄音的密集歡呼交疊，排除原檔安靜的頭尾。三層混音在末圈最後彎道前開始漸強，進彎至彎中自然升到高潮，持續經過衝線和整段結算，輸出有限幅器避免爆音。漸強使用實際跑道幾何、畫面時間與連續平滑曲線，進彎和衝線時不另行跳升音量。
+- 完整來源、授權及修改說明保存在 `public/audio/crowd/LICENSE.txt`，頁尾提供署名連結。此音效取代目前直播主播與電子提示音。
+
+## 生成的視覺素材
+
 使用內建 imagegen 製作；圖片均已複製到專案，程式不依賴 Codex 暫存位置。
 
 - `public/assets/horses.png`：八匹絨毛小馬的 4×2 肖像圖集，用於選馬卡片。

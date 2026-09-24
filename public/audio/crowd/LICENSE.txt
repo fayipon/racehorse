@@ -1,0 +1,17 @@
+Free Crowd Cheering Sounds — Gregor Quendel
+Source: https://opengameart.org/content/free-crowd-cheering-sounds
+Creator: https://www.gregorquendel.com/
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+Tracks used:
+- 10 - Ambience -> ambient.ogg
+- 05 - Soft cheering - I -> cheer.ogg
+- 03 - Strong cheering - I and 01 - Strong cheering and strong rhythmic cheering -> roar.ogg
+
+Adaptations by the Sunny Cup project: excerpted, high-pass filtered,
+loudness-normalized, dynamically compressed, and crossfaded into seamless
+loops. The climax overlaps the loudest portions of two different recordings
+at different offsets. Encoded as stereo Ogg Vorbis; three layers are mixed
+dynamically during races, with a peak limiter on the combined output.
+No endorsement by the original creator is implied.

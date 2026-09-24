@@ -109,7 +109,7 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 		number.rotation.y=side*PI/2
 		cloth.add_child(number)
 
-func animate(time: float, motion: float, running: bool, _celebration: bool, delta := .016) -> void:
+func animate(time: float, motion: float, running: bool, _celebration: bool, delta := .016, sprint_effort := 0.0) -> void:
 	motion_blend=lerpf(motion_blend,clampf(motion,0,1),1.0-exp(-delta*8))
 	# Hysteresis keeps tiny changes near standstill from repeatedly restarting clips.
 	var clip := current_clip
@@ -125,5 +125,6 @@ func animate(time: float, motion: float, running: bool, _celebration: bool, delt
 	var speed := 1.0
 	if current_clip=="Walk": speed=lerpf(.55,1.15,motion_blend)
 	if current_clip=="Gallop": speed=lerpf(.75,1.20,motion_blend)
+	if current_clip=="Gallop": speed*=1.0+clampf(sprint_effort,0.0,1.0)*.1
 	speed*=cadence*(1.0+sin(time*.83+gait_phase*TAU)*.025)
 	player.advance(delta*speed)
