@@ -20,6 +20,9 @@ const STAND_FRONT := 44.0
 const BAY := 13.0
 const ROWS := 10
 const SCREEN := Vector3(0,0,-47.5)
+# Grid, in model units (a seated figure is about three tall), that the
+# power-saving tier welds spectators onto.
+const WELD_CELL := .3
 
 var random := RandomNumberGenerator.new()
 var meshes: Dictionary = {}
@@ -29,6 +32,7 @@ var spectator_count := 0
 var palette: Array = []
 var reduce_motion := false
 var attendance := .88
+var coarse := false
 var flag_tops: Array[Vector3] = []
 var chips: Array[Node3D] = []
 var board_round: Label3D
@@ -40,6 +44,7 @@ func build(reduced: bool, colors: Array, sparse := false) -> void:
 	palette = colors
 	# The crowd dominates the vertex budget; the power-saving tier seats fewer.
 	attendance = .42 if sparse else .88
+	coarse = sparse
 	crowd_material = ShaderMaterial.new()
 	crowd_material.shader = CROWD_SHADER
 	crowd_material.set_shader_parameter("reduce_motion",reduced)
@@ -316,7 +321,8 @@ func person(pose: int,p: Vector3,yaw: float,size: float,side: int) -> void:
 	people[key].colors.append(Color(random.randf(),random.randf_range(.15,1),random.randf(),1.0 if random.randf()<.13 else 0.0))
 	spectator_count+=1
 
-func append_mesh(st: SurfaceTool,mesh: ArrayMesh,offset: Vector3,hair: bool) -> void:
+# Appends a mesh's triangles as [position, normal, category] corners.
+func append_mesh(corners: Array,mesh: ArrayMesh,offset: Vector3,hair: bool) -> void:
 	for surface in range(mesh.get_surface_count()):
 		var category := .8
 		if not hair:
@@ -331,19 +337,50 @@ func append_mesh(st: SurfaceTool,mesh: ArrayMesh,offset: Vector3,hair: bool) -> 
 		var indices: PackedInt32Array=arrays[Mesh.ARRAY_INDEX]
 		for i in range(indices.size() if not indices.is_empty() else vertices.size()):
 			var idx := indices[i] if not indices.is_empty() else i
-			st.set_normal(normals[idx])
-			st.set_uv(Vector2(category,0))
-			st.set_color(Color.WHITE)
-			st.add_vertex(vertices[idx]+offset)
+			corners.append([vertices[idx]+offset,normals[idx],category])
+
+# Vertex clustering: every corner moves to the mean of its grid cell, and
+# triangles that collapse or repeat are dropped. At phone resolution a spectator
+# is a few pixels tall, so this keeps the silhouette and colours at a small
+# fraction of the triangles.
+static func weld(corners: Array,cell: float) -> Array:
+	var sums: Dictionary = {}
+	for corner in corners:
+		var key := Vector3i((corner[0]/cell).floor())
+		sums[key]=sums.get(key,Vector4.ZERO)+Vector4(corner[0].x,corner[0].y,corner[0].z,1.0)
+	var welded: Array = []
+	var seen: Dictionary = {}
+	for t in range(0,corners.size(),3):
+		var keys: Array = []
+		for i in range(3): keys.append(Vector3i((corners[t+i][0]/cell).floor()))
+		if keys[0]==keys[1] or keys[1]==keys[2] or keys[0]==keys[2]: continue
+		# The same cells in the same winding are one triangle; the reverse
+		# winding is the back of a thin part and stays.
+		var names: Array = keys.map(func(key: Vector3i) -> String: return str(key))
+		var first: int = names.find(names.min())
+		var id: String = names[first]+names[(first+1)%3]+names[(first+2)%3]
+		if seen.has(id): continue
+		seen[id]=true
+		var points: Array = keys.map(func(key: Vector3i) -> Vector3: var sum: Vector4=sums[key]; return Vector3(sum.x,sum.y,sum.z)/sum.w)
+		var normal: Vector3 = corners[t][1]+corners[t+1][1]+corners[t+2][1]
+		for i in range(3): welded.append([points[i],normal.normalized(),corners[t][2]])
+	return welded
 
 func person_mesh(pose: int,hair: int) -> ArrayMesh:
 	var key := "person:%d:%d" % [pose,hair]
 	if meshes.has(key): return meshes[key]
+	var corners: Array = []
+	append_mesh(corners,load("res://assets/venue/crowd/%s.obj" % POSES[pose]),Vector3.ZERO,false)
+	var hair_name := "%s_Hairstyle_%d" % ["Male" if pose%2==0 else "Female",1 if hair==0 else 3]
+	append_mesh(corners,load("res://assets/venue/crowd/%s.obj" % hair_name),HAIR_CENTERS[pose],true)
+	if coarse: corners=weld(corners,WELD_CELL)
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	append_mesh(st,load("res://assets/venue/crowd/%s.obj" % POSES[pose]),Vector3.ZERO,false)
-	var hair_name := "%s_Hairstyle_%d" % ["Male" if pose%2==0 else "Female",1 if hair==0 else 3]
-	append_mesh(st,load("res://assets/venue/crowd/%s.obj" % hair_name),HAIR_CENTERS[pose],true)
+	for corner in corners:
+		st.set_normal(corner[1])
+		st.set_uv(Vector2(corner[2],0))
+		st.set_color(Color.WHITE)
+		st.add_vertex(corner[0])
 	st.index()
 	st.set_material(crowd_material)
 	var mesh := st.commit()

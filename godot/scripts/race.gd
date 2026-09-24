@@ -224,6 +224,8 @@ func build_environment() -> void:
 	sun.shadow_enabled = true
 	sun.shadow_opacity = .82
 	sun.directional_shadow_max_distance = 70.0 if low_power else 110.0
+	# Each split draws the shadow casters again; phones keep two of the four.
+	if low_power: sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	add_child(sun)
 	await loading_checkpoint(1)
 	landscape_node=preload("res://scripts/landscape.gd").new()
