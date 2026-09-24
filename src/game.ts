@@ -1,3 +1,5 @@
+import { makeRacePlan, planProgress, type RacePlan } from './raceModel'
+
 export const BET_CLOSE_MS = 48_000
 export const BET_MS = 60_000
 export const RACE_MS = 50_000
@@ -97,15 +99,16 @@ export function cancelBet(game: Game, id: string, now: number): Game {
   return bet ? { ...current, balance: current.balance + bet.amount, bets: current.bets.filter(b => b.id !== id) } : current
 }
 // Smooth, monotonic distances. The finish order is exactly the settlement order.
+// One plan per round, shared with Godot; see raceModel.ts.
+let cachedPlan: { key: string; plan: RacePlan } | null = null
+export function racePlan(seed: number, round: number): RacePlan {
+  const key = `${seed}:${round}`
+  if (cachedPlan?.key !== key) cachedPlan = { key, plan: makeRacePlan(raceOrder(seed, round), rng((seed ^ Math.imul(round, 2654435761) ^ 0x5bd1e995) >>> 0)) }
+  return cachedPlan.plan
+}
 export function racePositions(seed: number, round: number, seconds: number) {
-  const order = raceOrder(seed, round)
-  return HORSES.map(h => {
-    const rank = order.indexOf(h.id)
-    const finish = 44.5 + rank * 0.65
-    const t = Math.max(0, Math.min(1, seconds / finish))
-    const wave = Math.sin(t * Math.PI * 4 + h.id * 1.7) * 0.025 * Math.sin(t * Math.PI)
-    return Math.max(0, Math.min(1, t + wave))
-  })
+  const plan = racePlan(seed, round)
+  return HORSES.map((_, index) => Math.max(0, Math.min(1, planProgress(plan, index, seconds))))
 }
 export function cameraShot(phase: Phase, seconds: number) {
   if (phase === 'betting') return { id: 0, label: '賽前巡禮' }

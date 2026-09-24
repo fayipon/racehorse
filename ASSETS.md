@@ -5,7 +5,14 @@
 - 作者：Gregor Quendel；來源：[Free Crowd Cheering Sounds](https://opengameart.org/content/free-crowd-cheering-sounds)，授權 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)。
 - 使用 10（Ambience）、05（Soft cheering - I）、03（Strong cheering - I）與 01（Strong cheering and strong rhythmic cheering），保存為 `public/audio/crowd/ambient.ogg`、`cheer.ogg`、`roar.ogg`。
 - `scripts/prepare_crowd_audio.py` 擷取、濾除低頻、壓縮動態並製成無縫循環；高潮採兩段錄音的密集歡呼交疊，排除原檔安靜的頭尾。三層混音在末圈最後彎道前開始漸強，進彎至彎中自然升到高潮，持續經過衝線和整段結算，輸出有限幅器避免爆音。漸強使用實際跑道幾何、畫面時間與連續平滑曲線，進彎和衝線時不另行跳升音量。
-- 完整來源、授權及修改說明保存在 `public/audio/crowd/LICENSE.txt`，頁尾提供署名連結。此音效取代目前直播主播與電子提示音。
+- 完整來源、授權及修改說明保存在 `public/audio/crowd/LICENSE.txt`，頁尾提供署名連結。
+
+## 賽事轉播語音
+
+- 以 [Fish Audio](https://fish.audio) 的 S2.1 Pro 模型（`s2.1-pro-free`）生成，聲音為公開聲音模型「影視解說」（ID `39ea63baf6c0480cb8148dc7955db78e`，作者暱稱 张磊）。文字全為專案自寫（`scripts/commentary-lines.json`），由 `scripts/generate_commentary.py` 修剪、調整音量並合成 `public/audio/commentary/voice.mp3`。使用依 Fish Audio 服務條款；免費模型的請求可能被用於改進模型，年營收超過 100 萬美元的產品需先聯繫 Fish Audio。
+- 挑選聲音時排除了模仿真人（知名主持人、解說員）的聲音模型。
+- 語氣參考 `design/` 內使用者提供的 Fish Audio 試驗音（中文與日文衝線口播），參考音本身不打包進網站。
+- 先前以 `zh-TW-YunJheNeural` 生成的整句播報（`public/audio/announcer/`）已移除。
 
 ## 生成的視覺素材
 

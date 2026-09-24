@@ -29,8 +29,8 @@ func verify_run_through() -> void:
 			assert(horse.current_clip=="Gallop","Crossing must never switch a racing horse to walk or idle")
 			previous[i]=horse.position
 		assert(race.dust[0].visible,"The winner must keep kicking up dust after crossing")
-	assert(float(race.track_positions[0])>1.13,"The winner must run beyond the old stopping distance")
-	assert(float(race.visual_positions[0])==1.0,"Official finish progress must remain clamped")
+	assert(float(race.track_positions[race.winner-1])>1.13,"The winner must run beyond the old stopping distance")
+	assert(float(race.visual_positions[race.winner-1])==1.0,"Official finish progress must remain clamped")
 	race.elapsed=109.99
 	race._process(.02)
 	assert(race.phase=="result" and race.podium.visible,"Continuous running must still hand off to the podium")

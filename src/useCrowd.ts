@@ -18,10 +18,11 @@ export function useCrowd(game: Game, now: number, enabled: boolean) {
     player.current?.setMix(crowdMixAt(game, now))
   }, [game, now, enabled])
   return {
-    enable: () => {
-      player.current ??= new CrowdAudioPlayer(new AudioContext())
+    enable: (audio: AudioContext) => {
+      player.current ??= new CrowdAudioPlayer(audio)
       player.current.unlock()
     },
     stop: () => player.current?.stop(),
+    duck: (start: number, end: number) => player.current?.duckDuring(start, end),
   }
 }

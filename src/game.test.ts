@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { advance, cancelBet, createGame, isGame, payoutFor, phaseAt, placeBet, raceOrder, racePositions, ROUND_MS, wins, type Pick } from './game'
+import { advance, cancelBet, createGame, HORSES, isGame, payoutFor, phaseAt, placeBet, raceOrder, racePlan, racePositions, ROUND_MS, wins, type Pick } from './game'
+import { planProgress } from './raceModel'
 const START = 1_800_000_000_000
 describe('two-minute race lifecycle', () => {
   it('starts racing at precisely 60s, settles at 110s and starts again at 120s', () => {
@@ -71,10 +72,17 @@ describe('race integrity', () => {
       const crossed: number[] = []
       for (let t = .1; t <= 50.1; t += .1) {
         const positions = racePositions(987654, round, t)
-        positions.forEach((p, i) => { expect(p).toBeGreaterThanOrEqual(previous[i] - 1e-9); if (p >= 1 && !crossed.includes(i + 1)) crossed.push(i + 1) })
+        positions.forEach((p, i) => expect(p).toBeGreaterThanOrEqual(previous[i] - 1e-9))
+        // A photo finish can put two noses over within one sample: the one
+        // further past the line crossed first.
+        const unclamped = HORSES.map((_, i) => planProgress(racePlan(987654, round), i, t))
+        crossed.push(...HORSES.map(h => h.id).filter(id => positions[id - 1] >= 1 && !crossed.includes(id)).sort((a, b) => unclamped[b - 1] - unclamped[a - 1]))
         previous = positions
       }
       expect(crossed).toEqual(order)
+      const finishes = racePlan(987654, round).finishTimes
+      expect(finishes[order[0] - 1]).toBeCloseTo(44.5, 3)
+      order.slice(1).forEach((id, i) => expect(finishes[id - 1]).toBeGreaterThan(finishes[order[i] - 1]))
     }
   })
   it('uses the specified parity and size boundaries for all eight winners', () => {

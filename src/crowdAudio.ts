@@ -30,6 +30,8 @@ type Layer = { source: AudioBufferSourceNode; gain: GainNode }
 export class CrowdAudioPlayer {
   private audio: AudioContext
   private limiter: DynamicsCompressorNode
+  // Dips the crowd under the race caller, as a broadcast mix does.
+  private duck: GainNode
   private buffers: AudioBuffer[] = []
   private layers: Layer[] = []
   private fading = new Set<Layer>()
@@ -47,6 +49,15 @@ export class CrowdAudioPlayer {
     this.limiter.attack.value = 0.003
     this.limiter.release.value = 0.15
     this.limiter.connect(audio.destination)
+    this.duck = audio.createGain()
+    this.duck.connect(this.limiter)
+  }
+
+  // Audio-clock times of a spoken line.
+  duckDuring(start: number, end: number) {
+    if (this.disposed) return
+    this.duck.gain.setTargetAtTime(.55, Math.max(this.audio.currentTime, start - .05), .06)
+    this.duck.gain.setTargetAtTime(1, end + .12, .3)
   }
 
   unlock() {
@@ -91,7 +102,7 @@ export class CrowdAudioPlayer {
         source.loop = true
         gain.gain.value = 0
         source.connect(gain)
-        gain.connect(this.limiter)
+        gain.connect(this.duck)
         const layer = { source, gain }
         source.onended = () => { source.disconnect(); gain.disconnect(); this.fading.delete(layer) }
         source.start(start)
@@ -122,6 +133,7 @@ export class CrowdAudioPlayer {
   dispose() {
     this.disposed = true
     this.stop()
+    this.duck.disconnect()
     this.limiter.disconnect()
     if (this.audio.state !== 'closed') void this.audio.close().catch(() => {})
   }

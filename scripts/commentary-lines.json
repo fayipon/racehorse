@@ -1,0 +1,524 @@
+{
+  "voice": {
+    "engine": "fish",
+    "fish": "39ea63baf6c0480cb8148dc7955db78e",
+    "edge": "zh-TW-HsiaoChenNeural",
+    "levels": {
+      "0": {
+        "rate": -6,
+        "pitch": 0,
+        "gain": -1.5
+      },
+      "1": {
+        "rate": 14,
+        "pitch": 0,
+        "gain": 0
+      },
+      "2": {
+        "rate": 24,
+        "pitch": 10,
+        "gain": 1.5
+      },
+      "3": {
+        "rate": 34,
+        "pitch": 22,
+        "gain": 3
+      }
+    }
+  },
+  "names": [
+    "赤焰",
+    "綠野",
+    "日光",
+    "紫羅蘭",
+    "汽水",
+    "莓果",
+    "晴空",
+    "星辰"
+  ],
+  "numbers": [
+    "一",
+    "二",
+    "三",
+    "四",
+    "五",
+    "六",
+    "七",
+    "八"
+  ],
+  "lines": [
+    {
+      "id": "welcome1",
+      "text": "各位觀眾午安，歡迎來到陽光盃。",
+      "level": 0
+    },
+    {
+      "id": "welcome2",
+      "text": "歡迎回到陽光盃，下一場比賽馬上就要開始。",
+      "level": 0
+    },
+    {
+      "id": "welcome3",
+      "text": "今天天氣晴朗，草地狀況非常好。",
+      "level": 0
+    },
+    {
+      "id": "warmup",
+      "text": "小馬們正在場上散步熱身，看起來都很放鬆。",
+      "level": 0
+    },
+    {
+      "id": "firstRace",
+      "text": "今天是第一場，大家都還沒有成績，機會均等。",
+      "level": 0
+    },
+    {
+      "id": "equalOdds",
+      "text": "每匹小馬的機率都一樣，就看今天誰的狀態好。",
+      "level": 0
+    },
+    {
+      "id": "breeze",
+      "text": "今天有一點微風，後段追上來的馬可能會比較有利。",
+      "level": 0
+    },
+    {
+      "id": "fullStand",
+      "text": "看台上已經坐滿了觀眾，氣氛很熱烈。",
+      "level": 0
+    },
+    {
+      "id": "betReminder",
+      "text": "還沒下注的朋友，要把握時間喔。",
+      "level": 0
+    },
+    {
+      "id": "lastCall",
+      "text": "投注馬上就要截止了。",
+      "level": 0
+    },
+    {
+      "id": "closed",
+      "text": "投注截止，小馬們開始往起跑線集合。",
+      "level": 0
+    },
+    {
+      "id": "gateQuiet",
+      "text": "全場安靜下來，準備開閘。",
+      "level": 0
+    },
+    {
+      "id": "formTop3",
+      "text": "最近幾場，{name}表現不錯，都至少在前三。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "lastWinner",
+      "text": "上一場的冠軍是{name}，今天能不能連勝呢？",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "twoWins",
+      "text": "{name}最近已經贏了兩場，狀態正好。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "runnerUp",
+      "text": "{name}上一場只拿到第二，應該很不服氣。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "slump",
+      "text": "{name}最近幾場都不太順，今天想要扳回一城。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleFront",
+      "text": "{name}喜歡一開始就衝到前面。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleStalk",
+      "text": "{name}習慣跟在前面，等待機會。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleMid",
+      "text": "{name}常常在中段慢慢推進。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleClose",
+      "text": "{name}的末段腳力很驚人。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "grazing",
+      "text": "你看{name}，還在悠閒地吃草。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "looking",
+      "text": "{name}東張西望，好像在看看台上的觀眾。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "resting",
+      "text": "{name}低著頭，正在養精蓄銳。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "bio1",
+      "level": 0,
+      "texts": [
+        "赤焰去年受過傷，上個月才剛復賽。",
+        "綠野是今年的新面孔，才跑過幾場比賽。",
+        "日光是場上的老將，經驗非常豐富。",
+        "紫羅蘭個性比較害羞，不太喜歡鏡頭。",
+        "汽水的名字，是小朋友投票選出來的。",
+        "莓果是觀眾的人氣王，每次出場都有人幫牠加油。",
+        "晴空是從外地移籍過來的，大家還在熟悉牠。",
+        "星辰休息了半年，最近才重新回到賽場。"
+      ]
+    },
+    {
+      "id": "bio2",
+      "level": 0,
+      "texts": [
+        "赤焰的媽媽，當年也是陽光盃的冠軍。",
+        "綠野的練馬師說，牠最喜歡雨後的草地。",
+        "聽說日光今天早上加練了一圈，精神很好。",
+        "紫羅蘭上個月換了新的練馬師。",
+        "汽水最近胃口很好，體重增加了一點。",
+        "莓果去年差一點就拿到年度冠軍。",
+        "晴空每次比賽前，都要先繞場走一圈才安心。",
+        "星辰和汽水是同一個馬房出來的，算是老朋友。"
+      ]
+    },
+    {
+      "id": "gate",
+      "text": "開閘了！",
+      "level": 3
+    },
+    {
+      "id": "breakAway",
+      "text": "八匹馬一起衝出來！",
+      "level": 3
+    },
+    {
+      "id": "evenBreak",
+      "text": "起步很整齊！",
+      "level": 2
+    },
+    {
+      "id": "firstBend",
+      "text": "進入第一個彎道",
+      "level": 1
+    },
+    {
+      "id": "backStraight",
+      "text": "來到對面直路",
+      "level": 1
+    },
+    {
+      "id": "finalBend",
+      "text": "進入最後彎道！",
+      "level": 2
+    },
+    {
+      "id": "homeStraight",
+      "text": "轉入直路！",
+      "level": 3
+    },
+    {
+      "id": "m1000",
+      "text": "還有一千米",
+      "level": 1
+    },
+    {
+      "id": "m800",
+      "text": "還有八百米",
+      "level": 1
+    },
+    {
+      "id": "m600",
+      "text": "還有六百米",
+      "level": 2
+    },
+    {
+      "id": "m400",
+      "text": "還有四百米！",
+      "level": 2
+    },
+    {
+      "id": "m200",
+      "text": "最後兩百米！",
+      "level": 3
+    },
+    {
+      "id": "m100",
+      "text": "最後一百米！",
+      "level": 3
+    },
+    {
+      "id": "m50",
+      "text": "最後五十米！",
+      "level": 3
+    },
+    {
+      "id": "tight",
+      "text": "馬群非常緊湊",
+      "level": 1
+    },
+    {
+      "id": "closeBehind",
+      "text": "後面咬得很緊",
+      "level": 2
+    },
+    {
+      "id": "byOne",
+      "text": "領先一個馬身",
+      "level": 1
+    },
+    {
+      "id": "byTwo",
+      "text": "領先兩個馬身",
+      "level": 1
+    },
+    {
+      "id": "oneLength",
+      "text": "只差一個馬身！",
+      "level": 3
+    },
+    {
+      "id": "halfLength",
+      "text": "半個馬身！",
+      "level": 3
+    },
+    {
+      "id": "level",
+      "text": "並排了！並排了！",
+      "level": 3
+    },
+    {
+      "id": "levelTwo",
+      "text": "兩匹馬並排了！",
+      "level": 3
+    },
+    {
+      "id": "line",
+      "text": "過終點！",
+      "level": 3
+    },
+    {
+      "id": "photo",
+      "text": "鼻位之爭！要看終點照片！",
+      "level": 3
+    },
+    {
+      "id": "lastStride",
+      "text": "最後一步逆轉！",
+      "level": 3
+    },
+    {
+      "id": "comeback",
+      "text": "漂亮的逆轉！",
+      "level": 3
+    },
+    {
+      "id": "wire",
+      "text": "一路領先到終點！",
+      "level": 3
+    },
+    {
+      "id": "clear",
+      "text": "輕鬆勝出！",
+      "level": 3
+    },
+    {
+      "id": "crowd",
+      "text": "全場都站起來了！",
+      "level": 3
+    },
+    {
+      "id": "quick",
+      "text": "{name}起步最快！",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "lead",
+      "text": "{name}帶頭",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "leads",
+      "text": "{name}領先",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "second",
+      "text": "{name}第二",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "third",
+      "text": "{name}排第三",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "tracks",
+      "text": "{name}緊跟在後",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "rail",
+      "text": "{name}貼著內欄",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "wide",
+      "text": "{name}在外側",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "midfield",
+      "text": "{name}在中段",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "waiting",
+      "text": "{name}在後面等待機會",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "last",
+      "text": "{name}落在最後",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "improving",
+      "text": "{name}慢慢推進",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "closing",
+      "text": "{name}追上來了！",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "passes",
+      "text": "{name}超過去了！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "takesLead",
+      "text": "{name}拿到領先！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "quickens",
+      "text": "{name}開始加速！",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "holds",
+      "text": "{name}還在領跑！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "fights",
+      "text": "{name}還在頂！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "outside",
+      "text": "外面的{name}衝上來了！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "inside",
+      "text": "內欄的{name}衝上來了！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "nearer",
+      "text": "{name}越追越近！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "drives",
+      "text": "{name}往前衝！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "breaksOut",
+      "text": "{name}衝出來了！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "call",
+      "text": "{name}！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "over",
+      "text": "{name}衝過去了！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "wins",
+      "text": "{number}號{name}拿下冠軍！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "secondPlace",
+      "text": "第二名{name}",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "thirdPlace",
+      "text": "第三名{name}",
+      "level": 2,
+      "horse": true
+    }
+  ]
+}

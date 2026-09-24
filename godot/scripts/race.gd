@@ -40,6 +40,8 @@ const MOTION = preload("res://scripts/race_motion.gd")
 var motion_clock = MOTION.new()
 var parade_clock = MOTION.new()
 var finish_times: Array = [44.5,45.15,45.8,46.45,47.1,47.75,48.4,49.05]
+# How each horse runs this round; React sends it, native previews use a fixture.
+var race_plan: Dictionary = MOTION.preview_plan()
 var preview_paused := false
 const PARADE = preload("res://scripts/parade_motion.gd")
 var parade_plan: Array = []
@@ -112,7 +114,10 @@ func _ready() -> void:
 	if low_power:
 		get_viewport().msaa_3d=Viewport.MSAA_DISABLED
 		RenderingServer.directional_shadow_atlas_set_size(2048,true)
-	if not OS.has_feature("web"): parade_plan=PARADE.preview_plan(61293)
+	if not OS.has_feature("web"):
+		parade_plan=PARADE.preview_plan(61293)
+		winner=int(race_plan.winner)+1
+		finish_times=race_plan.finishTimes
 	build_environment()
 	for i in range(8): build_horse(i)
 	add_child(podium)
@@ -327,6 +332,8 @@ func read_bridge() -> void:
 		race_clock=motion_clock.seconds
 	var incoming_times = data.get("finishTimes",[])
 	if incoming_times is Array and incoming_times.size()==8: finish_times=incoming_times
+	var incoming_plan = data.get("racePlan",null)
+	if incoming_plan is Dictionary and incoming_plan.get("knots",[]).size()==8: race_plan=incoming_plan
 	preview_paused=bool(data.get("paused",false))
 	stage_visible=bool(data.get("visible",true))
 	# Off screen the race keeps its clock but draws only a few frames a second.
@@ -375,7 +382,7 @@ func _process(delta: float) -> void:
 	animation_clock+=delta*slow_motion
 	var strolls: Array=paddock_poses(delta) if phase=="betting" else []
 	for i in range(8):
-		track_positions[i]=MOTION.track_progress(presentation_clock,i+1,float(finish_times[i])) if phase!="betting" else 0.0
+		track_positions[i]=MOTION.plan_progress(race_plan,i,presentation_clock) if phase!="betting" else 0.0
 		visual_positions[i]=minf(float(track_positions[i]),1.0)
 		var p := float(track_positions[i])
 		var sample: Dictionary

@@ -117,7 +117,8 @@ describe('crowd playback lifecycle', () => {
       expect(source.stop).toHaveBeenCalledOnce()
       expect(source.stop).toHaveBeenLastCalledWith(15)
     })
-    vi.mocked(audio.createGain).mock.results.forEach(({ value: gain }) => {
+    // The first gain is the under-commentary duck, which never fades out.
+    vi.mocked(audio.createGain).mock.results.slice(1).forEach(({ value: gain }) => {
       expect(gain.gain.linearRampToValueAtTime).toHaveBeenLastCalledWith(0, 15)
     })
     player.stop()
