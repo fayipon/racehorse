@@ -25,6 +25,7 @@ var visual_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var track_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var elapsed := 0.0
 var bridge_timer := 0.0
+var bridge_version := -1
 var venue: Node3D
 var landscape_node: Node3D
 var infield_node: Node3D
@@ -52,6 +53,7 @@ var dust: Array[MeshInstance3D] = []
 var animation_clock := 0.0
 var reduced_motion := false
 var low_power := false
+var frame_rate := 0
 # React reports whether the stage is on screen; off screen the engine idles.
 var stage_visible := true
 var camera_focus := Vector3.ZERO
@@ -120,7 +122,7 @@ func _ready() -> void:
 		# Phones and tablets get the power-saving tier: 30 fps, a lighter crowd and
 		# planting, no MSAA or glow, and a smaller shadow map.
 		low_power = bool(JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches"))
-	Engine.max_fps = 30 if low_power else 60
+	set_frame_rate(30 if low_power else 60)
 	if low_power:
 		get_viewport().msaa_3d=Viewport.MSAA_DISABLED
 		RenderingServer.directional_shadow_atlas_set_size(2048,true)
@@ -331,8 +333,22 @@ func trigger_finish() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.parent.postMessage({type:'race-finish',round:%d,winner:%d},window.location.origin)" % [race_round,winner])
 
+# Engine.max_fps holds the frame rate by spinning until the next frame is due.
+# On the web that spin runs on the page's only thread: at 30 fps on a 60 Hz
+# phone it kept the CPU busy nine tenths of the time. The web shell instead
+# skips animation frames, so the engine only wakes when a frame is due.
+func set_frame_rate(fps: int) -> void:
+	if fps==frame_rate: return
+	frame_rate=fps
+	if OS.has_feature("web"): JavaScriptBridge.eval("window.godotFrameInterval=%.3f" % (1000.0/fps))
+	else: Engine.max_fps=fps
+
 func read_bridge() -> void:
 	if not OS.has_feature("web"): return
+	# The page posts about four times a second; only a new post is parsed.
+	var version := int(JavaScriptBridge.eval("window.raceStateVersion||0"))
+	if version==bridge_version: return
+	bridge_version=version
 	var raw = JavaScriptBridge.eval("JSON.stringify(window.raceState || null)")
 	if raw == null: return
 	var data = JSON.parse_string(str(raw))
@@ -360,7 +376,7 @@ func read_bridge() -> void:
 	stage_visible=bool(data.get("visible",true))
 	# Off screen the race keeps its clock but draws only a few frames a second.
 	var fps:=(30 if low_power else 60) if stage_visible else 4
-	if Engine.max_fps!=fps: Engine.max_fps=fps
+	set_frame_rate(fps)
 	parade_plan=data.get("paradePlan",parade_plan)
 	var betting_snapshot := float(data.get("bettingElapsed",0.0))
 	if betting_snapshot != last_betting_snapshot:

@@ -18,6 +18,7 @@ var skeleton: Skeleton3D
 var head_bone := -1
 var muzzle_local := Vector3.ZERO
 var horse_from_skeleton := Transform3D.IDENTITY
+static var body_material: StandardMaterial3D
 
 func build(index: int, _color: Color) -> void:
 	var style: Dictionary=styles[index]
@@ -29,26 +30,16 @@ func build(index: int, _color: Color) -> void:
 	model.rotation.y = PI # Source faces +Z; the course uses -Z as forward.
 	model.position.y = .018
 	add_child(model)
+	if body_material==null:
+		# Vertex colour matches the course paint, so both share one shader.
+		body_material=StandardMaterial3D.new()
+		body_material.vertex_color_use_as_albedo=true
+		body_material.roughness=.9
+		body_material.metallic_specular=.16
 	for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
 		mesh.layers = 3
-		for surface in range(mesh.mesh.get_surface_count()):
-			var original: Material = mesh.mesh.surface_get_material(surface)
-			# Vertex colour (white here) matches the course paint, so both share one shader.
-			var mat := StandardMaterial3D.new()
-			mat.vertex_color_use_as_albedo = true
-			mat.roughness = .9
-			mat.metallic_specular = .16
-			match original.resource_name:
-				"Main": mat.albedo_color=coat
-				"Main_Dark": mat.albedo_color=coat.darkened(.08)
-				"Main_Light": mat.albedo_color=coat.lightened(.05)
-				"Hair": mat.albedo_color=Color(style.mane)
-				"Muzzle": mat.albedo_color=Color(style.muzzle)
-				"Hooves": mat.albedo_color=Color("554638")
-				"Eye_Black": mat.albedo_color=Color("171a1b")
-				"Eye_White": mat.albedo_color=Color("ddd7c5")
-				_: mat.albedo_color=coat
-			mesh.set_surface_override_material(surface,mat)
+		mesh.mesh=painted_body(mesh.mesh,style,coat)
+		mesh.material_override=body_material
 	player = model.find_children("*","AnimationPlayer",true,false)[0]
 	# Advance manually with the race's visual clock, including the finish slowdown.
 	player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
@@ -62,6 +53,48 @@ func build(index: int, _color: Color) -> void:
 	skeleton = model.find_children("*","Skeleton3D",true,false)[0]
 	add_race_cloth(skeleton,index,Color(style.number))
 	find_muzzle()
+
+static func part_color(part: String, style: Dictionary, coat: Color) -> Color:
+	match part:
+		"Main_Dark": return coat.darkened(.08)
+		"Main_Light": return coat.lightened(.05)
+		"Hair": return Color(style.mane)
+		"Muzzle": return Color(style.muzzle)
+		"Hooves": return Color("554638")
+		"Eye_Black": return Color("171a1b")
+		"Eye_White": return Color("ddd7c5")
+	return coat
+
+# The model colours its parts with eight materials, and each was a draw call
+# per horse and per shadow split. Baking each part's colour into its vertices
+# draws the body in one call.
+static func painted_body(source: Mesh, style: Dictionary, coat: Color) -> ArrayMesh:
+	var surfaces: Array = []
+	for surface in range(source.get_surface_count()): surfaces.append(source.surface_get_arrays(surface))
+	var kinds: Array = []
+	for kind in [Mesh.ARRAY_VERTEX,Mesh.ARRAY_NORMAL,Mesh.ARRAY_TANGENT,Mesh.ARRAY_TEX_UV,Mesh.ARRAY_BONES,Mesh.ARRAY_WEIGHTS]:
+		if surfaces.all(func(arrays: Array) -> bool: return arrays[kind]!=null): kinds.append(kind)
+	var merged: Array = []
+	merged.resize(Mesh.ARRAY_MAX)
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for surface in range(surfaces.size()):
+		var arrays: Array = surfaces[surface]
+		var base := colors.size()
+		var tint := part_color(source.surface_get_material(surface).resource_name,style,coat)
+		var count := (arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+		for i in range(count): colors.append(tint*(arrays[Mesh.ARRAY_COLOR][i] if arrays[Mesh.ARRAY_COLOR]!=null else Color.WHITE))
+		for index: int in arrays[Mesh.ARRAY_INDEX]: indices.append(base+index)
+		for kind: int in kinds:
+			if merged[kind]==null: merged[kind]=arrays[kind].duplicate()
+			else: merged[kind].append_array(arrays[kind])
+	merged[Mesh.ARRAY_COLOR]=colors
+	merged[Mesh.ARRAY_INDEX]=indices
+	var flags := 0
+	if merged[Mesh.ARRAY_BONES]!=null and merged[Mesh.ARRAY_BONES].size()==colors.size()*8: flags=Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+	var painted := ArrayMesh.new()
+	painted.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,merged,[],{},flags)
+	return painted
 
 # The muzzle tip is the forward-most vertex of the rest pose, stored in the
 # head bone's space so it follows the head through every gait.
@@ -116,21 +149,19 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 	cloth.transform=skeleton.get_bone_global_rest(skeleton.find_bone("Back")).affine_inverse()*source_from_meters
 	attachment.add_child(cloth)
 	# Double-sided vertex-colour paint, the same shader as the stand's sails.
+	# The cloth and its trim are one sheet coloured per vertex: one draw call.
 	var mat := KIT.painted(.96,.5)
-	mat.albedo_color=color
 	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-	var trim := KIT.painted(.95,.5)
-	trim.albedo_color=Color("ddd0ac")
-	trim.cull_mode=BaseMaterial3D.CULL_DISABLED
+	var cloth_color := color
+	var trim_color := Color("ddd0ac")
 	# One connected sheet goes from the left hem, over the spine, to the
 	# right hem. The lower sides hang vertically, like a racing saddlecloth.
 	var surface:=SurfaceTool.new()
 	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var edging:=SurfaceTool.new()
-	edging.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for row in range(40):
 		for column in range(12):
 			var edge:=row==0 or row==39 or column==0 or column==11
+			surface.set_color(trim_color if edge else cloth_color)
 			for corner: Vector2i in [Vector2i(row,column),Vector2i(row+1,column),Vector2i(row,column+1),Vector2i(row,column+1),Vector2i(row+1,column),Vector2i(row+1,column+1)]:
 				var u:=corner.x/40.0*2.0-1.0
 				var v:=corner.y/12.0
@@ -139,15 +170,13 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 				var y:=2.90+cos(shoulder)*.69-maxf(0.0,absf(u)-.57)/.43*.60
 				var z:=-.97+v*1.24
 				var point:=Vector3(x,y+.025*cos((v-.5)*PI),z)
-				var target: SurfaceTool=edging if edge else surface
-				target.add_vertex(point)
-	for pair in [[surface,mat],[edging,trim]]:
-		pair[0].generate_normals()
-		var sheet:=MeshInstance3D.new()
-		sheet.mesh=pair[0].commit()
-		sheet.material_override=pair[1]
-		sheet.layers=3
-		cloth.add_child(sheet)
+				surface.add_vertex(point)
+	surface.generate_normals()
+	var sheet:=MeshInstance3D.new()
+	sheet.mesh=surface.commit()
+	sheet.material_override=mat
+	sheet.layers=3
+	cloth.add_child(sheet)
 	for side in [-1,1]:
 		var number := Label3D.new()
 		number.text=str(index+1)
@@ -156,6 +185,7 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 		number.outline_size=0
 		number.shaded=true
 		number.layers=3
+		number.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		number.modulate=Color("fff7e7") if index in [0,3,7] else Color("202822")
 		number.position=Vector3(side*.722,2.73,-.35)
 		number.rotation.y=side*PI/2
