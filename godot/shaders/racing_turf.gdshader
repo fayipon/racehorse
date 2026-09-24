@@ -23,7 +23,9 @@ void fragment() {
 	float footprint=max(length(dFdx(world.xz)),length(dFdy(world.xz)));
 	float detail=1.0-smoothstep(.04,.18,footprint);
 	float blades=(noise(world.xz*vec2(32.0,10.0))-.5)*detail;
-	float shade=clamp(.31+patches*.26+(mowing-.5)*.22+blades*.14,0.0,1.0);
+	// Hooves wear a darker band along the inside running line.
+	float wear=1.0-smoothstep(.4,3.2,UV.y);
+	float shade=clamp(.34+patches*.24+(mowing-.5)*.3+blades*.14-wear*.16,0.0,1.0);
 	ALBEDO=mix(grass_dark.rgb,grass_light.rgb,shade);
 	ROUGHNESS=1.0;
 }

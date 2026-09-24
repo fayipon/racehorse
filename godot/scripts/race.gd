@@ -15,7 +15,8 @@ var visual_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var track_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var elapsed := 0.0
 var bridge_timer := 0.0
-var mats: Dictionary = {}
+var venue: Node3D
+var standings: Array = [0,1,2,3,4,5,6,7]
 var confetti_rain = preload("res://scripts/confetti_rain.gd").new()
 var previous_shot := -1
 var rng := RandomNumberGenerator.new()
@@ -46,40 +47,6 @@ var dust_forwards: Array[Vector3] = []
 var dust_outwards: Array[Vector3] = []
 var podium = preload("res://scripts/podium.gd").new()
 var featured_runner := 0
-
-func material(color: Color) -> StandardMaterial3D:
-	var key := color.to_html()
-	if mats.has(key): return mats[key]
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = color.darkened(0.06)
-	mat.roughness = 0.95
-	mat.metallic_specular = 0.15
-	mats[key] = mat
-	return mat
-
-func ball(parent: Node3D, pos: Vector3, size: Vector3, mat: Material) -> MeshInstance3D:
-	var mesh := SphereMesh.new()
-	mesh.radius = 0.5
-	mesh.height = 1.0
-	mesh.radial_segments = 20
-	mesh.rings = 12
-	var node := MeshInstance3D.new()
-	node.mesh = mesh
-	node.material_override = mat
-	node.position = pos
-	node.scale = size * 2.0
-	parent.add_child(node)
-	return node
-
-func box(parent: Node3D, pos: Vector3, size: Vector3, color: Color) -> MeshInstance3D:
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	var node := MeshInstance3D.new()
-	node.mesh = mesh
-	node.material_override = material(color)
-	node.position = pos
-	parent.add_child(node)
-	return node
 
 func course_point(progress: float, lane: int) -> Vector3:
 	return course.sample(progress,course.lane_radius(lane)).position
@@ -127,51 +94,54 @@ func build_environment() -> void:
 	var env := Environment.new()
 	var sky_material := PanoramaSkyMaterial.new()
 	sky_material.panorama = preload("res://assets/sky/kloppenheim_05_puresky.jpg")
-	sky_material.energy_multiplier = 1.6
+	sky_material.energy_multiplier = 1.45
 	var sky := Sky.new()
 	sky.sky_material=sky_material
 	env.background_mode = Environment.BG_SKY
 	env.sky=sky
 	env.fog_enabled=true
-	env.fog_light_color=Color("c5ddeb")
-	env.fog_density=.0014
+	env.fog_light_color=Color("dbe6ec")
+	env.fog_density=.0011
 	env.fog_sky_affect=0.0
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color("aebac6")
-	env.ambient_light_energy = 0.25
-	env.tonemap_exposure = 0.78
-	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	env.ambient_light_color = Color("c6d2dc")
+	env.ambient_light_energy = 0.4
+	env.tonemap_exposure = 1.0
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_white = 5.0
+	env.glow_enabled = true
+	env.glow_intensity = .3
+	env.glow_bloom = .02
+	env.glow_hdr_threshold = .95
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.12
+	env.adjustment_contrast = 1.05
 	var world := WorldEnvironment.new()
 	world.environment = env
 	add_child(world)
+	# Late-afternoon sun from the left of the home-straight cameras models the
+	# runners from the side instead of flattening them from behind the lens.
 	var sun := DirectionalLight3D.new()
-	sun.rotation_degrees = Vector3(-42,-28,0)
-	sun.light_color = Color("f1e4cf")
-	sun.light_energy = 0.64
+	sun.rotation_degrees = Vector3(-38,-80,0)
+	sun.light_color = Color("ffe6c2")
+	sun.light_energy = 1.05
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 100.0
+	sun.shadow_opacity = .82
+	sun.directional_shadow_max_distance = 110.0
 	add_child(sun)
 	var landscape=preload("res://scripts/landscape.gd").new()
 	add_child(landscape)
 	landscape.build(course,reduced_motion)
+	var infield=preload("res://scripts/infield.gd").new()
+	add_child(infield)
+	infield.build(course,reduced_motion)
 	var racing_track=preload("res://scripts/race_track.gd").new()
 	add_child(racing_track)
-	racing_track.build(course)
 	# The physical finish and minimap both lie at x=0 on the near straight.
-	for lane in range(27):
-		for column in range(4):
-			box(self,Vector3((column-1.5)*.42,.043,float(course.config.innerRadius)+.25+lane*.5),Vector3(.42,.02,.5),Color("cfc7af") if (lane+column)%2==0 else Color("303b36"))
-	var venue = preload("res://scripts/venue.gd").new()
+	racing_track.build(course)
+	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
-	venue.build(reduced_motion)
-	var sign := Label3D.new()
-	sign.text = "SUNNY CUP"
-	sign.font_size = 140
-	sign.pixel_size = 0.014
-	sign.position = Vector3(0,2.7,-38.7)
-	sign.modulate = Color("fff4d9")
-	add_child(sign)
-	box(self,Vector3(0,2.6,-39),Vector3(25,4.8,0.4),Color("40664e"))
+	venue.build(reduced_motion,COLORS)
 
 func build_horse(index: int) -> void:
 	var pony = PONY.new()
@@ -434,6 +404,19 @@ func _process(delta: float) -> void:
 	camera.fov=lerpf(camera.fov,fov,1.0-exp(-delta*2.0))
 	camera.look_at(camera_focus,Vector3.UP)
 	update_effects(delta)
+	update_board(delta)
+
+# The infield screen shows live standings, then the official finishing order.
+func update_board(delta: float) -> void:
+	standings.assign([0,1,2,3,4,5,6,7])
+	if phase=="racing":
+		standings.sort_custom(func(a: int,b: int) -> bool:
+			var pa:=float(track_positions[a])
+			var pb:=float(track_positions[b])
+			return pa>pb or (pa==pb and a<b))
+	elif phase=="result":
+		standings.sort_custom(func(a: int,b: int) -> bool: return float(finish_times[a])<float(finish_times[b]))
+	venue.update_board(phase,race_round,standings,delta)
 
 func update_effects(delta: float) -> void:
 	var celebrate := finished or phase=="result"

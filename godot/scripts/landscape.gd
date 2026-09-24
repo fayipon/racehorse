@@ -25,10 +25,10 @@ func build(course: RefCounted, reduced: bool) -> void:
 	meadow.set_shader_parameter("grass_light",Color("799451"))
 	ground.material_override = meadow
 	add_child(ground)
-	# Informal planted borders follow the actual capsule, with natural gaps.
+	# Informal planted borders follow the infield edge inside the sand track.
 	for i in range(136):
 		var progress := (i+random.randf_range(-.3,.3))/136.0
-		var radius := float(course.config.innerRadius)-random.randf_range(2.0,3.7)
+		var radius := 13.9-random.randf_range(1.2,2.4)
 		var p: Vector3 = course.sample(progress,radius).position
 		if i%11 < 9:
 			place("bush_flowers" if i%7==0 else "bush",p,random.randf_range(.58,.88))
@@ -37,8 +37,12 @@ func build(course: RefCounted, reduced: bool) -> void:
 			place(GRASS_NAMES[j%3],g,random.randf_range(.18,.42))
 		if i%4==0:
 			place("flowers_a" if i%8==0 else "flowers_b",p+Vector3(random.randf_range(-.9,.9),0,.7),random.randf_range(.20,.34))
-	# A few small groves occupy the ends of the infield; the middle stays open.
-	for center in [Vector3(-30,0,2),Vector3(31,0,-3),Vector3(-19,0,-9),Vector3(21,0,8)]:
+	# The sun emblem bed at the final-bend end gets a ring of real blooms.
+	for i in range(40):
+		var angle := TAU*i/40.0+random.randf_range(-.04,.04)
+		place("flowers_a" if i%2==0 else "flowers_b",Vector3(-31+cos(angle)*6.55,0,sin(angle)*6.55),random.randf_range(.24,.34))
+	# Small groves frame the pond and the far end; the centre line stays open.
+	for center in [Vector3(33,0,-5),Vector3(35,0,6),Vector3(-19,0,-9),Vector3(21,0,8)]:
 		for i in range(3):
 			var p: Vector3 = center+Vector3(random.randf_range(-3,3),0,random.randf_range(-2,2))
 			place(TREE_NAMES[random.randi_range(0,4)],p,random.randf_range(.56,.82))
@@ -73,6 +77,7 @@ func build(course: RefCounted, reduced: bool) -> void:
 	for i in range(580):
 		var progress := random.randf()
 		var p: Vector3 = course.sample(progress,random.randf_range(35.5,42.5)).position
+		if p.z>39.0 and absf(p.x)<58.0: continue # The stand's paved promenade.
 		place(GRASS_NAMES[i%3],p,random.randf_range(.20,.36))
 	distant_landscape()
 	flush_batches()

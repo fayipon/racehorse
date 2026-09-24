@@ -44,18 +44,18 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 
 ## 看台與觀眾素材
 
-- 建築採用 [Kenney Racing Kit 2.0](https://kenney.nl/assets/racing-kit)：露天／有棚／遮陽看台、長帳篷、辦公室、旗塔及燈柱，授權 CC0。原始 OBJ／MTL 與 License.txt 保存在 `godot/assets/venue/kenney/`。
+- 主看台、大螢幕、帳篷、旗桿與陽傘由 `venue.gd` 以 `mesh_kit.gd` 程序生成，不使用外部建築模型。
+- 先前使用的 [Kenney Racing Kit 2.0](https://kenney.nl/assets/racing-kit) 看台與設施（CC0）原始 OBJ／MTL 與 License.txt 保留在 `godot/assets/venue/kenney/` 供參考，已由 `export_presets.cfg` 排除，不打包進 Web 匯出。
 - 觀眾採用 [Quaternius Background Posed Humans](https://quaternius.com/packs/backgroundposedhumans.html)，從[作者在 OpenGameArt 的發布頁](https://opengameart.org/content/lowpoly-posed-humans)取得完整素材包。使用男女坐姿、坐姿加油、站立揮手與四種髮型，授權 CC0；原始 OBJ／MTL 與作者授權檔保存在 `godot/assets/venue/crowd/`。
 - `godot/assets/venue/manifest.json` 記錄素材來源、壓縮檔及所保留原始檔的 SHA-256。作者的授權檔原樣保留（檔內標頭寫 Knight Pack，但內文署名為 Background characters，發布頁亦明確標示 CC0）。
-- `venue.gd` 依模型階梯高度排列觀眾，合併人物與髮型並以 MultiMesh 分批繪製；衣服／膚色由自製 `spectators.gdshader` 隨機配置，保留原模型姿勢。
+- `venue.gd` 依主看台的座位排數與走道排列觀眾，合併人物與髮型並以 MultiMesh 分批繪製；衣服／膚色由自製 `spectators.gdshader` 隨機配置，保留原模型姿勢。
 - 遠景山丘由現有 Nature MegaKit 石頭模型拉寬、壓低並分層排列，使用低對比霧色材質。
 
-## 草地跑道與馬場欄杆
+## 草地跑道、欄杆與內場
 
-- 欄杆採用 3D Assets 的 [Horse Stables and Equestrian Yard — Arena Rail](https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48)：白色雙橫桿與底部擋板，原模組為 3 公尺柱距、1.1 公尺高，授權 CC0 1.0。發布者標示為 AI 製作素材。
-- 原始 GLB 保存在 `godot/assets/equestrian/source/arena_rail.glb`；來源、授權與原檔及轉換檔雜湊記錄於同目錄上一層的 `manifest.json`、`LICENSE.md`。
-- `scripts/prepare_equestrian_assets.mjs` 將 KHR_mesh_quantization 的量化向量還原成 Float32，供目前 Godot 匯入，保留原幾何、材質及節點變換。遊戲使用轉換後的 `arena_rail.glb`，以暖白色材質及內外圈 MultiMesh 批次沿既有路線拼接。
-- `godot/scripts/race_track.gd` 與自製 `racing_turf.gdshader` 建立草地跑道，修剪條紋沿橢圓連續銜接，近景有細微草色紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
+- `godot/scripts/race_track.gd` 程序生成草地跑道、沙地訓練道、白色圓管欄杆（內欄鵝頸柱）、終點柱、距離桿與樹籬；材質為自製 `racing_turf`、`dirt_track`、`hedge` shader。修剪條紋沿橢圓連續銜接，近景有細微紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
+- `godot/scripts/infield.gd` 與自製 `lawn`、`water`、`flower_bed` shader 建立內場斜格草坪、噴泉池與太陽花壇；噴泉以 CPUParticles3D 繪製。
+- 先前的欄杆模型：3D Assets 的 [Horse Stables and Equestrian Yard — Arena Rail](https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48)（CC0 1.0，發布者標示為 AI 製作素材）。原始與轉換後的 GLB、`manifest.json`、`LICENSE.md` 保留在 `godot/assets/equestrian/` 供參考，`scripts/prepare_equestrian_assets.mjs` 仍可重建；現已由 `export_presets.cfg` 排除，不打包進 Web 匯出。
 - 馬蹄後的粒子調整為較小、較淡的草綠色揚屑，取代原本沙地的黃褐色塵霧。
 
 ## 保留的原程式模型

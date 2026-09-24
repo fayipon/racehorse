@@ -3,6 +3,7 @@ extends Node3D
 # Quaternius / CC0. The imported rig supplies all poses and skin deformation.
 # Keep the same adapter used by race.gd, so timing and results stay independent.
 const HORSE = preload("res://assets/quaternius/horse.glb")
+const KIT = preload("res://scripts/mesh_kit.gd")
 var styles: Array=JSON.parse_string(FileAccess.get_file_as_string("res://assets/horse_styles.json"))
 var player: AnimationPlayer
 var model: Node3D
@@ -108,6 +109,60 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 		number.position=Vector3(side*.722,2.73,-.35)
 		number.rotation.y=side*PI/2
 		cloth.add_child(number)
+
+# The champion's garland: a ring of blooms resting on the base of the neck.
+func add_garland() -> void:
+	var skeleton: Skeleton3D = model.find_children("*","Skeleton3D",true,false)[0]
+	var attachment := BoneAttachment3D.new()
+	attachment.bone_name="Neck1"
+	skeleton.add_child(attachment)
+	var holder := Node3D.new()
+	var source_from_meters:=Transform3D(Basis(Vector3.RIGHT,PI/2)*.01,Vector3.ZERO)
+	holder.transform=skeleton.get_bone_global_rest(skeleton.find_bone("Neck1")).affine_inverse()*source_from_meters
+	attachment.add_child(holder)
+	var ring := MeshInstance3D.new()
+	ring.mesh=garland_mesh()
+	ring.layers=3
+	holder.add_child(ring)
+
+# Authored like the saddlecloth: +Y is up and +Z points toward the head. The
+# loop rests on the withers and its front drapes down over the chest.
+func garland_point(a: float) -> Vector3:
+	var front:=maxf(0.0,sin(a))
+	return Vector3(cos(a)*.56,2.98-front*front*.62,1.32+sin(a)*.6)
+
+func garland_mesh() -> ArrayMesh:
+	var st := KIT.begin()
+	var blooms: Array[Color]=[Color("f7c948"),Color("f29a3d"),Color("fbf0d4"),Color("f5b53d"),Color("e8663a")]
+	var random := RandomNumberGenerator.new()
+	random.seed=5150
+	var major := 72
+	var minor := 8
+	var colors: Array[Color]=[]
+	for cell in range(major*minor/4):
+		colors.append(Color("3f7a35") if random.randf()<.12 else blooms[random.randi_range(0,blooms.size()-1)])
+	for i in range(major):
+		for j in range(minor):
+			var points: Array[Vector3]=[]
+			var normals: Array[Vector3]=[]
+			for corner: Vector2i in [Vector2i(i,j),Vector2i(i+1,j),Vector2i(i+1,j+1),Vector2i(i,j+1)]:
+				var a:=TAU*corner.x/major
+				var b:=TAU*corner.y/minor
+				var center:=garland_point(a)
+				var tangent:=(garland_point(a+.01)-garland_point(a-.01)).normalized()
+				var side:=tangent.cross(Vector3.UP).normalized()
+				var up:=side.cross(tangent)
+				var normal:=side*cos(b)+up*sin(b)
+				# Each pair of segments swells into one round bloom.
+				var bloom:=absf(sin(a*major*.5))
+				normals.append(normal)
+				points.append(center+normal*.15*(.72+.5*bloom))
+			var color: Color=colors[(i/2)*(minor/2)+j/2]
+			for index: int in [0,2,1,0,3,2]: KIT.vertex(st,points[index],normals[index],color)
+	var mat := KIT.painted(.85,.2)
+	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+	st.set_material(mat)
+	return st.commit()
 
 func animate(time: float, motion: float, running: bool, _celebration: bool, delta := .016, sprint_effort := 0.0) -> void:
 	motion_blend=lerpf(motion_blend,clampf(motion,0,1),1.0-exp(-delta*8))
