@@ -1,20 +1,32 @@
 import course from '../godot/assets/course.json'
 
 export const COURSE = course
-export type ParadeSegment = { start: number; end: number; from: number; to: number }
+// A stroll segment eases x (shared with the minimap) and a lateral offset `lat`
+// within the lane (Godot only). While standing, `mood` picks what the horse
+// does: 0 stands, 1 looks around, 2 rests its head low, 3 grazes.
+export type ParadeSegment = { start: number; end: number; from: number; to: number; lat: number; mood: number }
 export function makeParadePlan(seed: number, round: number): ParadeSegment[][] {
   return Array.from({length:course.laneCount},(_,lane) => {
     let state=(seed ^ Math.imul(round,2654435761) ^ Math.imul(lane+1,1597334677))>>>0
     const random=()=>{ state=(Math.imul(state,1664525)+1013904223)>>>0; return state/4294967296 }
     const segments: ParadeSegment[]=[]
-    let time=0, x=-2-random()*7
+    let time=0, x=-2-random()*8, lat=0, heading=random()<.5 ? 1 : -1
     while(time<47) {
-      const pauseEnd=Math.min(47,time+.7+random()*3.1)
-      segments.push({start:time,end:pauseEnd,from:x,to:x}); time=pauseEnd
+      const mood=Math.floor(random()*4)
+      const pauseEnd=Math.min(47,time+(mood===3 ? 3.5+random()*2.5 : 1+random()*3))
+      segments.push({start:time,end:pauseEnd,from:x,to:x,lat,mood}); time=pauseEnd
       if(time>=47) break
-      const end=Math.min(47,time+4.8+random()*3.5)
-      const to=47-time<1.5 ? x : x<-5.5 ? -1-random()*3 : -7-random()*3.5
-      segments.push({start:time,end,from:x,to}); x=to; time=end
+      // Usually carry on the same way; turn back at will or at the paddock ends.
+      if(random()<.35) heading=-heading
+      const distance=1.6+random()*4.6
+      let to=Math.min(-1,Math.max(-10.5,x+heading*distance))
+      if(Math.abs(to-x)<1.2) { heading=-heading; to=Math.min(-1,Math.max(-10.5,x+heading*distance)) }
+      const nextLat=(random()*2-1)*.45
+      const end=Math.min(47,time+Math.abs(to-x)/(.6+random()*.25))
+      const hold=47-time<1.5
+      segments.push({start:time,end,from:x,to:hold ? x : to,lat:hold ? lat : nextLat,mood:0})
+      if(!hold) { x=to; lat=nextLat }
+      time=end
     }
     return segments
   })

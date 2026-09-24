@@ -11,8 +11,10 @@ var plant_count := 0
 var batch_count := 0
 var reduce_motion := false
 
-func build(course: RefCounted, reduced: bool) -> void:
+func build(course: RefCounted, reduced: bool, sparse := false) -> void:
 	reduce_motion = reduced
+	# The power-saving tier thins the apron tufts and the farthest tree rings.
+	var tufts := 220 if sparse else 580
 	random.seed = 931705
 	var ground := MeshInstance3D.new()
 	var plane := PlaneMesh.new()
@@ -37,10 +39,15 @@ func build(course: RefCounted, reduced: bool) -> void:
 			place(GRASS_NAMES[j%3],g,random.randf_range(.18,.42))
 		if i%4==0:
 			place("flowers_a" if i%8==0 else "flowers_b",p+Vector3(random.randf_range(-.9,.9),0,.7),random.randf_range(.20,.34))
-	# The sun emblem bed at the final-bend end gets a ring of real blooms.
+	# The topiary garden at the final-bend end: blooms outside its box hedge and
+	# on the mulch around the plinth.
 	for i in range(40):
 		var angle := TAU*i/40.0+random.randf_range(-.04,.04)
-		place("flowers_a" if i%2==0 else "flowers_b",Vector3(-31+cos(angle)*6.55,0,sin(angle)*6.55),random.randf_range(.24,.34))
+		place("flowers_a" if i%2==0 else "flowers_b",Vector3(-31+cos(angle)*5.8,0,sin(angle)*5.8),random.randf_range(.24,.34))
+	for i in range(26):
+		var angle := TAU*i/26.0+random.randf_range(-.08,.08)
+		var reach := random.randf_range(2.1,4.1)
+		place("flowers_b" if i%3==0 else "flowers_a",Vector3(-31+cos(angle)*reach,0,sin(angle)*reach),random.randf_range(.22,.32))
 	# Small groves frame the pond and the far end; the centre line stays open.
 	for center in [Vector3(33,0,-5),Vector3(35,0,6),Vector3(-19,0,-9),Vector3(21,0,8)]:
 		for i in range(3):
@@ -63,7 +70,7 @@ func build(course: RefCounted, reduced: bool) -> void:
 			place(TREE_NAMES[(i+1)%5],p,random.randf_range(.95,1.55))
 			if i%2==0: understory(p,8)
 		# A second irregular row closes gaps in the distant skyline.
-		for i in range(19):
+		for i in range(0 if sparse else 19):
 			var p := Vector3(-105+i*11.5+random.randf_range(-3,3),0,side*random.randf_range(98,111))
 			place(TREE_NAMES[(i+3)%5],p,random.randf_range(1.1,1.7))
 	# Small flower/stone groupings in grass, never on the racing surface.
@@ -74,12 +81,12 @@ func build(course: RefCounted, reduced: bool) -> void:
 			place("flowers_a" if i%3==0 else "flowers_b",p,random.randf_range(.16,.32))
 			place("grass_wispy",p+Vector3(.4,0,.2),random.randf_range(.22,.40))
 	# Sparse tufts break up the flat apron outside the rails, below camera height.
-	for i in range(580):
+	for i in range(tufts):
 		var progress := random.randf()
 		var p: Vector3 = course.sample(progress,random.randf_range(35.5,42.5)).position
 		if p.z>39.0 and absf(p.x)<58.0: continue # The stand's paved promenade.
 		place(GRASS_NAMES[i%3],p,random.randf_range(.20,.36))
-	distant_landscape()
+	distant_landscape(sparse)
 	flush_batches()
 
 func understory(center: Vector3, amount: int) -> void:
@@ -89,7 +96,9 @@ func understory(center: Vector3, amount: int) -> void:
 	if random.randf()<.35: place("rock_a",center+Vector3(1.6,0,.8),random.randf_range(.25,.45))
 
 func place(asset: String, position: Vector3, size: float) -> void:
-	var key := "%s:%d:%d" % [asset,floori(position.x/40),floori(position.z/40)]
+	# Quadrant cells around the course keep draw calls low on phones while the
+	# half of the course behind the camera is still culled.
+	var key := "%s:%d:%d" % [asset,floori(position.x/160),floori(position.z/160)]
 	if not batches.has(key): batches[key]={"asset":asset,"transforms":[],"colors":[]}
 	var rotation := Basis(Vector3.UP,random.randf()*TAU)
 	var proportions := Vector3(random.randf_range(.92,1.12),random.randf_range(.92,1.08),random.randf_range(.92,1.1))*size
@@ -167,7 +176,7 @@ func flush_batches() -> void:
 			batch_count += 1
 	batches.clear()
 
-func distant_landscape() -> void:
+func distant_landscape(sparse: bool) -> void:
 	# Reuse the actual Quaternius rock meshes as broad, overlapping distant ridges.
 	# Muted materials and fog separate them from the nearer planted tree belt.
 	for layer in range(2):
@@ -194,4 +203,5 @@ func distant_landscape() -> void:
 	for i in range(76):
 		var angle := i*TAU/76.0+random.randf_range(-.025,.025)
 		var distance := random.randf_range(122,147)
+		if sparse and i%2==1: continue
 		place(TREE_NAMES[i%5],Vector3(cos(angle)*distance,0,sin(angle)*distance),random.randf_range(1.35,2.0))

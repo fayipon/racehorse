@@ -130,3 +130,13 @@
 @container(max-width:650px){.cut-in-band{top:58%;padding-left:12%}.cut-in-kicker{font-size:9px;letter-spacing:2.5px}.cut-in-name em{display:none}}
 @media(prefers-reduced-motion:reduce){.cut-in-band{animation:none;transform:skewY(-4deg)}.cut-in-band:before{animation:none}}
 .cut-in-name svg{color:#f2d27c;filter:drop-shadow(2px 2px 0 #0f1714)}
+/* The live ranking lists all eight runners: a compact column, or a strip of numbers on narrow stages. */
+.live-ranking>div.ranking-list{height:calc(8*20px - 2px)}
+.ranking-row{height:18px;padding:1px 7px;gap:7px;background:#1d2a21a8;transform:translateY(calc(var(--rank)*20px))}
+.ranking-row.is-podium{background:#253327e0}
+.ranking-row .ranking-place{font-size:9px}
+.ranking-row b{font-size:8px}
+.ranking-row .horse-number.small{width:15px;height:15px;font-size:9px}
+@container(max-width:650px){.live-ranking{min-width:0;flex:none}.live-ranking>div.ranking-list{height:21px;width:calc(8*19px - 2px)}.ranking-row{right:auto;width:17px;height:21px;padding:0;justify-content:center;border-left:0;border-bottom:2px solid var(--rank-color);transform:translateX(calc(var(--rank)*19px))}.ranking-row .ranking-place,.ranking-row b{display:none}.ranking-row .horse-number.small{width:15px;height:15px;font-size:9px}.race-progress{min-width:0}}
+/* On touch devices, blurring what sits behind these panels means re-blurring the 3D stage every frame. */
+@media(pointer:coarse){.race-stage *{backdrop-filter:none!important}}

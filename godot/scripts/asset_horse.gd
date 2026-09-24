@@ -11,6 +11,8 @@ var motion_blend := 0.0
 var current_clip := "Idle"
 var gait_phase := 0.0
 var cadence := 1.0
+# What a standing horse does: Idle, Idle_2 (looks around), Idle_Headlow or Eating.
+var idle_clip := "Idle"
 # Races are judged at the nose: the muzzle tip is tracked on the head bone.
 var skeleton: Skeleton3D
 var head_bone := -1
@@ -49,7 +51,7 @@ func build(index: int, _color: Color) -> void:
 	# Advance manually with the race's visual clock, including the finish slowdown.
 	player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	player.playback_default_blend_time=.32
-	for clip in ["Idle","Walk","Gallop"]:
+	for clip in ["Idle","Idle_2","Idle_Headlow","Eating","Walk","Gallop"]:
 		var animation := player.get_animation(clip)
 		animation.loop_mode=Animation.LOOP_LINEAR
 	player.play("Idle")
@@ -217,7 +219,7 @@ func animate(time: float, motion: float, running: bool, _celebration: bool, delt
 	# Hysteresis keeps tiny changes near standstill from repeatedly restarting clips.
 	var clip := current_clip
 	if motion_blend<.08:
-		clip="Idle"
+		clip=idle_clip
 	elif motion_blend>.16:
 		clip="Gallop" if running else "Walk"
 	if clip!=current_clip:

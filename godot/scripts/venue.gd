@@ -28,15 +28,18 @@ var crowd_material: ShaderMaterial
 var spectator_count := 0
 var palette: Array = []
 var reduce_motion := false
+var attendance := .88
 var flag_tops: Array[Vector3] = []
 var chips: Array[Node3D] = []
 var board_round: Label3D
 var board_status: Label3D
 
-func build(reduced: bool, colors: Array) -> void:
+func build(reduced: bool, colors: Array, sparse := false) -> void:
 	random.seed = 247019
 	reduce_motion = reduced
 	palette = colors
+	# The crowd dominates the vertex budget; the power-saving tier seats fewer.
+	attendance = .42 if sparse else .88
 	crowd_material = ShaderMaterial.new()
 	crowd_material.shader = CROWD_SHADER
 	crowd_material.set_shader_parameter("reduce_motion",reduced)
@@ -126,7 +129,7 @@ func main_stand(st: SurfaceTool, glass: SurfaceTool) -> void:
 		var seat := -STAND_HALF+.55
 		while seat<STAND_HALF-.4:
 			var bay_offset := fposmod(seat+STAND_HALF,BAY)
-			if bay_offset>.8 and bay_offset<BAY-.8 and random.randf()>.12:
+			if bay_offset>.8 and bay_offset<BAY-.8 and random.randf()<attendance:
 				var pose := random.randi_range(0,1)
 				if random.randf()<.22: pose+=2
 				var size := random.randf_range(.39,.46)

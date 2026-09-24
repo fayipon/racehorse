@@ -5,6 +5,7 @@ extends Node3D
 # Races are judged at the nose: a horse's progress places its muzzle, which
 # gallops about 2.4 m ahead of its origin, rather than the middle of its body.
 const NOSE := 2.4
+const IDLE_CLIPS = ["Idle","Idle_2","Idle_Headlow","Eating"]
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df")]
 var horses: Array[Node3D] = []
 var camera: Camera3D
@@ -39,6 +40,9 @@ var finished := false
 var dust: Array[MeshInstance3D] = []
 var animation_clock := 0.0
 var reduced_motion := false
+var low_power := false
+# React reports whether the stage is on screen; off screen the engine idles.
+var stage_visible := true
 var camera_focus := Vector3.ZERO
 var camera_offset := Vector3.ZERO
 var focus_offset := Vector3.ZERO
@@ -65,6 +69,9 @@ var dust_outwards: Array[Vector3] = []
 var podium = preload("res://scripts/podium.gd").new()
 var featured_runner := 0
 var winner_nose := NOSE
+var paddock_shift := PackedFloat32Array([0,0,0,0,0,0,0,0])
+var paddock_clock := 0.0
+var paddock_settled := false
 
 func fullscreen_rect(mat: ShaderMaterial) -> ColorRect:
 	var rect := ColorRect.new()
@@ -81,6 +88,13 @@ func _ready() -> void:
 	rng.seed = 61293
 	if OS.has_feature("web"):
 		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
+		# Phones and tablets get the power-saving tier: 30 fps, a lighter crowd and
+		# planting, no MSAA or glow, and a smaller shadow map.
+		low_power = bool(JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches"))
+	Engine.max_fps = 30 if low_power else 60
+	if low_power:
+		get_viewport().msaa_3d=Viewport.MSAA_DISABLED
+		RenderingServer.directional_shadow_atlas_set_size(2048,true)
 	if not OS.has_feature("web"): parade_plan=PARADE.preview_plan(61293)
 	build_environment()
 	for i in range(8): build_horse(i)
@@ -146,7 +160,7 @@ func build_environment() -> void:
 	env.tonemap_exposure = 1.0
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_white = 5.0
-	env.glow_enabled = true
+	env.glow_enabled = not low_power
 	env.glow_intensity = .3
 	env.glow_bloom = .02
 	env.glow_hdr_threshold = .95
@@ -164,21 +178,21 @@ func build_environment() -> void:
 	sun.light_energy = 1.05
 	sun.shadow_enabled = true
 	sun.shadow_opacity = .82
-	sun.directional_shadow_max_distance = 110.0
+	sun.directional_shadow_max_distance = 70.0 if low_power else 110.0
 	add_child(sun)
 	var landscape=preload("res://scripts/landscape.gd").new()
 	add_child(landscape)
-	landscape.build(course,reduced_motion)
+	landscape.build(course,reduced_motion,low_power)
 	var infield=preload("res://scripts/infield.gd").new()
 	add_child(infield)
-	infield.build(course,reduced_motion)
+	infield.build(course,reduced_motion or low_power)
 	var racing_track=preload("res://scripts/race_track.gd").new()
 	add_child(racing_track)
 	# The physical finish and minimap both lie at x=0 on the near straight.
 	racing_track.build(course)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
-	venue.build(reduced_motion,COLORS)
+	venue.build(reduced_motion,COLORS,low_power)
 
 func build_horse(index: int) -> void:
 	var pony = PONY.new()
@@ -250,6 +264,10 @@ func read_bridge() -> void:
 	var incoming_times = data.get("finishTimes",[])
 	if incoming_times is Array and incoming_times.size()==8: finish_times=incoming_times
 	preview_paused=bool(data.get("paused",false))
+	stage_visible=bool(data.get("visible",true))
+	# Off screen the race keeps its clock but draws only a few frames a second.
+	var fps:=(30 if low_power else 60) if stage_visible else 4
+	if Engine.max_fps!=fps: Engine.max_fps=fps
 	parade_plan=data.get("paradePlan",parade_plan)
 	var betting_snapshot := float(data.get("bettingElapsed",0.0))
 	if betting_snapshot != last_betting_snapshot:
@@ -290,6 +308,7 @@ func _process(delta: float) -> void:
 	var slow_motion:=playback.y if phase=="racing" else 1.0
 	var sprint_effort:=smoothstep(34.0,41.5,race_clock) if phase=="racing" else 0.0
 	animation_clock+=delta*slow_motion
+	var strolls: Array=paddock_poses(delta) if phase=="betting" else []
 	for i in range(8):
 		track_positions[i]=MOTION.track_progress(presentation_clock,i+1,float(finish_times[i])) if phase!="betting" else 0.0
 		visual_positions[i]=minf(float(track_positions[i]),1.0)
@@ -299,17 +318,28 @@ func _process(delta: float) -> void:
 		var running := phase=="racing"
 		if phase=="betting":
 			visual_positions[i]=0.0
-			var itinerary: Array=parade_plan[i] if parade_plan.size()==8 else []
-			var stroll: Vector2=PARADE.sample(betting_clock,itinerary)
-			var x:=stroll.x
-			var z:=course.lane_radius(i)
+			var stroll: Dictionary=strolls[i]
+			var velocity: Vector2=stroll.velocity
 			var target_yaw:=horses[i].rotation.y
-			if absf(stroll.y)>.04: target_yaw=-PI/2 if stroll.y>0 else PI/2
-			if betting_clock>=47.0: target_yaw=-PI/2
-			moving=clampf(absf(stroll.y)/1.65,0,1)
-			horses[i].position=Vector3(x-NOSE,0,z)
-			horses[i].rotation.y=lerp_angle(horses[i].rotation.y,target_yaw,minf(delta*3,1.0))
+			var stepping:=0.0
+			if velocity.length()>.05:
+				target_yaw=atan2(-velocity.x,-velocity.y)
+			elif float(stroll.until_move)<1.4:
+				# Step round toward the next walk before setting off, rather than
+				# pivoting while already walking backwards.
+				var next: Vector2=stroll.next_heading
+				target_yaw=atan2(-next.x,-next.y)
+				stepping=.3 if absf(angle_difference(horses[i].rotation.y,target_yaw))>.3 or float(stroll.until_move)<.5 else 0.0
+			if betting_clock>=47.0 and (betting_clock<48.0 or betting_clock>=53.0 or velocity.length()<=.05):
+				target_yaw=-PI/2
+				if absf(angle_difference(horses[i].rotation.y,target_yaw))>.3: stepping=.3
+			horses[i].rotation.y=lerp_angle(horses[i].rotation.y,target_yaw,minf(delta*2.4,1.0))
+			# Any real translation keeps the walk cycle on, so hooves never slide.
+			moving=clampf(maxf(velocity.length()/1.65,.25 if velocity.length()>.02 else 0.0)+stepping,0,1)
+			horses[i].idle_clip=IDLE_CLIPS[int(stroll.mood)] if betting_clock<46.0 else "Idle"
+			horses[i].position=Vector3(float(stroll.x)-NOSE,0,course.lane_radius(i)+float(stroll.lat))
 		else:
+			horses[i].idle_clip="Idle"
 			sample=course.sample(p,course.lane_radius(i))
 			var tangent: Vector3=sample.tangent
 			horses[i].position=sample.position-tangent*(winner_nose if i==winner-1 else NOSE)
@@ -500,6 +530,45 @@ func _process(delta: float) -> void:
 	if absf(camera_roll)>.001: camera.rotate_object_local(Vector3.BACK,deg_to_rad(camera_roll))
 	update_effects(delta)
 	update_board(delta)
+
+# Pre-race stroll for all eight horses. Neighbours walking alongside ease apart
+# sideways instead of passing through each other; x stays on the shared plan.
+# Only a horse on the move steps aside: a standing horse's offset is frozen,
+# so it never slides.
+func paddock_poses(delta: float) -> Array:
+	if betting_clock<paddock_clock-1.0: paddock_settled=false
+	paddock_clock=betting_clock
+	var poses: Array=[]
+	var walking: Array[bool]=[]
+	for i in range(8):
+		var pose: Dictionary=PARADE.pose(betting_clock,parade_plan[i] if parade_plan.size()==8 else [])
+		poses.append(pose)
+		walking.append((pose.velocity as Vector2).length()>.02 or not paddock_settled)
+	var desired:=PackedFloat32Array([0,0,0,0,0,0,0,0])
+	for i in range(8):
+		if not walking[i]: desired[i]=paddock_shift[i]
+	for sweep in range(3):
+		for i in range(7):
+			var inner: Dictionary=poses[i]
+			var outer: Dictionary=poses[i+1]
+			var alongside:=1.0-smoothstep(2.2,3.0,absf(float(inner.x)-float(outer.x)))
+			var gap:=float(course.config.laneSpacing)+float(outer.lat)+desired[i+1]-float(inner.lat)-desired[i]
+			var need:=maxf(0.0,1.05-gap)*alongside
+			if need<=0.0: continue
+			if walking[i] and walking[i+1]:
+				desired[i]-=need*.5
+				desired[i+1]+=need*.5
+			elif walking[i]: desired[i]-=need
+			elif walking[i+1]: desired[i+1]+=need
+	for i in range(8):
+		var before:=paddock_shift[i]
+		var pace:=(poses[i].velocity as Vector2).length()
+		# Side-steps stay slower than the walk itself, and turn the head with them.
+		if walking[i]: paddock_shift[i]=move_toward(before,desired[i],maxf(.12,pace*.5)*delta) if paddock_settled else desired[i]
+		poses[i].lat=float(poses[i].lat)+paddock_shift[i]
+		if paddock_settled and delta>0.0: poses[i].velocity=(poses[i].velocity as Vector2)+Vector2(0,(paddock_shift[i]-before)/delta)
+	paddock_settled=true
+	return poses
 
 # The infield screen shows live standings, then the official finishing order.
 func update_board(delta: float) -> void:

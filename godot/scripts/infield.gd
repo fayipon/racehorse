@@ -1,15 +1,16 @@
 extends Node3D
 
 # The infield garden behind the runners: a diamond-mown lawn, a fountain pond
-# on the centre line and a planted sun emblem at the final-bend end.
+# on the centre line and a topiary horse at the final-bend end.
 const KIT = preload("res://scripts/mesh_kit.gd")
 const LAWN = preload("res://shaders/lawn.gdshader")
 const WATER = preload("res://shaders/water.gdshader")
-const BED = preload("res://shaders/flower_bed.gdshader")
+const HEDGE = preload("res://shaders/hedge.gdshader")
+const HORSE_MODEL = preload("res://assets/quaternius/horse.glb")
 const STONE = Color("e4dccb")
 const POOL = Color("8fc3c9")
 const POND := Vector2(12.5,4.3)
-const SUN_BED := Vector3(-31,0,0)
+const GARDEN := Vector3(-31,0,0)
 
 func build(course: RefCounted, reduced: bool) -> void:
 	var lawn := MeshInstance3D.new()
@@ -22,15 +23,43 @@ func build(course: RefCounted, reduced: bool) -> void:
 	add_child(lawn)
 	build_pond()
 	build_fountain(reduced)
-	var bed := MeshInstance3D.new()
-	var plane := PlaneMesh.new()
-	plane.size=Vector2(12.4,12.4)
-	bed.mesh=plane
-	bed.position=SUN_BED+Vector3(0,.03,0)
-	var bed_mat := ShaderMaterial.new()
-	bed_mat.shader=BED
-	bed.material_override=bed_mat
-	add_child(bed)
+	build_topiary()
+
+# A clipped topiary horse, caught mid-gallop on a stone plinth inside a ring of
+# box hedge, faces the runners as they come off the final bend.
+func build_topiary() -> void:
+	var leaves := ShaderMaterial.new()
+	leaves.shader=HEDGE
+	leaves.set_shader_parameter("leaf_dark",Color("2a5323"))
+	leaves.set_shader_parameter("leaf_light",Color("6f9d45"))
+	var ring := KIT.begin()
+	for i in range(40):
+		var a := Vector3(cos(TAU*i/40.0),0,sin(TAU*i/40.0))*4.9
+		var b := Vector3(cos(TAU*(i+1)/40.0),0,sin(TAU*(i+1)/40.0))*4.9
+		var tangent := (b-a).normalized()
+		KIT.box(ring,GARDEN+(a+b)*.5+Vector3(0,.26,0),Vector3(a.distance_to(b)+.06,.52,.5),Color.WHITE,Basis(tangent,Vector3.UP,tangent.cross(Vector3.UP)))
+	KIT.finish(ring,leaves,self)
+	var st := KIT.begin()
+	KIT.disc(st,GARDEN+Vector3(0,.03,0),4.6,Color("4d3b2b"),Vector3.UP,40)
+	KIT.cylinder(st,GARDEN,GARDEN+Vector3(0,.62,0),1.35,STONE,24,1.2)
+	KIT.cylinder(st,GARDEN+Vector3(0,.62,0),GARDEN+Vector3(0,.74,0),1.42,STONE.lightened(.08),24)
+	KIT.disc(st,GARDEN+Vector3(0,.74,0),1.42,STONE.lightened(.08),Vector3.UP,24)
+	KIT.finish(st,KIT.painted(.9,.15),self)
+	var sculpture := Node3D.new()
+	sculpture.position=GARDEN+Vector3(0,.74,0)
+	var facing := Vector3(1,0,.45).normalized()
+	sculpture.rotation.y=atan2(-facing.x,-facing.z)
+	add_child(sculpture)
+	var model: Node3D=HORSE_MODEL.instantiate()
+	model.scale=Vector3.ONE*.92
+	model.rotation.y=PI
+	sculpture.add_child(model)
+	for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+		mesh.material_override=leaves
+	var player: AnimationPlayer=model.find_children("*","AnimationPlayer",true,false)[0]
+	player.play("Gallop")
+	player.seek(.34,true)
+	player.pause()
 
 func build_pond() -> void:
 	var water := KIT.begin()

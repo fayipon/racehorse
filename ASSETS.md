@@ -54,7 +54,7 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 ## 草地跑道、欄杆與內場
 
 - `godot/scripts/race_track.gd` 程序生成草地跑道、沙地訓練道、白色圓管欄杆（內欄鵝頸柱）、終點柱、距離桿與樹籬；材質為自製 `racing_turf`、`dirt_track`、`hedge` shader。修剪條紋沿橢圓連續銜接，近景有細微紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
-- `godot/scripts/infield.gd` 與自製 `lawn`、`water`、`flower_bed` shader 建立內場斜格草坪、噴泉池與太陽花壇；噴泉以 CPUParticles3D 繪製。
+- `godot/scripts/infield.gd` 與自製 `lawn`、`water`、`hedge` shader 建立內場斜格草坪、噴泉池與造型馬花園；造型馬沿用 Quaternius 馬模型，套上樹籬材質。噴泉以 CPUParticles3D 繪製。冠軍圈的盆栽樹沿用 Nature MegaKit 的 `tree_round`。
 - 先前的欄杆模型：3D Assets 的 [Horse Stables and Equestrian Yard — Arena Rail](https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48)（CC0 1.0，發布者標示為 AI 製作素材）。原始與轉換後的 GLB、`manifest.json`、`LICENSE.md` 保留在 `godot/assets/equestrian/` 供參考，`scripts/prepare_equestrian_assets.mjs` 仍可重建；現已由 `export_presets.cfg` 排除，不打包進 Web 匯出。
 - 馬蹄後的粒子調整為較小、較淡的草綠色揚屑，取代原本沙地的黃褐色塵霧。
 

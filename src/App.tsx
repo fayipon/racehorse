@@ -34,6 +34,15 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
   const [progress, setProgress] = useState(0)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [finishRound, setFinishRound] = useState(0)
+  // Off screen, Godot idles at a few frames a second to spare the battery.
+  const [onScreen, setOnScreen] = useState(true)
+  useEffect(() => {
+    const element = shell.current
+    if (!element || !('IntersectionObserver' in window)) return
+    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting), { threshold: 0.05 })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
   const phase = phaseAt(game, now)
   const seconds = Math.max(0, (now - game.startedAt - BET_MS) / 1000)
   const visualSeconds = racePresentationTime(seconds)
@@ -66,8 +75,8 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     return () => clearTimeout(timeout)
   }, [ready, failed, loadAttempt])
   useEffect(() => {
-    frame.current?.contentWindow?.postMessage({ type: 'race-state', phase, seconds, bettingElapsed: Math.max(0, (now-game.startedAt)/1000), positions, paradePlan, finishTimes: HORSES.map(h => 44.5 + order.indexOf(h.id) * .65), winner: order[0], camera: shot.id, round: game.round, muted, paused }, location.origin)
-  }, [game.round, game.startedAt, muted, now, order, phase, positions, seconds, shot.id, ready, paradePlan, paused])
+    frame.current?.contentWindow?.postMessage({ type: 'race-state', phase, seconds, bettingElapsed: Math.max(0, (now-game.startedAt)/1000), positions, paradePlan, finishTimes: HORSES.map(h => 44.5 + order.indexOf(h.id) * .65), winner: order[0], camera: shot.id, round: game.round, muted, paused, visible: onScreen }, location.origin)
+  }, [game.round, game.startedAt, muted, now, order, phase, positions, seconds, shot.id, ready, paradePlan, paused, onScreen])
   return <div ref={shell} className={`race-stage phase-${phase} ${!ready ? 'is-loading' : ''} ${assembling ? 'is-assembling' : ''} ${finishing ? 'has-finished' : ''} ${cinematic ? 'is-cinematic' : ''} ${winnerCutIn ? 'is-cut-in' : ''}`}>
     {!ready && <div className="engine-loading" role="status" aria-live="polite"><div className="loading-emblem" aria-hidden="true">♞</div><span className="loading-brand">SUNNY CUP</span><h2>{failed ? '賽場暫時無法載入' : '正在準備你的陽光賽場'}</h2><p>{failed ? '連線可能中斷或載入逾時，請重試。' : progress >= 100 ? '資源下載完成，正在啟動 3D 賽場…' : '正在下載小馬與賽場資源…'}</p><div className="loading-progress" role="progressbar" aria-label="賽場下載進度" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><i style={{ width: `${progress}%` }} /></div><strong>{Math.floor(progress)}<small>%</small></strong><small>首次載入約 46 MB · 準備完成後開放操作</small>{failed && <button onClick={() => { setFailed(false); setProgress(0); setReady(false); onReady(false); setLoadAttempt(value => value + 1); if (frame.current) frame.current.src = `${import.meta.env.BASE_URL}game/index.html` }}>重新載入賽場</button>}</div>}
 
@@ -89,7 +98,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     {finishing && !winnerCutIn && <div key={`finish-${game.round}`} className="finish-sequence" aria-live="polite"><div className="finish-announcement"><span className="finish-kicker">FIRST ACROSS THE LINE · 率先衝線</span><strong>{HORSES[order[0]-1].name}</strong><div><HorseNumber id={order[0]} /><span>本場冠軍<small>{HORSES[order[0]-1].en}</small></span><Trophy size={22} /></div></div></div>}
     {phase === 'result' && <PodiumResults key={`podium-${game.round}`} order={order} round={game.round} />}
     <div className="stage-bottom">
-      <div className="live-ranking"><small>即時排名</small><div className="ranking-list" key={game.round} role="list" aria-label="即時前三名">{ranking.map((h, i) => <div key={h.id} className="ranking-row" role="listitem" aria-hidden={i >= 3} style={{ '--rank': Math.min(i, 3), '--rank-color': h.color, opacity: i < 3 ? 1 : 0, zIndex: 8 - i } as CSSProperties}><span className="ranking-place">{i + 1}</span><HorseNumber id={h.id} small /><b>{h.en}</b></div>)}</div></div>
+      <div className="live-ranking"><small>即時排名</small><div className="ranking-list" key={game.round} role="list" aria-label="即時排名">{ranking.map((h, i) => <div key={h.id} className={`ranking-row ${i < 3 ? 'is-podium' : ''}`} role="listitem" style={{ '--rank': i, '--rank-color': h.color, zIndex: 8 - i } as CSSProperties}><span className="ranking-place">{i + 1}</span><HorseNumber id={h.id} small /><b>{h.en}</b></div>)}</div></div>
       <div className="race-progress"><div><span>{phase === 'betting' ? '準備就緒 · 等待開跑' : 'RACE PROGRESS'}</span><b>{phase === 'betting' ? '1200 M' : `${Math.round(Math.max(...positions) * 1200)} / 1200 M`}</b></div><div className="progress-rail"><span style={{ width: `${phase === 'betting' ? 0 : Math.max(...positions) * 100}%` }} /></div><small><i />{shot.label} <span>自動分鏡</span></small></div>
       <MiniTrack positions={phase === 'betting' ? paradePositions((now-game.startedAt)/1000,paradePlan) : positions} />
     </div>

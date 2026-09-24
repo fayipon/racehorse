@@ -6,6 +6,7 @@ const HORSE = preload("res://scripts/asset_horse.gd")
 const KIT = preload("res://scripts/mesh_kit.gd")
 const LAWN = preload("res://shaders/lawn.gdshader")
 const HEDGE = preload("res://shaders/hedge.gdshader")
+const TREE = preload("res://assets/nature/tree_round.gltf")
 const MARBLE = Color("f3eee3")
 const STONE = Color("e2d9c6")
 const GOLD = Color("dcb45c")
@@ -89,13 +90,18 @@ func build_backdrop() -> void:
 	var studio := KIT.painted()
 	studio.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
 	KIT.finish(st,studio,self,false)
-	# Clipped topiary in white planters frames the podium.
+	# Trees from the course's own nature kit, potted in white planters.
 	var planters := KIT.begin()
 	for x in [-9.2,9.2]:
 		var pot := Vector3(x,0,-1.2)
 		KIT.cylinder(planters,pot,pot+Vector3(0,1.1,0),.62,MARBLE,16,.78)
 		KIT.cylinder(planters,pot+Vector3(0,1.1,0),pot+Vector3(0,1.22,0),.84,GOLD,16)
-		KIT.cylinder(planters,pot+Vector3(0,1.2,0),pot+Vector3(0,3.9,0),.95,Color("4f8a3a"),12,.05)
+		KIT.disc(planters,pot+Vector3(0,1.17,0),.78,Color("4d3b2b"),Vector3.UP,16)
+		var tree: Node3D=TREE.instantiate()
+		tree.position=pot+Vector3(0,1.15,0)
+		tree.rotation.y=.6 if x<0 else 2.4
+		tree.scale=Vector3.ONE*.42
+		add_child(tree)
 	KIT.finish(planters,KIT.painted(.82,.22),self)
 	var hedge := KIT.begin()
 	for i in range(18):
