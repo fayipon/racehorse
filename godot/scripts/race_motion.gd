@@ -38,3 +38,10 @@ static func progress(time: float, horse_id: int, finish_time: float) -> float:
 	var t:=clampf(time/finish_time,0,1)
 	var wave:=sin(t*PI*4+horse_id*1.7)*.025*sin(t*PI)
 	return clampf(t+wave,0,1)
+
+static func track_progress(time: float, horse_id: int, finish_time: float) -> float:
+	if time<=finish_time: return progress(time,horse_id,finish_time)
+	# Continue at the exact incoming finish velocity. The presentation clock
+	# still supplies the shared freeze and acceleration, with no run-out braking.
+	var finish_speed: float=(1.0-.025*PI*sin(horse_id*1.7))/finish_time
+	return 1.0+(time-finish_time)*finish_speed

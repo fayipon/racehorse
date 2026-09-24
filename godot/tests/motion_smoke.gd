@@ -23,6 +23,16 @@ func _initialize() -> void:
 		var finish:=44.5+(id-1)*.65
 		assert(MOTION.progress(finish-.01,id,finish)<1.0)
 		assert(MOTION.progress(finish,id,finish)==1.0)
+		assert(MOTION.track_progress(finish,id,finish)==1.0)
+		var incoming_speed: float=(MOTION.progress(finish,id,finish)-MOTION.progress(finish-.001,id,finish))/.001
+		var outgoing_speed: float=(MOTION.track_progress(finish+.001,id,finish)-1.0)/.001
+		assert(absf(incoming_speed-outgoing_speed)<.0001,"Crossing must preserve each horse's incoming speed")
+		var last_position:=1.0
+		for step in range(1,81):
+			var continued: float=MOTION.track_progress(finish+step*.1,id,finish)
+			assert(continued>last_position,"Every horse must keep running beyond the finish, even after four seconds")
+			assert(absf((continued-last_position)/.1-outgoing_speed)<.0001,"Run-out must not brake to a halt")
+			last_position=continued
 	var previous_visual:=42.0
 	for frame in range(1,481):
 		var time:=42.0+frame/60.0

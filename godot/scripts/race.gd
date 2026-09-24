@@ -12,6 +12,7 @@ var winner := 1
 var shot := 0
 var positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var visual_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+var track_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 var elapsed := 0.0
 var bridge_timer := 0.0
 var mats: Dictionary = {}
@@ -30,12 +31,10 @@ const PARADE = preload("res://scripts/parade_motion.gd")
 var parade_plan: Array = []
 var betting_clock := 0.0
 var last_betting_snapshot := -1.0
-var finish_age := -1.0
 var finished := false
 var dust: Array[MeshInstance3D] = []
 var animation_clock := 0.0
 var reduced_motion := false
-var crossed_at: Array = [-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0]
 var camera_focus := Vector3.ZERO
 var camera_initialized := false
 var sprint_grade: ColorRect
@@ -248,7 +247,6 @@ func build_finish_effects() -> void:
 
 func trigger_finish() -> void:
 	finished=true
-	finish_age=0.0
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.parent.postMessage({type:'race-finish',round:%d,winner:%d},window.location.origin)" % [race_round,winner])
 
@@ -263,12 +261,10 @@ func read_bridge() -> void:
 	if next_round != race_round:
 		visual_positions = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
 		race_round = next_round
-		finish_age=-1.0
 		finished=false
 		previous_shot=-1
 		camera_initialized=false
 		dust_cycles.fill(-1)
-		crossed_at=[-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0,-1.0]
 	phase = str(data.get("phase","betting"))
 	var snapshot := float(data.get("seconds",0.0))
 	if snapshot != seconds or reset_clock or not motion_clock.initialized:
@@ -297,7 +293,6 @@ func _process(delta: float) -> void:
 	if phase=="betting" and not preview_paused:
 		parade_clock.advance(delta)
 		betting_clock=parade_clock.seconds
-	if finish_age>=0.0: finish_age+=delta
 	if bridge_timer>.05:
 		read_bridge()
 		bridge_timer=0.0
@@ -314,21 +309,20 @@ func _process(delta: float) -> void:
 		for i in range(8): positions[i]=clampf(seconds/(44.5+i*.65),0,1)
 		if phase=="betting" and finished:
 			finished=false
-			finish_age=-1.0
 	var playback: Vector2=motion_clock.presentation(race_clock)
 	var presentation_clock:=playback.x
 	var slow_motion:=playback.y if phase=="racing" else 1.0
 	var sprint_effort:=smoothstep(34.0,41.5,race_clock) if phase=="racing" else 0.0
 	animation_clock+=delta*slow_motion
 	for i in range(8):
-		visual_positions[i]=MOTION.progress(presentation_clock,i+1,float(finish_times[i])) if phase!="betting" else 0.0
-		var p := float(visual_positions[i])
+		track_positions[i]=MOTION.track_progress(presentation_clock,i+1,float(finish_times[i])) if phase!="betting" else 0.0
+		visual_positions[i]=minf(float(track_positions[i]),1.0)
+		var p := float(track_positions[i])
 		var sample: Dictionary
-		var moving := 1.0
-		var running := phase=="racing" and p<.9998
+		var moving := 1.0 if phase=="racing" else 0.0
+		var running := phase=="racing"
 		if phase=="betting":
 			visual_positions[i]=0.0
-			crossed_at[i]=-1.0
 			var itinerary: Array=parade_plan[i] if parade_plan.size()==8 else []
 			var stroll: Vector2=PARADE.sample(betting_clock,itinerary)
 			var x:=stroll.x
@@ -340,21 +334,6 @@ func _process(delta: float) -> void:
 			horses[i].position=Vector3(x,0,z)
 			horses[i].rotation.y=lerp_angle(horses[i].rotation.y,target_yaw,minf(delta*3,1.0))
 		else:
-			# Coast through the finish instead of freezing on top of the stripe.
-			if p>=.9998:
-				if float(crossed_at[i])<0.0: crossed_at[i]=float(finish_times[i])
-				var since_finish := maxf(0.0,presentation_clock-float(crossed_at[i]))
-				var coast := clampf(since_finish/4.0,0,1)
-				var finish_rank := 0
-				for finish_time in finish_times:
-					if float(finish_time)<float(finish_times[i]): finish_rank+=1
-				# Use world distances so outer lanes cannot stop ahead of a better rank.
-				var winner_lap: float=4.0*float(course.config.halfStraight)+TAU*course.lane_radius(winner-1)
-				var lane_lap: float=4.0*float(course.config.halfStraight)+TAU*course.lane_radius(i)
-				var stop_distance: float=winner_lap*.034-mini(finish_rank,3)*1.6
-				p=1.0+(1.0-pow(1.0-coast,3))*stop_distance/lane_lap
-				running=since_finish<1.5
-				moving=pow(1.0-coast,2)
 			sample=course.sample(p,course.lane_radius(i))
 			horses[i].position=sample.position
 			var tangent: Vector3=sample.tangent
@@ -396,7 +375,7 @@ func _process(delta: float) -> void:
 	if finished or phase=="result":
 		target=horses[focus_index].position
 		target.y=1.45
-		path=course.sample(float(visual_positions[focus_index]),course.lane_radius(focus_index))
+		path=course.sample(float(track_positions[focus_index]),course.lane_radius(focus_index))
 	var outward: Vector3=path.outward
 	var forward: Vector3=path.tangent
 	var cam_pos: Vector3
@@ -445,9 +424,11 @@ func _process(delta: float) -> void:
 			var middle_lane:=float(course.config.laneStart)+3.5*float(course.config.laneSpacing)
 			var line_focus:=Vector3(0,1.3,lerpf(middle_lane,target.z,.75))
 			focus=(target+forward*3.4).lerp(line_focus,lock_to_line)
-			var carry:=smoothstep(.8,3.5,finish_age)*.65 if finished else 0.0
-			focus=focus.lerp(target,carry)
-			cam_pos=focus+Vector3(lerpf(1.5,3.0,lock_to_line),lerpf(.5,1.0,lock_to_line),lerpf(9.4,8.4,lock_to_line))
+			var carry:=smoothstep(45.8,46.65,race_clock) if finished else 0.0
+			focus=focus.lerp(target+forward*1.2,carry)
+			var line_offset:=Vector3(lerpf(1.5,3.0,lock_to_line),lerpf(.5,1.0,lock_to_line),lerpf(9.4,8.4,lock_to_line))
+			var chase_offset:=outward*9.4+forward*3.0+Vector3(0,1.0,0)
+			cam_pos=focus+line_offset.lerp(chase_offset,carry)
 			fov=lerpf(46.0,42.0,smoothstep(43.0,47.5,race_clock))
 			# Open the frame as motion releases so the following runners surge through.
 			var rush:=smoothstep(45.8,46.05,race_clock)*lerpf(.65,1.0,smoothstep(46.05,50.0,race_clock))
@@ -505,12 +486,10 @@ func update_effects(delta: float) -> void:
 	sprint_grade.visible=not reduced_motion and lens_strength>.001
 	sprint_material.set_shader_parameter("strength",lens_strength)
 	sprint_material.set_shader_parameter("rush",rush)
-	var presentation_clock: float=motion_clock.presentation(race_clock).x
 	for i in range(dust.size()):
 		var owner := i%8
-		var p := float(visual_positions[owner])
-		var since_finish:=maxf(0.0,presentation_clock-float(finish_times[owner]))
-		dust[i].visible=phase=="racing" and p>.002 and (p<.9998 or since_finish<1.4) and (not reduced_motion or i<48)
+		var p := float(track_positions[owner])
+		dust[i].visible=phase=="racing" and p>.002 and (not reduced_motion or i<48)
 		if dust[i].visible:
 			var particle_clock:=animation_clock*(1.2+float(i%3)*.09)+i*.173
 			var cycle:=int(floor(particle_clock))
@@ -526,5 +505,5 @@ func update_effects(delta: float) -> void:
 			var size: float=.2+sin(t*PI)*lerpf(.85,1.55,sprint)
 			dust[i].scale=Vector3(size*1.3,size,size)
 			var tint:=Color("c6a57a")
-			tint.a=sin(t*PI)*lerpf(.17,.3,sprint)*(1.0-smoothstep(.25,1.4,since_finish))
+			tint.a=sin(t*PI)*lerpf(.17,.3,sprint)
 			dust_materials[i].albedo_color=tint
