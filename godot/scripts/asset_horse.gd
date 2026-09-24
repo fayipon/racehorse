@@ -11,6 +11,11 @@ var motion_blend := 0.0
 var current_clip := "Idle"
 var gait_phase := 0.0
 var cadence := 1.0
+# Races are judged at the nose: the muzzle tip is tracked on the head bone.
+var skeleton: Skeleton3D
+var head_bone := -1
+var muzzle_local := Vector3.ZERO
+var horse_from_skeleton := Transform3D.IDENTITY
 
 func build(index: int, _color: Color) -> void:
 	var style: Dictionary=styles[index]
@@ -50,8 +55,51 @@ func build(index: int, _color: Color) -> void:
 	player.play("Idle")
 	player.advance(0)
 	player.seek(index*.19,true)
-	var skeleton: Skeleton3D = model.find_children("*","Skeleton3D",true,false)[0]
+	skeleton = model.find_children("*","Skeleton3D",true,false)[0]
 	add_race_cloth(skeleton,index,Color(style.number))
+	find_muzzle()
+
+# The muzzle tip is the forward-most vertex of the rest pose, stored in the
+# head bone's space so it follows the head through every gait.
+func find_muzzle() -> void:
+	var node: Node = skeleton
+	while node!=self:
+		horse_from_skeleton=(node as Node3D).transform*horse_from_skeleton
+		node=node.get_parent()
+	head_bone=skeleton.find_bone("Head")
+	var best := -INF
+	for mesh_instance: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+		if mesh_instance.skin==null: continue
+		var skin: Skin=mesh_instance.skin
+		for bind in range(skin.get_bind_count()):
+			# Imported skins bind by bone name, so the bone index can be -1.
+			var bone:=skin.get_bind_bone(bind)
+			if bone<0: bone=skeleton.find_bone(skin.get_bind_name(bind))
+			if bone!=head_bone: continue
+			for surface in range(mesh_instance.mesh.get_surface_count()):
+				var arrays := mesh_instance.mesh.surface_get_arrays(surface)
+				var vertices: PackedVector3Array=arrays[Mesh.ARRAY_VERTEX]
+				var bones: PackedInt32Array=arrays[Mesh.ARRAY_BONES]
+				var weights: PackedFloat32Array=arrays[Mesh.ARRAY_WEIGHTS]
+				var per:=bones.size()/vertices.size()
+				for v in range(vertices.size()):
+					var weight:=0.0
+					for k in range(per):
+						if bones[v*per+k]==bind: weight+=weights[v*per+k]
+					if weight<.5: continue
+					var local: Vector3=skin.get_bind_pose(bind)*vertices[v]
+					var ahead:=-(horse_from_skeleton*(skeleton.get_bone_global_rest(head_bone)*local)).z
+					if ahead<=best: continue
+					best=ahead
+					muzzle_local=local
+
+# The muzzle tip in the horse's own space for the current pose.
+func muzzle_position() -> Vector3:
+	return horse_from_skeleton*(skeleton.get_bone_global_pose(head_bone)*muzzle_local)
+
+# How far the muzzle currently reaches ahead of the horse's origin, in metres.
+func muzzle_reach() -> float:
+	return -muzzle_position().z
 
 func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 	var attachment := BoneAttachment3D.new()

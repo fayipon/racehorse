@@ -33,9 +33,14 @@ func _initialize() -> void:
 			assert(continued>last_position,"Every horse must keep running beyond the finish, even after four seconds")
 			assert(absf((continued-last_position)/.1-outgoing_speed)<.0001,"Run-out must not brake to a halt")
 			last_position=continued
-	var previous_visual:=42.0
-	for frame in range(1,481):
-		var time:=42.0+frame/60.0
+	# The special-move cut-in slows the field to about a third, then makes the
+	# time back so the first horse still reaches the post at 44.6 seconds.
+	assert(clock.presentation(39.5).is_equal_approx(Vector2(39.5,1)),"Normal speed until the cut-in")
+	assert(absf(clock.presentation(40.3).y-.35)<.02,"The cut-in plays in slow motion")
+	assert(clock.presentation(42.5).y>1.2,"The release rushes toward the post")
+	var previous_visual:=clock.presentation(39.0).x
+	for frame in range(1,661):
+		var time:=39.0+frame/60.0
 		var playback: Vector2=clock.presentation(time)
 		assert(playback.x>=previous_visual-.00001,"Cinematic playback may hold but must never reverse")
 		assert(playback.y>=-.00001 and playback.y<1.901,"Acceleration must stay within the intended playback range")

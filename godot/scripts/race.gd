@@ -2,6 +2,9 @@ extends Node3D
 
 # React owns the clock and betting ledger. Godot renders the same distances,
 # interpolating the bridge's snapshots for smooth, deterministic racing.
+# Races are judged at the nose: a horse's progress places its muzzle, which
+# gallops about 2.4 m ahead of its origin, rather than the middle of its body.
+const NOSE := 2.4
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df")]
 var horses: Array[Node3D] = []
 var camera: Camera3D
@@ -37,6 +40,20 @@ var dust: Array[MeshInstance3D] = []
 var animation_clock := 0.0
 var reduced_motion := false
 var camera_focus := Vector3.ZERO
+var camera_offset := Vector3.ZERO
+var focus_offset := Vector3.ZERO
+var camera_roll := 0.0
+# Special-move effects: anime focus lines, a two-tone impact frame and a
+# short shake, each triggered by the sprint cuts.
+var lines_material: ShaderMaterial
+var lines_rect: ColorRect
+var lines_strength := 0.0
+var lines_target := 0.0
+var impact_material: ShaderMaterial
+var impact_rect: ColorRect
+var impact_clock := 10.0
+var impact_scale := 0.0
+var impact_shake := false
 var camera_initialized := false
 var sprint_grade: ColorRect
 var sprint_material: ShaderMaterial
@@ -47,6 +64,15 @@ var dust_forwards: Array[Vector3] = []
 var dust_outwards: Array[Vector3] = []
 var podium = preload("res://scripts/podium.gd").new()
 var featured_runner := 0
+var winner_nose := NOSE
+
+func fullscreen_rect(mat: ShaderMaterial) -> ColorRect:
+	var rect := ColorRect.new()
+	rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter=Control.MOUSE_FILTER_IGNORE
+	rect.material=mat
+	rect.visible=false
+	return rect
 
 func course_point(progress: float, lane: int) -> Vector3:
 	return course.sample(progress,course.lane_radius(lane)).position
@@ -86,6 +112,17 @@ func _ready() -> void:
 	sprint_material.shader=preload("res://shaders/sprint_lens.gdshader")
 	sprint_grade.material=sprint_material
 	lens_layer.add_child(sprint_grade)
+	var fx_layer := CanvasLayer.new()
+	fx_layer.layer=2
+	add_child(fx_layer)
+	lines_material=ShaderMaterial.new()
+	lines_material.shader=preload("res://shaders/focus_lines.gdshader")
+	lines_rect=fullscreen_rect(lines_material)
+	fx_layer.add_child(lines_rect)
+	impact_material=ShaderMaterial.new()
+	impact_material.shader=preload("res://shaders/impact_frame.gdshader")
+	impact_rect=fullscreen_rect(impact_material)
+	fx_layer.add_child(impact_rect)
 	if OS.has_feature("web"):
 		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
 		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-ready'},window.location.origin)")
@@ -270,16 +307,20 @@ func _process(delta: float) -> void:
 			if absf(stroll.y)>.04: target_yaw=-PI/2 if stroll.y>0 else PI/2
 			if betting_clock>=47.0: target_yaw=-PI/2
 			moving=clampf(absf(stroll.y)/1.65,0,1)
-			horses[i].position=Vector3(x,0,z)
+			horses[i].position=Vector3(x-NOSE,0,z)
 			horses[i].rotation.y=lerp_angle(horses[i].rotation.y,target_yaw,minf(delta*3,1.0))
 		else:
 			sample=course.sample(p,course.lane_radius(i))
-			horses[i].position=sample.position
 			var tangent: Vector3=sample.tangent
+			horses[i].position=sample.position-tangent*(winner_nose if i==winner-1 else NOSE)
 			horses[i].rotation.y=atan2(-tangent.x,-tangent.z)
 		var celebration := phase=="result" and i==winner-1
 		horses[i].visible=phase!="result"
 		horses[i].call("animate",animation_clock,moving,running,celebration,delta*slow_motion,sprint_effort)
+	# As the winner slows into the crossing hold, its measured muzzle rather than
+	# the stride average is brought exactly onto the line.
+	var exact:=smoothstep(44.45,44.6,race_clock)*(1.0-smoothstep(45.8,46.3,race_clock)) if phase=="racing" else 0.0
+	winner_nose=lerpf(NOSE,horses[winner-1].muzzle_reach(),exact)
 	podium.visible=phase=="result"
 	if phase=="result":
 		podium.present(finish_times,COLORS,race_round)
@@ -294,8 +335,8 @@ func _process(delta: float) -> void:
 	for i in range(8):
 		target+=horses[i].position/8.0
 		mean_progress+=float(visual_positions[i])/8.0
-	# Ease toward the front group without cutting to the preselected winner
-	# or jumping whenever the live leader changes.
+	# From the far turn, ease toward the front group without cutting to the
+	# preselected winner or jumping whenever the live leader changes.
 	if phase=="racing":
 		var leading_progress:=float(visual_positions.max())
 		var front_target:=Vector3.ZERO
@@ -317,21 +358,32 @@ func _process(delta: float) -> void:
 		path=course.sample(float(track_positions[focus_index]),course.lane_radius(focus_index))
 	var outward: Vector3=path.outward
 	var forward: Vector3=path.tangent
-	var cam_pos: Vector3
-	var focus := target
 	var active_shot := shot
 	if phase=="racing":
 		if finished and race_clock<45.8: active_shot=10
-		elif race_clock>=42.8: active_shot=6
+		elif finished or race_clock>=42.3: active_shot=6
 		elif race_clock>=39.5: active_shot=8
+		elif race_clock>=37.0: active_shot=5
 	if active_shot==8 and previous_shot!=8:
 		featured_runner=visual_positions.find(visual_positions.max())
+	# Follow shots ride along with an anchor, so fast runners never drift out of
+	# frame; only the framing offsets ease. Fixed shots hold a world position
+	# and pan like a lens on a tripod.
+	var anchor := target
+	var fixed := false
+	var crisp := false
+	var roll := 0.0
+	var cam_pos: Vector3
+	var focus := target
 	var fov := 49.0
+	lines_target=0.0
+	var aspect:=get_viewport().get_visible_rect().size.aspect()
+	var middle_lane:=float(course.config.laneStart)+3.5*float(course.config.laneSpacing)
 	match active_shot:
 		0:
-			focus=Vector3(-4,1.3,25.0)
+			fixed=true
+			focus=Vector3(-4,1.3,23.5)
 			cam_pos=Vector3(8.5,6.0,42)
-			focus.z-=1.5
 		1:
 			focus=target+outward*1.3
 			cam_pos=focus+forward*12+outward*7+Vector3(0,3.4,0)
@@ -339,70 +391,113 @@ func _process(delta: float) -> void:
 			focus=target+forward*.8
 			cam_pos=target+outward*9+forward*5+Vector3(0,2.3,0)
 		3:
-			focus=target+forward*2.0
-			cam_pos=target-forward*10+outward*6+Vector3(0,5.0,0)
+			# Chase the front runners through the far turn from behind and above.
+			focus=target+forward*3.2
+			cam_pos=target-forward*9.5+outward*5.2+Vector3(0,4.2,0)
+			fov=46.0
 		4:
+			fixed=true
 			var reveal:=0.5 if reduced_motion else smoothstep(50.0,60.0,race_clock)
 			fov=34.0
-			var aspect:=get_viewport().get_visible_rect().size.aspect()
 			var distance:=maxf(19.0,15.5/(2.0*tan(deg_to_rad(fov*.5))*aspect))
 			focus=podium.position+Vector3(0,2.6,0)
 			cam_pos=podium.position+Vector3(lerpf(.8,-.5,reveal),4.8,distance+lerpf(1.2,0.0,reveal))
 		5:
-			# Low side dolly: the rail and hoof-level dust slide past the runners.
-			var push:=smoothstep(37.0,42.8,race_clock)
-			focus=target+forward*3.4
-			focus.y=1.5
-			cam_pos=focus+outward*lerpf(12.0,10.8,push)+forward*lerpf(3.0,1.5,push)+Vector3(0,1.0,0)
-			fov=lerpf(54.0,49.0,push)
+			# Turning for home: a long lens beside the winning post watches the
+			# field charge out of the final bend, compressed and head-on.
+			fixed=true
+			cam_pos=Vector3(7.0,1.5,float(course.config.innerRadius)+float(course.config.trackWidth)+2.2)
+			focus=target+forward*2.0+Vector3(0,.1,0)
+			var half_width:=atan(5.2/cam_pos.distance_to(focus))
+			fov=clampf(rad_to_deg(2.0*atan(tan(half_width)/aspect)),9.0,38.0)
+			lines_target=.3*smoothstep(37.0,39.3,race_clock)
 		6:
-			var middle_lane:=float(course.config.laneStart)+3.5*float(course.config.laneSpacing)
+			fixed=true
 			if finished:
-				# After the crossing orbit, stay on the stripe as every runner
-				# gallops through. This composition must not depend on a horse.
-				focus=Vector3(0,1.3,middle_lane)
-				cam_pos=focus+Vector3(4.5,4.2,17.0)
-				fov=48.0
+				# After the crossing orbit, a still view from inside the main stand,
+				# under its roof, keeps the line and the field in frame as they gallop on.
+				cam_pos=Vector3(-4.0,11.0,47.5)
+				focus=Vector3(10.0,.5,24.0)
+				fov=50.0
 			else:
-				var lock_to_line:=smoothstep(42.8,45.6,race_clock)
-				var line_focus:=Vector3(0,1.3,lerpf(middle_lane,target.z,.75))
-				focus=(target+forward*3.4).lerp(line_focus,lock_to_line)
-				cam_pos=focus+Vector3(lerpf(1.5,3.0,lock_to_line),lerpf(.5,1.0,lock_to_line),lerpf(9.4,8.4,lock_to_line))
-				fov=lerpf(46.0,42.0,smoothstep(43.0,47.5,race_clock))
+				# Release after the cut-in: a low wide lens races beside the front
+				# runners at hoof height, horizon tilted, toward the post.
+				fixed=false
+				focus=target+forward*2.6+Vector3(0,.1,0)
+				cam_pos=target+outward*6.2+forward*1.0+Vector3(0,-.5,0)
+				fov=lerpf(58.0,52.0,smoothstep(42.3,44.6,race_clock))
+				roll=-5.0
+				lines_target=.45
 		7:
+			fixed=true
 			cam_pos=Vector3(0,100,5)
 			focus=Vector3.ZERO
 			fov=70.0
 		8:
-			# Editorial cut to the live leader's face and shoulder, then dolly alongside.
+			# Special-move cut-in on the live leader: slow motion, a snap zoom onto
+			# its face from a low heroic angle, then a sweep round to the side.
 			var close_path: Dictionary=course.sample(float(visual_positions[featured_runner]),course.lane_radius(featured_runner))
 			var close_forward: Vector3=close_path.tangent
-			var push:=0.5 if reduced_motion else smoothstep(39.5,42.8,race_clock)
-			focus=horses[featured_runner].position+close_forward*.75+Vector3(0,1.85,0)
-			cam_pos=focus+close_path.outward*5.0+close_forward*lerpf(2.7,1.8,push)+Vector3(0,.15,0)
-			fov=lerpf(42.0,37.0,push)
+			var close_out: Vector3=close_path.outward
+			var sweep:=lerpf(.8,.32,smoothstep(39.5,42.3,race_clock))
+			var punch:=1.0 if reduced_motion else 1.0-pow(1.0-clampf((race_clock-39.5)/.32,0.0,1.0),3.0)
+			anchor=horses[featured_runner].position
+			focus=anchor+close_forward*1.75+Vector3(0,2.05,0)
+			cam_pos=focus+(close_out*cos(sweep)+close_forward*sin(sweep))*4.0+Vector3(0,-.35,0)
+			fov=lerpf(60.0,31.0,punch)-4.0*smoothstep(39.9,42.3,race_clock)
+			roll=lerpf(13.0,6.0,smoothstep(39.5,42.3,race_clock))
+			crisp=true
+			lines_target=1.0-.35*smoothstep(40.6,42.3,race_clock)
 		10:
-			# The race clock holds the crossing pose while the camera keeps moving.
-			var orbit:=0.5 if reduced_motion else smoothstep(44.6,45.8,race_clock)
-			var angle:=lerpf(-.20,.45,orbit)
-			focus=horses[winner-1].position+forward*.5+Vector3(0,1.65,0)
-			cam_pos=focus+outward*cos(angle)*6.5+forward*sin(angle)*6.5+Vector3(0,.6,0)
-			fov=40.0
+			# Photo finish: the impact lands with the lens in the plane of the line,
+			# so the line, the winning post and the winner's nose stand in one
+			# vertical at the centre. After that beat the camera swings low round
+			# to the front while the race clock holds the crossing pose.
+			var sweep:=0.5 if reduced_motion else smoothstep(45.1,45.8,race_clock)
+			var punch:=1.0 if reduced_motion else 1.0-pow(1.0-clampf((race_clock-44.6)/.25,0.0,1.0),3.0)
+			var tip: Vector3=horses[winner-1].transform*horses[winner-1].muzzle_position()
+			var hero:=horses[winner-1].position+forward*1.2+Vector3(0,1.75,0)
+			var pivot:=tip.lerp(hero,sweep)
+			var angle:=lerpf(0.0,.75,sweep)
+			cam_pos=pivot+(outward*cos(angle)+forward*sin(angle))*6.0+Vector3(0,lerpf(-.35,.35,sweep),0)
+			focus=pivot
+			fov=lerpf(58.0,36.0,punch)
+			crisp=true
+			lines_target=.95
 		_:
 			cam_pos=target+outward*9+forward*7+Vector3(0,2.1,0)
-	var edit_cut:=active_shot!=previous_shot and (active_shot in [4,6,8,10] or previous_shot==4)
-	if not camera_initialized or edit_cut:
-		camera.position=cam_pos
-		camera_focus=focus
+	var mount:=Vector3.ZERO if fixed else anchor
+	var cut:=active_shot!=previous_shot
+	# The cut-in and the crossing land with an impact frame; the crossing shakes.
+	if cut and camera_initialized and phase=="racing" and active_shot in [8,10]:
+		impact_clock=0.0
+		impact_scale=.7 if active_shot==8 else 1.0
+		impact_shake=active_shot==10
+	# Every change of shot is a straight cut, as in a race broadcast. Crisp
+	# shots are choreographed curves already and are never eased.
+	# Focus lines belong to their shot; a cut to a calm view drops them at once.
+	if cut: lines_strength=minf(lines_strength,lines_target)
+	if not camera_initialized or cut or crisp:
+		camera_offset=cam_pos-mount
+		focus_offset=focus-mount
 		camera.fov=fov
+		camera_roll=roll
 		camera_initialized=true
 	else:
-		var damping := 1.0-exp(-delta*(12.0 if active_shot==10 else 2.8))
-		camera.position=camera.position.lerp(cam_pos,damping)
-		camera_focus=camera_focus.lerp(focus,damping)
+		var framing:=1.0-exp(-delta*3.0)
+		camera_offset=camera_offset.lerp(cam_pos-mount,framing)
+		# A fixed lens pans onto its subject directly; easing it would lag behind.
+		focus_offset=focus_offset.lerp(focus-mount,1.0 if fixed else framing)
+		camera.fov=lerpf(camera.fov,fov,1.0-exp(-delta*4.0))
+		camera_roll=lerpf(camera_roll,roll,framing)
+	camera.position=mount+camera_offset
+	camera_focus=mount+focus_offset
+	if impact_shake and not reduced_motion and impact_clock<.28:
+		var decay:=1.0-smoothstep(0.0,.28,impact_clock)
+		camera.position+=Vector3(sin(impact_clock*71.0),sin(impact_clock*53.0+1.3),sin(impact_clock*61.0+2.1))*.07*decay
 	previous_shot=active_shot
-	camera.fov=lerpf(camera.fov,fov,1.0-exp(-delta*2.0))
 	camera.look_at(camera_focus,Vector3.UP)
+	if absf(camera_roll)>.001: camera.rotate_object_local(Vector3.BACK,deg_to_rad(camera_roll))
 	update_effects(delta)
 	update_board(delta)
 
@@ -421,16 +516,25 @@ func update_board(delta: float) -> void:
 func update_effects(delta: float) -> void:
 	var celebrate := finished or phase=="result"
 	confetti_rain.advance(delta,celebrate,race_round,reduced_motion)
-	var sprint:=smoothstep(34.0,42.0,race_clock) if phase=="racing" else 0.0
-	var lens_strength:=sprint*(1.0-smoothstep(42.8,45.0,race_clock)*.8)*(1.0-smoothstep(47.0,50.0,race_clock))
-	var rush:=smoothstep(45.8,46.05,race_clock)*lerpf(.65,1.0,smoothstep(46.05,50.0,race_clock)) if phase=="racing" else 0.0
-	if race_clock>=44.6 and race_clock<45.8: lens_strength=0.0
-	lens_strength=maxf(lens_strength,rush)
-	# A stationary finish camera keeps the track sharp while the horses move.
-	if phase=="racing" and finished and race_clock>=45.8: lens_strength=0.0
+	var sprint:=smoothstep(34.0,40.0,race_clock) if phase=="racing" else 0.0
+	# Edge speed blur belongs to moving cameras. The tripod lenses, the slow
+	# motion cut-in, the frozen crossing and the still finish view stay sharp.
+	var rushing:=phase=="racing" and previous_shot==6 and not finished
+	var lens_strength: float=sprint*float({3:.8,5:.2,8:.25}.get(previous_shot,0.0))
+	if rushing: lens_strength=1.0
 	sprint_grade.visible=not reduced_motion and lens_strength>.001
 	sprint_material.set_shader_parameter("strength",lens_strength)
-	sprint_material.set_shader_parameter("rush",rush)
+	sprint_material.set_shader_parameter("rush",1.0 if rushing else 0.0)
+	impact_clock+=delta
+	var lines_goal:=0.0 if reduced_motion or phase!="racing" else lines_target
+	lines_strength=lines_goal if lines_goal>lines_strength else lerpf(lines_strength,lines_goal,1.0-exp(-delta*6.0))
+	lines_rect.visible=lines_strength>.01
+	if lines_rect.visible:
+		lines_material.set_shader_parameter("strength",lines_strength)
+		lines_material.set_shader_parameter("seed",floorf(elapsed*12.0))
+	var impact:=0.0 if reduced_motion else impact_scale*(1.0-smoothstep(.06,.2,impact_clock))
+	impact_rect.visible=impact>.01
+	impact_material.set_shader_parameter("strength",impact)
 	for i in range(dust.size()):
 		var owner := i%8
 		var p := float(track_positions[owner])

@@ -113,7 +113,7 @@ export function cameraShot(phase: Phase, seconds: number) {
   if (seconds < 7) return { id: 1, label: '起跑鏡頭' }
   if (seconds < 24) return { id: 2, label: '側面追拍' }
   if (seconds < 37) return { id: 3, label: '彎道追逐' }
-  return { id: 5, label: seconds < 39.5 ? '終點衝刺' : seconds < 42.8 ? '衝刺特寫' : seconds < 45.8 ? '衝線時刻' : '終點定鏡' }
+  return { id: 5, label: seconds < 39.5 ? '終點衝刺' : seconds < 42.3 ? '衝刺特寫' : seconds < 45.8 ? '衝線時刻' : '終點定鏡' }
 }
 export function isGame(value: unknown): value is Game {
   if (!value || typeof value !== 'object') return false
