@@ -382,8 +382,7 @@ func _process(delta: float) -> void:
 	var focus := target
 	var active_shot := shot
 	if phase=="racing":
-		if race_clock>=48.75 and finished: active_shot=9
-		elif finished and race_clock<46.05: active_shot=10
+		if finished and race_clock<45.8: active_shot=10
 		elif race_clock>=42.8: active_shot=6
 		elif race_clock>=39.5: active_shot=8
 	if active_shot==8 and previous_shot!=8:
@@ -418,21 +417,19 @@ func _process(delta: float) -> void:
 			cam_pos=focus+outward*lerpf(12.0,10.8,push)+forward*lerpf(3.0,1.5,push)+Vector3(0,1.0,0)
 			fov=lerpf(54.0,49.0,push)
 		6:
-			# Continue tracking into a low photo finish instead of whipping
-			# away to an empty stripe before the horses enter the composition.
-			var lock_to_line:=smoothstep(42.8,45.6,race_clock)
 			var middle_lane:=float(course.config.laneStart)+3.5*float(course.config.laneSpacing)
-			var line_focus:=Vector3(0,1.3,lerpf(middle_lane,target.z,.75))
-			focus=(target+forward*3.4).lerp(line_focus,lock_to_line)
-			var carry:=smoothstep(45.8,46.65,race_clock) if finished else 0.0
-			focus=focus.lerp(target+forward*1.2,carry)
-			var line_offset:=Vector3(lerpf(1.5,3.0,lock_to_line),lerpf(.5,1.0,lock_to_line),lerpf(9.4,8.4,lock_to_line))
-			var chase_offset:=outward*9.4+forward*3.0+Vector3(0,1.0,0)
-			cam_pos=focus+line_offset.lerp(chase_offset,carry)
-			fov=lerpf(46.0,42.0,smoothstep(43.0,47.5,race_clock))
-			# Open the frame as motion releases so the following runners surge through.
-			var rush:=smoothstep(45.8,46.05,race_clock)*lerpf(.65,1.0,smoothstep(46.05,50.0,race_clock))
-			fov+=rush*5.0 if not reduced_motion else 0.0
+			if finished:
+				# After the crossing orbit, stay on the stripe as every runner
+				# gallops through. This composition must not depend on a horse.
+				focus=Vector3(0,1.3,middle_lane)
+				cam_pos=focus+Vector3(4.5,4.2,17.0)
+				fov=48.0
+			else:
+				var lock_to_line:=smoothstep(42.8,45.6,race_clock)
+				var line_focus:=Vector3(0,1.3,lerpf(middle_lane,target.z,.75))
+				focus=(target+forward*3.4).lerp(line_focus,lock_to_line)
+				cam_pos=focus+Vector3(lerpf(1.5,3.0,lock_to_line),lerpf(.5,1.0,lock_to_line),lerpf(9.4,8.4,lock_to_line))
+				fov=lerpf(46.0,42.0,smoothstep(43.0,47.5,race_clock))
 		7:
 			cam_pos=Vector3(0,100,5)
 			focus=Vector3.ZERO
@@ -445,12 +442,6 @@ func _process(delta: float) -> void:
 			focus=horses[featured_runner].position+close_forward*.75+Vector3(0,1.85,0)
 			cam_pos=focus+close_path.outward*5.0+close_forward*lerpf(2.7,1.8,push)+Vector3(0,.15,0)
 			fov=lerpf(42.0,37.0,push)
-		9:
-			# Winner portrait after the line has visibly been crossed.
-			var portrait:=0.5 if reduced_motion else smoothstep(48.75,50.0,race_clock)
-			focus=horses[winner-1].position+forward*.7+Vector3(0,1.85,0)
-			cam_pos=focus+outward*5.2+forward*lerpf(3.0,1.8,portrait)+Vector3(0,.3,0)
-			fov=36.0
 		10:
 			# The race clock holds the crossing pose while the camera keeps moving.
 			var orbit:=0.5 if reduced_motion else smoothstep(44.6,45.8,race_clock)
@@ -460,7 +451,7 @@ func _process(delta: float) -> void:
 			fov=40.0
 		_:
 			cam_pos=target+outward*9+forward*7+Vector3(0,2.1,0)
-	var edit_cut:=active_shot!=previous_shot and (active_shot in [4,6,8,9,10] or previous_shot==4)
+	var edit_cut:=active_shot!=previous_shot and (active_shot in [4,6,8,10] or previous_shot==4)
 	if not camera_initialized or edit_cut:
 		camera.position=cam_pos
 		camera_focus=focus
@@ -483,6 +474,8 @@ func update_effects(delta: float) -> void:
 	var rush:=smoothstep(45.8,46.05,race_clock)*lerpf(.65,1.0,smoothstep(46.05,50.0,race_clock)) if phase=="racing" else 0.0
 	if race_clock>=44.6 and race_clock<45.8: lens_strength=0.0
 	lens_strength=maxf(lens_strength,rush)
+	# A stationary finish camera keeps the track sharp while the horses move.
+	if phase=="racing" and finished and race_clock>=45.8: lens_strength=0.0
 	sprint_grade.visible=not reduced_motion and lens_strength>.001
 	sprint_material.set_shader_parameter("strength",lens_strength)
 	sprint_material.set_shader_parameter("rush",rush)

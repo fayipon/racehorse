@@ -12,11 +12,17 @@ func verify_run_through() -> void:
 	# Skip the intentional crossing freeze, then follow every frame to settlement.
 	race.elapsed=106.2
 	race._process(1.0/60.0)
+	var finish_camera: Transform3D=race.camera.transform
+	var finish_focus: Vector3=race.camera_focus
+	var finish_fov: float=race.camera.fov
 	var previous: Array[Vector3] = []
 	for horse in race.horses: previous.append(horse.position)
 	for frame in range(220):
 		race._process(1.0/60.0)
 		assert(race.phase=="racing")
+		assert(race.camera.transform.is_equal_approx(finish_camera),"The finish camera must not chase runners or cut to a winner portrait")
+		assert(race.camera_focus.is_equal_approx(finish_focus),"The camera must keep looking at the finish line")
+		assert(is_equal_approx(race.camera.fov,finish_fov),"The locked finish shot must not continue zooming")
 		for i in range(8):
 			var horse=race.horses[i]
 			assert(horse.position.distance_to(previous[i])>.05,"Every horse must keep advancing until the podium cut")
@@ -29,6 +35,6 @@ func verify_run_through() -> void:
 	race._process(.02)
 	assert(race.phase=="result" and race.podium.visible,"Continuous running must still hand off to the podium")
 	for horse in race.horses: assert(not horse.visible)
-	print("PASS: all eight horses keep moving, galloping and raising dust until the podium")
+	print("PASS: fixed finish camera; all eight horses keep galloping until the podium")
 	race.queue_free()
 	quit()
