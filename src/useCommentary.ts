@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { commentaryCues, commentaryFile, planCommentary, type Cue } from './commentary'
 import { BET_MS, type Game, type Result } from './game'
+import { fetchAsset } from './mirror'
 
 const LOOKAHEAD = 1.2
 // The call runs from the paddock chat a minute before the gates to a few
@@ -35,7 +36,7 @@ export class CommentaryPlayer {
   }
 
   load() {
-    this.loading ??= fetch(`${import.meta.env.BASE_URL}${commentaryFile}`)
+    this.loading ??= fetchAsset(commentaryFile)
       .then(response => { if (!response.ok) throw new Error(`Commentary unavailable: ${response.status}`); return response.arrayBuffer() })
       .then(bytes => this.audio.decodeAudioData(bytes))
       .then(buffer => { this.sprite = buffer })

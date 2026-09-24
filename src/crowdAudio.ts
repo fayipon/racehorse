@@ -1,6 +1,7 @@
 import { BET_MS, phaseAt, racePositions, type Game } from './game'
 import { COURSE } from './course'
 import { racePresentationTime } from './presentation'
+import { fetchAsset } from './mirror'
 
 export type CrowdMix = readonly [number, number, number]
 export const SILENT_CROWD: CrowdMix = [0, 0, 0]
@@ -81,7 +82,7 @@ export class CrowdAudioPlayer {
   private prepare() {
     if (this.disposed || this.buffers.length || this.loading || Date.now() < this.retryAt) return
     this.loading = Promise.all(CROWD_FILES.map(async file => {
-      const response = await fetch(`${import.meta.env.BASE_URL}audio/crowd/${file}?v=2`)
+      const response = await fetchAsset(`audio/crowd/${file}`)
       if (!response.ok) throw new Error(`Crowd audio unavailable: ${response.status}`)
       return this.audio.decodeAudioData(await response.arrayBuffer())
     })).then(buffers => {

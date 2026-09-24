@@ -103,7 +103,17 @@ func fullscreen_rect(mat: ShaderMaterial) -> ColorRect:
 func course_point(progress: float, lane: int) -> Vector3:
 	return course.sample(progress,course.lane_radius(lane)).position
 
+# Yield only on the web; native previews retain synchronous scene setup.
+func loading_checkpoint(step: int) -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-build',step:%d,total:14},window.location.origin)" % step)
+		await get_tree().create_timer(0.001).timeout
+
 func _ready() -> void:
+	# _process assumes every horse, material and camera already exists.
+	set_process(false)
+	visible=false
+	await loading_checkpoint(0)
 	rng.seed = 61293
 	if OS.has_feature("web"):
 		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
@@ -118,8 +128,10 @@ func _ready() -> void:
 		parade_plan=PARADE.preview_plan(61293)
 		winner=int(race_plan.winner)+1
 		finish_times=race_plan.finishTimes
-	build_environment()
-	for i in range(8): build_horse(i)
+	await build_environment()
+	for i in range(8):
+		build_horse(i)
+		await loading_checkpoint(6+i)
 	add_child(podium)
 	camera = Camera3D.new()
 	camera.fov = 52
@@ -159,8 +171,8 @@ func _ready() -> void:
 	impact_material.shader=preload("res://shaders/impact_frame.gdshader")
 	impact_rect=fullscreen_rect(impact_material)
 	fx_layer.add_child(impact_rect)
+	await loading_checkpoint(14)
 	if OS.has_feature("web"):
-		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
 		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-ready'},window.location.origin)")
 		# WebGL compiles each material's shaders the first time it draws, all on the
 		# page's main thread. Revealing the scene a part per frame spreads that work,
@@ -170,6 +182,9 @@ func _ready() -> void:
 		warmup=[[],[landscape_node],[infield_node,track_node],[venue],horses.duplicate()]
 		for group: Array in warmup:
 			for node: Node3D in group: node.visible=false
+
+	visible=true
+	set_process(true)
 
 func build_environment() -> void:
 	var env := Environment.new()
@@ -210,19 +225,24 @@ func build_environment() -> void:
 	sun.shadow_opacity = .82
 	sun.directional_shadow_max_distance = 70.0 if low_power else 110.0
 	add_child(sun)
+	await loading_checkpoint(1)
 	landscape_node=preload("res://scripts/landscape.gd").new()
 	add_child(landscape_node)
 	landscape_node.build(course,reduced_motion,low_power)
+	await loading_checkpoint(2)
 	infield_node=preload("res://scripts/infield.gd").new()
 	add_child(infield_node)
 	infield_node.build(course,reduced_motion or low_power)
+	await loading_checkpoint(3)
 	track_node=preload("res://scripts/race_track.gd").new()
 	add_child(track_node)
 	# The physical finish and minimap both lie at x=0 on the near straight.
 	track_node.build(course)
+	await loading_checkpoint(4)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
 	venue.build(reduced_motion,COLORS,low_power)
+	await loading_checkpoint(5)
 
 # Shots are framed as a vertical angle on a wide stage. An upright phone stage
 # turns a race or paddock shot into a horizontal angle a little wider than the

@@ -18,6 +18,9 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The asset mirror pins each heavy file to the commit that last changed it.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -26,6 +29,12 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build -- --base=/racehorse/
+        env:
+          ASSET_MIRROR: ${{ github.repository }}
+      - name: Warm the jsDelivr mirror
+        # Pages still serves every file if the mirror is down, so this never blocks a deploy.
+        continue-on-error: true
+        run: node scripts/mirror.ts ${{ github.repository }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -122,6 +122,8 @@ npm run build
 推送 main 後，GitHub Actions 自動執行測試、lint、建置與 Pages 部署。
 本機預覽使用 `npm run dev`；Pages 使用 `npm run build -- --base=/racehorse/`。
 
+GitHub Pages 在部分網路很慢（台灣實測約 50 KB/s，同一條線連 jsDelivr 約 10 MB/s），所以部署版的大檔改從 jsDelivr 的 repo 鏡像下載：Godot 引擎、資源包、轉播語音與觀眾聲。每個檔案釘在最後修改它的 commit（`scripts/mirror.ts`），網址只在檔案變動時才改變，瀏覽器可快取一年；鏡像失敗或 10 秒內沒有回應就改從 Pages 下載。jsDelivr 不收超過 20 MB 的檔案，引擎因此以 gzip 副本 `mirror/index.wasm.gz` 提供，由頁面以 `DecompressionStream` 解壓；`npm run dev`／`npm run build` 前的檢查會在匯出更新後重建這份副本，請與匯出一併提交，CI 發現不一致會停止部署。部署前 CI 會先抓一次每個鏡像檔，讓第一位訪客不必等 jsDelivr 回 GitHub 取檔。載入畫面只在進度停滯 60 秒時才顯示失敗，慢速網路下仍會持續下載。
+
 ## 賽事轉播
 
 從投注期間的賽前閒談，到開跑後一路播到宣布冠軍的現場轉播，語氣參考 `design/` 內的 Fish Audio 試驗音（最後 200 米外側追上、一個馬身、半個馬身、並排、最後一步逆轉）。
