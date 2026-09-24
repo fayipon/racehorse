@@ -54,6 +54,14 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     observer.observe(element)
     return () => observer.disconnect()
   }, [])
+  // Wide screens lay the HUD out at 1000px and zoom it to the stage; see --ui-scale in index.css.
+  useEffect(() => {
+    const element = shell.current
+    if (!element) return
+    const observer = new ResizeObserver(([entry]) => element.style.setProperty('--ui-scale', String(Math.min(1.6, Math.max(.72, entry.contentRect.width / 1000)))))
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [])
   const phase = phaseAt(game, now)
   const seconds = Math.max(0, (now - game.startedAt - BET_MS) / 1000)
   const visualSeconds = racePresentationTime(seconds)

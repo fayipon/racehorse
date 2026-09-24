@@ -12,6 +12,10 @@ const UPRIGHT_WIDTH := 1.15
 const UPRIGHT_BETTING_SHIFT := .25
 const UPRIGHT_RACE_SHIFT := .08
 const UPRIGHT_PODIUM_SHIFT := .135
+# A wide stage is 16:9: narrower ones keep its horizontal angle and gain height,
+# and the open betting panel covers its lower part, so the parade shifts up.
+const WIDE_ASPECT := 16.0/9.0
+const WIDE_BETTING_SHIFT := .18
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df")]
 var horses: Array[Node3D] = []
 var camera: Camera3D
@@ -255,20 +259,24 @@ func build_environment() -> void:
 # horses across. The picture fills the whole stage there with the controls laid
 # over its lower part, so the lens also shifts the subject up into the open
 # picture: well up while the betting panel is open, a little during the race
-# and above the podium's standings.
+# and above the podium's standings. A wide stage shifts only for the betting panel.
 func frame_upright(delta: float) -> void:
 	var view:=get_viewport().get_visible_rect().size
-	if view.x>=view.y:
-		camera.projection=Camera3D.PROJECTION_PERSPECTIVE
-		camera.keep_aspect=Camera3D.KEEP_HEIGHT
-		camera.fov=lens_fov
-		frame_phase=""
-		return
-	var target:=UPRIGHT_PODIUM_SHIFT if phase=="result" else UPRIGHT_BETTING_SHIFT if phase=="betting" and betting_clock<48.0 else UPRIGHT_RACE_SHIFT
+	var upright:=view.x<view.y
+	var betting_open:=phase=="betting" and betting_clock<48.0
+	var target:=(UPRIGHT_PODIUM_SHIFT if phase=="result" else UPRIGHT_BETTING_SHIFT if betting_open else UPRIGHT_RACE_SHIFT) if upright else WIDE_BETTING_SHIFT if betting_open else 0.0
 	# Phase changes cut the camera, so the framing cuts with it.
 	frame_shift=target if frame_phase!=phase else lerpf(frame_shift,target,1.0-exp(-delta*2.5))
 	frame_phase=phase
 	var lens:=2.0*camera.near*tan(deg_to_rad(lens_fov)*.5)
+	if not upright:
+		if view.aspect()>=WIDE_ASPECT:
+			camera.keep_aspect=Camera3D.KEEP_HEIGHT
+			camera.set_frustum(lens,Vector2(0,-frame_shift*lens),camera.near,camera.far)
+		else:
+			camera.keep_aspect=Camera3D.KEEP_WIDTH
+			camera.set_frustum(lens*WIDE_ASPECT,Vector2(0,-frame_shift*lens*WIDE_ASPECT*view.y/view.x),camera.near,camera.far)
+		return
 	if phase=="result":
 		camera.keep_aspect=Camera3D.KEEP_HEIGHT
 		camera.set_frustum(lens,Vector2(0,-frame_shift*lens),camera.near,camera.far)
