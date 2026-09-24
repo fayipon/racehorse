@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Check, ChevronRight, CircleHelp, Clock3, Coins, Flag, History, LockKeyhole, Maximize2, Radio, Trophy, Volume2, VolumeX, X } from 'lucide-react'
 import { BET_CLOSE_MS, bettingOpen, BET_MS, HORSES, cameraShot, countdown, odds, phaseAt, pickLabel, raceOrder, racePositions, wins, type Game, type Phase, type Pick } from './game'
 import { useGame } from './useGame'
-import { enableAnnouncer, useAnnouncer } from './useAnnouncer'
+import { enableAnnouncer, stopAnnouncer, useAnnouncer } from './useAnnouncer'
 import { RaceChat } from './RaceChat'
 import { COURSE, coursePoint, makeParadePlan, paradePositions } from './course'
 import { racePresentationTime } from './presentation'
@@ -151,7 +151,7 @@ export default function App() {
     finally { setPending(false) }
   }
   const pick = (value: Pick) => { if (!locked) { setSelected(value); setMessage('') } }
-  const toggleSound = () => { if (muted) { sound.current ??= new AudioContext(); void sound.current.resume(); enableAnnouncer() } else if ('speechSynthesis' in window) { window.speechSynthesis.cancel() }; setMuted(!muted) }
+  const toggleSound = () => { if (muted) { sound.current ??= new AudioContext(); void sound.current.resume(); enableAnnouncer(sound.current) } else { stopAnnouncer() }; setMuted(!muted) }
   return <>
     <header className="app-header"><a className="brand" href={import.meta.env.BASE_URL} aria-label="Sunny Cup 首頁"><span className="brand-icon">♞</span><span>SUNNY<span className="brand-light">CUP</span><small>小馬競速俱樂部</small></span></a><nav><span className="nav-active"><Flag size={16} />賽事大廳</span><button onClick={() => setModal('history')}><History size={16} />投注紀錄</button><button onClick={() => setModal('rules')}><CircleHelp size={16} />玩法說明</button></nav><div className="header-wallet"><span className="coin-icon"><Coins size={17} /></span><div><small>我的籌碼</small><strong>{fmt(game.balance)}</strong></div><span className="practice-label">練習模式</span></div></header>
     <main className="app-main"><div className="page-heading"><div><span className="overline">THE SUNNY CUP EXPERIENCE</span><h1>每一場，都有新的可能<span>。</span></h1></div><p><span className="online-dot" />陽光賽場開放中 <span className="divider">/</span> 每 2 分鐘一場</p></div>
