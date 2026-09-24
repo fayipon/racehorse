@@ -32,6 +32,17 @@ describe('two-minute race lifecycle', () => {
     expect(advance(g, START + 115000).balance).toBe(10840)
     expect(advance(JSON.parse(JSON.stringify(g)), START + 119999).balance).toBe(10840)
   })
+  it('keeps a settled round closed when the clock moves backwards', () => {
+    let g = createGame(START, 56)
+    const winner = raceOrder(g.seed, g.round)[0]
+    g = placeBet(g, `horse:${winner}`, 100, START).game
+    g = advance(g, START + 110000)
+    expect(g.balance).toBe(10660)
+    const rewound = placeBet(g, 'odd', 100, START + 1000)
+    expect(rewound.error).toBeTruthy()
+    expect(rewound.game.balance).toBe(10660)
+    expect(cancelBet(g, g.bets[0].id, START + 1000).balance).toBe(10660)
+  })
   it('restores sleep and skipped rounds without losing or duplicating settlements', () => {
     let g = createGame(START, 88)
     const winner = raceOrder(g.seed, 1)[0]

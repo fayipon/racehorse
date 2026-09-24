@@ -121,6 +121,7 @@ export function isGame(value: unknown): value is Game {
   return g.version === 2 && Number.isSafeInteger(g.seed) && Number.isSafeInteger(g.round) && g.round > 0 && Number.isFinite(g.startedAt) && g.startedAt > 0 && Number.isSafeInteger(g.balance) && g.balance >= 0 && typeof g.settled === 'boolean' && Array.isArray(g.bets) && g.bets.every(b => typeof b.id === 'string' && validPick(b.pick) && Number.isSafeInteger(b.amount) && b.amount >= 10) && Array.isArray(g.history) && g.history.every(r => Number.isSafeInteger(r.round) && Number.isSafeInteger(r.winner) && r.winner >= 1 && r.winner <= 8 && Array.isArray(r.order) && r.order.length === 8 && new Set(r.order).size === 8 && r.order.every(n => Number.isSafeInteger(n) && n >= 1 && n <= 8) && Number.isSafeInteger(r.stake) && r.stake >= 0 && Number.isSafeInteger(r.payout) && r.payout >= 0)
 }
 
+// A settled round stays closed even if the device clock moves backwards.
 export function bettingOpen(game: Game, now: number) {
-  return phaseAt(game, now) === 'betting' && now < game.startedAt + BET_CLOSE_MS
+  return !game.settled && phaseAt(game, now) === 'betting' && now < game.startedAt + BET_CLOSE_MS
 }
