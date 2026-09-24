@@ -44,3 +44,10 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 ## 保留的原程式模型
 
 `godot/assets/pony_body.obj` 與 `pony_head.obj` 由 `scripts/sculpt_pony.py` 以平滑融合橢球與 marching tetrahedra 建構。`godot/shaders/knit.gdshader` 程序產生針織表面，不依賴外部模型或貼圖服務。這些為專案內生成的 3D 幾何，不是生成圖片的平面替代。
+
+## 實拍天空
+
+- [Kloppenheim 05 (Pure Sky)](https://polyhaven.com/a/kloppenheim_05_puresky)，Poly Haven。
+- 作者：Greg Zaal（原始攝影）、Jarod Guest（純天空編修）。授權：[CC0](https://polyhaven.com/license)。
+- 使用官方 8K Tonemapped JPG 全景素材，保留原檔於 `godot/assets/sky/`，Godot 匯入時限制為 4096 像素並壓縮，不修改原始照片。
+- PanoramaSkyMaterial 取代自製雲朵與太陽 Shader，使用照片本身的光線、雲層及太陽。

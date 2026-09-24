@@ -130,9 +130,9 @@ func _ready() -> void:
 
 func build_environment() -> void:
 	var env := Environment.new()
-	var sky_material := ShaderMaterial.new()
-	sky_material.shader = preload("res://shaders/sunny_sky.gdshader")
-	sky_material.set_shader_parameter("drift_speed",0.0 if reduced_motion else 0.001)
+	var sky_material := PanoramaSkyMaterial.new()
+	sky_material.panorama = preload("res://assets/sky/kloppenheim_05_puresky.jpg")
+	sky_material.energy_multiplier = 1.6
 	var sky := Sky.new()
 	sky.sky_material=sky_material
 	env.background_mode = Environment.BG_SKY
