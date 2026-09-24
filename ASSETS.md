@@ -12,7 +12,7 @@
 使用內建 imagegen 製作；圖片均已複製到專案，程式不依賴 Codex 暫存位置。
 
 - `public/assets/horses.png`：八匹絨毛小馬的 4×2 肖像圖集，用於選馬卡片。
-- `public/assets/track.png`：暖色賽場背景，用於引擎載入畫面。
+- `public/assets/track.png`：暖色賽場背景，原用於引擎載入畫面；現行畫面改用純色底，不再引用，保留供參考。
 
 ## 最終採用提示詞
 
@@ -60,7 +60,7 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 
 ## 保留的原程式模型
 
-`godot/assets/pony_body.obj` 與 `pony_head.obj` 由 `scripts/sculpt_pony.py` 以平滑融合橢球與 marching tetrahedra 建構。`godot/shaders/knit.gdshader` 程序產生針織表面，不依賴外部模型或貼圖服務。這些為專案內生成的 3D 幾何，不是生成圖片的平面替代。
+`godot/assets/pony_body.obj` 與 `pony_head.obj` 由 `scripts/sculpt_pony.py` 以平滑融合橢球與 marching tetrahedra 建構。`godot/shaders/knit.gdshader` 程序產生針織表面，不依賴外部模型或貼圖服務。這些為專案內生成的 3D 幾何，不是生成圖片的平面替代。`pony.gd`、兩個 OBJ、`knit.gdshader` 與未使用的 `sunny_sky.gdshader` 由 `godot/export_presets.cfg` 的 `exclude_filter` 排除，不打包進 Web 匯出；`godot/tests/` 同樣不匯出。
 
 ## 實拍天空
 
