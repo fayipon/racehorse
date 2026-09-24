@@ -156,5 +156,8 @@
 /* Betting and results on upright screens: the picture fills the stage too, and
    the betting panel and lower standings float over it, letting it show through. */
 @media(max-width:700px){div.race-stage.phase-betting iframe,div.race-stage.phase-result iframe{height:100%}div.race-stage.phase-betting .stage-vignette,div.race-stage.phase-result .stage-vignette{bottom:0}.race-stage.phase-betting .stage-vignette{background:linear-gradient(180deg,#16252a45,transparent 30%,transparent 42%,#0d201899 62%)}div.race-stage.phase-result .stage-vignette{background:linear-gradient(180deg,#081c2340,transparent 30%,transparent 60%,#0a1d1699 78%)}.race-stage .stage-betting{background:linear-gradient(180deg,#153a2dc2,#0f281edb);box-shadow:0 10px 30px #071c2340}.race-stage .podium-rest{background:#0f251dc2}}
+/* Results on phones: the lower standings sit right under the top three and the stage ends there. The
+   picture keeps its uncropped height, clipped at the bottom, so the podium still lines up with the cards. */
+@media(max-width:580px){div.race-stage.phase-result:not(:fullscreen){--results-crop:84px;height:calc(470px + var(--results-footer) - var(--results-crop));min-height:0}div.race-stage.phase-result:not(:fullscreen) iframe{height:calc(100% + var(--results-crop))}div.race-stage.phase-result:not(:fullscreen) .podium-featured{bottom:calc(var(--results-footer) - var(--results-crop))}}
 /* On touch devices, blurring what sits behind these panels means re-blurring the 3D stage every frame. */
 @media(pointer:coarse){.race-stage *{backdrop-filter:none!important}}
