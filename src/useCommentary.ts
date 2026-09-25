@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { commentaryCues, loadVoice, planCommentary, type Cue, type Voice } from './commentary'
-import { BET_MS, fieldOf, type Game, type Result } from './game'
+import { BET_MS, fieldOf, recentResults, type Game, type Result } from './game'
 import { fetchAsset } from './mirror'
 import type { Locale } from './i18n'
+import { scriptOf } from './raceScript'
+import { serverNow } from './schedule'
 
 const LOOKAHEAD = 1.2
 // The call runs from the paddock chat a minute before the gates to a few
@@ -59,7 +61,7 @@ export class CommentaryPlayer {
   update(seed: number, round: number, field: number, history: Result[], seconds: number) {
     const voice = this.voice
     if (!voice) return
-    const key = `${seed}:${round}:${field}`
+    const key = `${seed}:${round}:${field}:${scriptOf(seed, round, field)?.rev ?? ''}`
     if (key !== this.key) {
       this.stop()
       this.key = key
@@ -102,9 +104,10 @@ export function useCommentary(game: Game, enabled: boolean, duck: (start: number
       if (!current) return
       const { game: g, duck: dip } = latest.current
       current.onSpeak = dip
-      const seconds = (Date.now() - g.startedAt - BET_MS) / 1000
+      const seconds = (serverNow() - g.startedAt - BET_MS) / 1000
       if (document.hidden || seconds < CALL_FROM || seconds > CALL_UNTIL) { current.stop(); return }
-      current.update(g.seed, g.round, fieldOf(g), g.history, seconds)
+      // The form everyone hears comes from the shared results, not this player's.
+      current.update(g.seed, g.round, fieldOf(g), recentResults(g.seed, g.round, fieldOf(g), 6), seconds)
     }, 150)
     return () => { window.clearInterval(timer); player.current?.stop() }
   }, [enabled])

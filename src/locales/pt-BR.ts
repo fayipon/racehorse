@@ -17,7 +17,6 @@ const messages: Messages = {
     status: 'Três corridas ao mesmo tempo',
     shared: 'Fichas compartilhadas',
     cupInfo: (field, odds) => `${field} pôneis · Vencedor paga × ${odds} · A cada 2 min`,
-    first: 'Começa quando você entra',
     racing: 'Corrida em andamento',
     result: 'Apurando o resultado',
     open: clock => `Apostas abertas · ${clock}`,

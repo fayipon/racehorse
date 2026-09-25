@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ROUND_MS, BET_MS, bettingOpen, fieldOf, phaseAt, raceOrder, racePositions, type Game } from './game'
 import { racePresentationTime } from './presentation'
+import { serverNow } from './schedule'
 import type { Messages } from './i18n'
 
 // Avatar colours by seat; names and lines come from the page's language.
@@ -15,7 +16,7 @@ export const speaker = (message: Message, chat: Messages['chat']) => message.per
 // One chat per page: phones show it over the stage, wider screens in the sidebar.
 export function useRaceChat(game: Game, now: number, words: Messages['chat']) {
   const [messages, setMessages] = useState<Message[]>(() => words.opening.map((text, index) => (
-    { id: index + 1, person: [0, 1, 3][index], text, time: Date.now() - [18000, 11000, 4000][index] }
+    { id: index + 1, person: [0, 1, 3][index], text, time: serverNow() - [18000, 11000, 4000][index] }
   )))
   const [draft, setDraft] = useState('')
   const nextId = useRef(4)
@@ -39,7 +40,7 @@ export function useRaceChat(game: Game, now: number, words: Messages['chat']) {
       const positions = racePositions(current.seed, current.round, seconds, field)
       const leader = positions.indexOf(Math.max(...positions)) + 1
       const text = template.replace('{leader}', String(leader)).replace('{winner}', String(raceOrder(current.seed, current.round, field)[0])).replace('{horse}', String(1 + Math.floor(Math.random() * field)))
-      const message = { id: nextId.current++, person, text, time: Date.now() }
+      const message = { id: nextId.current++, person, text, time: serverNow() }
       setMessages(previous => [...previous, message].slice(-60))
       timer = setTimeout(tick, 4500 + Math.random() * 6500)
     }
@@ -48,10 +49,10 @@ export function useRaceChat(game: Game, now: number, words: Messages['chat']) {
   }, [])
   const send = () => {
     const current = context.current.game
-    if (current.bets.length === 0 || Date.now() >= current.startedAt + ROUND_MS) return
+    if (current.bets.length === 0 || serverNow() >= current.startedAt + ROUND_MS) return
     const text = draft.trim()
     if (!text) return
-    const message = { id: nextId.current++, person: -1, text, time: Date.now() }
+    const message = { id: nextId.current++, person: -1, text, time: serverNow() }
     setMessages(previous => [...previous, message].slice(-60))
     setDraft('')
   }

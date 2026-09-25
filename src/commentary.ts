@@ -1,9 +1,10 @@
 import course from '../godot/assets/course.json'
 import { laneRadius, makeParadePlan } from './course'
-import { CUPS, raceOrder, racePlan, type CupId, type Result } from './game'
+import { CUPS, raceNumber, raceOrder, racePlan, type CupId, type Result } from './game'
 import type { Locale } from './i18n'
 import { racePresentationTime } from './presentation'
 import { HORSE_LENGTH, planProgress, referenceLap, WINNER_FINISH, type RacePlan } from './raceModel'
+import { scriptOf } from './raceScript'
 
 // A race call built like a real broadcast. The whole race is known when the
 // gates open, so the call is planned in advance: each line is spoken when what
@@ -95,21 +96,25 @@ class Timeline {
   }
 }
 
-// Before the gates: an unhurried chat over the paddock, in betting time
-// (60 s before the gates open is 0). Form lines come from the real results,
-// running styles from this race's plan and paddock asides from what the horses
-// are doing on screen; the back stories are made up and fixed per horse.
+// Before the gates, in betting time (60 s before the gates open is 0): the
+// welcome and the calls to bet, fixed points like the gates and the finish.
+const race = (betting: number) => betting - 60
+function preRaceCalls(timeline: Timeline, round: number, field: number) {
+  timeline.place(race(1.5), [raceNumber(round) === 1 ? `welcome1.${cupOf(field)}` : round % 2 ? `welcome2.${cupOf(field)}` : 'welcome3'], 8, 0)
+  timeline.place(race(36), ['betReminder'], 8, 2)
+  timeline.place(race(44.6), ['lastCall'], 9, .8)
+  timeline.place(race(48.4), ['closed'], 9, .6)
+  timeline.place(race(53), ['gateQuiet'], 9, .8)
+}
+
+// Between them, an unhurried chat over the paddock. Form lines come from the
+// real results, running styles from this race's plan and paddock asides from
+// what the horses are doing on screen; the back stories are made up and fixed per horse.
 function planPreRace(timeline: Timeline, seed: number, round: number, field: number, history: Result[]) {
   const clipLength = (clips: string[]) => timeline.voice.length(clips)
   let state = (seed ^ Math.imul(round, 374761393) ^ 0x9e3779b9) >>> 0
   const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296 }
   const shuffle = <T,>(items: T[]) => { for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]] } return items }
-  const race = (betting: number) => betting - 60
-  timeline.place(race(1.5), [round === 1 ? `welcome1.${cupOf(field)}` : round % 2 ? `welcome2.${cupOf(field)}` : 'welcome3'], 8, 0)
-  timeline.place(race(36), ['betReminder'], 8, 2)
-  timeline.place(race(44.6), ['lastCall'], 9, .8)
-  timeline.place(race(48.4), ['closed'], 9, .6)
-  timeline.place(race(53), ['gateQuiet'], 9, .8)
 
   // A horse grazing, looking about or resting its head is pointed out while it
   // is still doing it.
@@ -164,6 +169,8 @@ function planPreRace(timeline: Timeline, seed: number, round: number, field: num
   // Stories fill the free stretches in turn and stop before betting closes.
   let time = race(5.5)
   for (const story of stories) {
+    // A line a script already says is not said again.
+    if (story.some(clip => timeline.items.some(u => u.clips.includes(clip)))) continue
     const start = timeline.slot(time, clipLength(story))
     if (start + clipLength(story) > race(44.3)) continue
     timeline.commit(start, story, 4)
@@ -171,8 +178,15 @@ function planPreRace(timeline: Timeline, seed: number, round: number, field: num
   }
 }
 
-export function planCommentary(voice: Voice, seed: number, round: number, field: number, history: Result[] = []): Utterance[] {
+// A script's lines (races.json) come after the fixed points and before
+// everything else, so the call fits around them; in replace mode they are the call.
+export function planCommentary(voice: Voice, seed: number, round: number, field: number, history: Result[] = [], script = scriptOf(seed, round, field)?.script.commentary): Utterance[] {
   const clipLength = (clips: string[]) => voice.length(clips)
+  if (script?.mode === 'replace') {
+    const scripted = new Timeline(voice)
+    for (const line of script.lines) scripted.place(line.at, line.clips, 10, 1.5)
+    return scripted.items
+  }
   const plan = racePlan(seed, round, field)
   const order = raceOrder(seed, round, field)
   const lengths = (progress: number) => progress * referenceLap(field) / HORSE_LENGTH
@@ -187,7 +201,6 @@ export function planCommentary(voice: Voice, seed: number, round: number, field:
   const reach = (progress: number) => frames.find(f => f.p[f.rank[0]] >= progress)?.v ?? WINNER_FINISH
   const toGo = (metres: number) => reach(1 - metres / METRES)
   const timeline = new Timeline(voice)
-  planPreRace(timeline, seed, round, field, history)
   const real = realFromVisual
 
   // The gates and the finish are fixed points the rest of the call fits around:
@@ -211,6 +224,14 @@ export function planCommentary(voice: Voice, seed: number, round: number, field:
   const resultAt = callAt + clipLength(call) + .15
   timeline.place(resultAt, result, 10, 0)
   timeline.place(Math.max(crossing + 4.4, resultAt + clipLength(result) + .3), [horse('secondPlace', order[1] - 1), horse('thirdPlace', order[2] - 1)], 5, 2)
+  preRaceCalls(timeline, round, field)
+  // Scripted lines in the race must end before the run to the line, which is
+  // called in one breath and cannot move around them.
+  const runIn = real(toGo(230))
+  for (const line of script?.lines ?? []) {
+    if (line.at < 0 || line.at + clipLength(line.clips) <= runIn) timeline.place(line.at, line.clips, 10, 1.5)
+  }
+  planPreRace(timeline, seed, round, field, history)
 
   // The run to the line follows the reference call: the leader holding on, the
   // challenger named, then the gap called length by length as it closes. Each

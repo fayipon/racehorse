@@ -17,7 +17,6 @@ const messages: Messages = {
     status: 'Three races running',
     shared: 'One shared wallet',
     cupInfo: (field, odds) => `${field} ponies · Winner pays × ${odds} · A race every 2 min`,
-    first: 'Starts when you arrive',
     racing: 'Race in progress',
     result: 'Settling results',
     open: clock => `Betting open · ${clock}`,

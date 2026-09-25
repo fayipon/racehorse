@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "cups": {
+    "sunny": {
+      "epoch": "2026-09-01T00:00:00+08:00",
+      "seed": 2718281828,
+      "races": [
+        {
+          "at": "2026-09-26T20:00:00+08:00",
+          "order": [5, 3],
+          "styles": { "5": "close", "3": "front" },
+          "finish": "photo",
+          "checkpoints": [
+            { "at": 400, "leader": 3, "by": 2 },
+            { "at": 900, "order": [3, 1] }
+          ],
+          "commentary": {
+            "mode": "add",
+            "lines": [
+              { "at": -45, "clips": ["styleFront.3"] },
+              { "at": -32, "clips": ["styleClose.5"] }
+            ]
+          }
+        }
+      ]
+    },
+    "thunder": { "epoch": "2026-09-01T00:00:40+08:00", "seed": 1618033988, "races": [] },
+    "royal": { "epoch": "2026-09-01T00:01:20+08:00", "seed": 1414213562, "races": [] }
+  }
+}

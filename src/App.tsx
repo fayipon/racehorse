@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { ArrowDownLeft, ArrowUpRight, Check, ChevronDown, ChevronRight, ChevronUp, CircleHelp, Clock3, Coins, Flag, History, LockKeyhole, Maximize2, Minimize2, Radio, Trophy, Volume2, VolumeX, X } from 'lucide-react'
-import { BET_CLOSE_MS, bettingOpen, BET_MS, CUPS, HORSES, cameraShot, countdown, fieldOf, odds, phaseAt, raceOrder, racePlan, racePositions, wins, type CupId, type Game, type Pick } from './game'
+import { BET_CLOSE_MS, bettingOpen, BET_MS, CUPS, HORSES, cameraShot, countdown, fieldOf, odds, phaseAt, raceNumber, raceOrder, racePlan, racePositions, recentResults, wins, type CupId, type Game, type Pick } from './game'
 import { useGame } from './useGame'
 import { useCrowd } from './useCrowd'
 import { useCommentary } from './useCommentary'
@@ -79,7 +79,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
   const remaining = countdown(game, now)
   const assembling = phase === 'betting' && !bettingOpen(game, now)
   const startCue = phase === 'betting' && remaining <= 7 ? (remaining > 5 ? 'READY' : String(remaining)) : phase === 'racing' && seconds < 1.8 ? 'GO!' : null
-  const finishing = phase === 'racing' && (finishRound === game.round || visualSeconds >= 44.6)
+  const finishing = phase === 'racing' && (finishRound === raceNumber(game.round) || visualSeconds >= 44.6)
   const cinematic = phase === 'racing' && seconds >= 39.5
   // The special-move banner lands with the crossing freeze, then yields to the announcement.
   const winnerCutIn = phase === 'racing' && (finishing || seconds >= 44.6) && seconds < 46.4
@@ -103,7 +103,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     return () => clearTimeout(timeout)
   }, [ready, failed, loadAttempt, progress, building, warmup])
   useEffect(() => {
-    frame.current?.contentWindow?.postMessage({ type: 'race-state', phase, seconds, bettingElapsed: Math.max(0, (now-game.startedAt)/1000), positions, paradePlan, finishTimes: plan.finishTimes, racePlan: { winner: plan.winner, ease: plan.ease, cruise: plan.cruise, knots: plan.knots }, winner: order[0], camera: shot, round: game.round, muted, paused, visible: onScreen }, location.origin)
+    frame.current?.contentWindow?.postMessage({ type: 'race-state', phase, seconds, bettingElapsed: Math.max(0, (now-game.startedAt)/1000), positions, paradePlan, finishTimes: plan.finishTimes, racePlan: { winner: plan.winner, ease: plan.ease, cruise: plan.cruise, knots: plan.knots }, winner: order[0], camera: shot, round: raceNumber(game.round), muted, paused, visible: onScreen }, location.origin)
   }, [game.round, game.startedAt, muted, now, order, phase, positions, seconds, shot, ready, paradePlan, plan, paused, onScreen])
   const winnerAlias = horseAlias(order[0])
   return <div ref={shell} className={`race-stage phase-${phase} ${!ready ? 'is-loading' : ''} ${assembling ? 'is-assembling' : ''} ${finishing ? 'has-finished' : ''} ${cinematic ? 'is-cinematic' : ''} ${winnerCutIn ? 'is-cut-in' : ''} ${expanded ? 'is-expanded' : ''}`} style={{ '--runners': field, '--half': field / 2 } as CSSProperties}>
@@ -112,7 +112,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     <iframe tabIndex={ready ? 0 : -1} ref={frame} title={m.loading.frame} src={gameSource(game.cup, field)} allow="autoplay; fullscreen" className={ready ? 'ready' : ''} />
     <div className="stage-vignette" />
     {chatFeed}
-    <div className="race-title"><div>RACE <em>{String(game.round).padStart(2, '0')}</em></div><span /><p>{CUPS[game.cup].en}<small>{cupAlias}{m.stage.distance}</small></p></div>
+    <div className="race-title"><div>RACE <em>{String(raceNumber(game.round)).padStart(2, '0')}</em></div><span /><p>{CUPS[game.cup].en}<small>{cupAlias}{m.stage.distance}</small></p></div>
     {phase === 'betting' && !assembling && <div className="betting-hero"><span className="hero-kicker">A LITTLE LUCK. A LOT OF HEART.</span><h2>{m.stage.heroTitle}</h2><p>{m.stage.heroText}</p><div className="countdown-pill"><Clock3 size={16} />{m.stage.countdown} <strong>{clock(Math.max(0, Math.ceil((game.startedAt + BET_CLOSE_MS - now) / 1000)))}</strong></div></div>}
     {assembling && !startCue && <div className="assembly-caption"><span>TO THE STARTING LINE</span><strong>{m.stage.assembling}</strong><small>{m.stage.assemblingNote}</small></div>}
     {startCue && <div className={`start-sequence ${startCue === 'GO!' ? 'is-go' : ''}`}>
@@ -125,7 +125,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     {cinematic && <div className="finish-shot-bars" />}
     {winnerCutIn && <div key={`cut-in-${game.round}`} className="sprint-cut-in" aria-hidden="true" style={{ '--horse': HORSES[order[0] - 1].color } as CSSProperties}><div className="cut-in-band"><span className="cut-in-kicker">FIRST ACROSS THE LINE{m.stage.firstAcross && <b>{m.stage.firstAcross}</b>}</span><div className="cut-in-name"><HorseNumber id={order[0]} /><strong>{horse(order[0])}</strong>{winnerAlias && <em>{winnerAlias}</em>}<Trophy size={26} /></div></div></div>}
     {finishing && !winnerCutIn && <div key={`finish-${game.round}`} className="finish-sequence" aria-live="polite"><div className="finish-announcement"><span className="finish-kicker">FIRST ACROSS THE LINE{m.stage.firstAcross && ` · ${m.stage.firstAcross}`}</span><strong>{horse(order[0])}</strong><div><HorseNumber id={order[0]} /><span>{m.stage.champion}{winnerAlias && <small>{winnerAlias}</small>}</span><Trophy size={22} /></div></div></div>}
-    {phase === 'result' && <PodiumResults key={`podium-${game.round}`} order={order} round={game.round} />}
+    {phase === 'result' && <PodiumResults key={`podium-${game.round}`} order={order} round={raceNumber(game.round)} />}
     <div className="stage-bottom">
       <div className="live-ranking"><small>{m.stage.ranking}</small><div className="ranking-list" key={game.round} role="list" aria-label={m.stage.ranking}>{ranking.map((h, i) => <div key={h.id} className={`ranking-row ${i < 3 ? 'is-podium' : ''}`} role="listitem" style={{ '--rank': i, '--rank-color': h.color, zIndex: field - i } as CSSProperties}><span className="ranking-place">{i + 1}</span><HorseNumber id={h.id} small /><b>{h.en}</b></div>)}</div></div>
       <div className="race-progress"><div><span>{phase === 'betting' ? m.stage.waiting : 'RACE PROGRESS'}</span><b>{phase === 'betting' ? '1200 M' : `${n(Math.round(Math.max(...positions) * 1200))} / 1200 M`}</b></div><div className="progress-rail"><span style={{ width: `${phase === 'betting' ? 0 : Math.max(...positions) * 100}%` }} /></div></div>
@@ -175,6 +175,8 @@ export default function App({ cup: cupId }: { cup: CupId }) {
   const locked = !gameReady || !bettingOpen(game, now)
   const totalStake = game.bets.reduce((sum, b) => sum + b.amount, 0)
   const result = game.history.find(r => r.round === game.round)
+  // Everyone's latest winners, whether or not this player saw them run.
+  const recent = recentResults(game.seed, phase === 'result' ? game.round + 1 : game.round, field, 8)
   const half = field / 2
   const numbers = (from: number) => Array.from({ length: half }, (_, i) => from + i * 2)
   const listed = (list: number[]) => list.length > 4 ? `${list.slice(0, 3).join('·')}…${list.at(-1)}` : list.join('·')
@@ -210,13 +212,13 @@ export default function App({ cup: cupId }: { cup: CupId }) {
         {phone && <StageChatCompose chat={chat} />}
         <div className="timeline"><div className={phase === 'betting' ? 'current' : 'done'}><span>{phase !== 'betting' ? <Check size={12} /> : '1'}</span>{m.timeline.bet} <small>48s + 12s</small></div><i /><div className={phase === 'racing' ? 'current' : phase === 'result' ? 'done' : ''}><span>{phase === 'result' ? <Check size={12} /> : '2'}</span>{m.timeline.race} <small>50s</small></div><i /><div className={phase === 'result' ? 'current' : ''}><span>3</span>{m.timeline.settle} <small>10s</small></div><div className="next-round"><Clock3 size={13} />{m.timeline.loop}</div></div></div>
 
-        <div className="recent-results"><span><History size={14} />{m.recent.heading}</span>{game.history.length ? game.history.slice(0, 8).map(r => <div key={r.round} title={m.recent.round(r.round)}><HorseNumber id={r.winner} small /><small>#{String(r.round).padStart(2, '0')}</small></div>) : <p>{m.recent.empty}</p>}<button onClick={() => setModal('history')} aria-label={m.recent.all}><ChevronRight size={17} /></button></div>
+        <div className="recent-results"><span><History size={14} />{m.recent.heading}</span>{recent.length ? recent.map(r => <div key={r.round} title={m.recent.round(raceNumber(r.round))}><HorseNumber id={r.winner} small /><small>#{String(raceNumber(r.round)).padStart(2, '0')}</small></div>) : <p>{m.recent.empty}</p>}<button onClick={() => setModal('history')} aria-label={m.recent.all}><ChevronRight size={17} /></button></div>
       </section>
-      {(!phone || needsRefill) && <aside className="chat-sidebar">{!phone && <RaceChat chat={chat} round={game.round} />}{needsRefill && <button className="chat-refill" onClick={() => void refill()}>{m.recent.refill} <ArrowDownLeft size={13} /></button>}</aside>}</div>
+      {(!phone || needsRefill) && <aside className="chat-sidebar">{!phone && <RaceChat chat={chat} round={raceNumber(game.round)} />}{needsRefill && <button className="chat-refill" onClick={() => void refill()}>{m.recent.refill} <ArrowDownLeft size={13} /></button>}</aside>}</div>
       <footer><span>♞ {cup.en} <span>{local.motto}</span></span><span>{m.footer.fun} <span className="footer-dot">•</span> {m.footer.saved} <span className="footer-dot">•</span> <a href={`${import.meta.env.BASE_URL}audio/crowd/LICENSE.txt`} target="_blank" rel="noreferrer">{m.footer.crowd}</a></span></footer>
     </main>
 
     {modal === 'rules' && <Dialog title={m.rules.title(local.name)} onClose={() => setModal(null)}><div className="rules-content"><p>{m.rules.intro(field)}</p><ol>{m.rules.steps.map(step => <li key={step.head}><b>{step.head}</b>{step.text}</li>)}</ol><table><thead><tr>{m.rules.columns.map(column => <th key={column}>{column}</th>)}</tr></thead><tbody><tr><td>{m.rules.winner.name}</td><td>{m.rules.winner.rule}</td><td>{winnerOdds}</td></tr><tr><td>{m.rules.oddEven.name}</td><td>{m.rules.oddEven.rule(numbers(1).join('/'), numbers(2).join('/'))}</td><td>{price(1.9)}</td></tr><tr><td>{m.rules.bigSmall.name}</td><td>{m.rules.bigSmall.rule(half, field)}</td><td>{price(1.9)}</td></tr></tbody></table><p>{m.rules.example(winnerOdds, n(Math.round(100 * odds('horse:1', field))), n(Math.round(100 * odds('horse:1', field)) - 100))}</p><p className="muted">{m.rules.fine}</p></div></Dialog>}
-    {modal === 'history' && <Dialog title={m.history.title} onClose={() => setModal(null)}><div className="history-list">{game.history.length === 0 ? <div className="history-empty"><History size={36} /><h3>{m.history.emptyTitle}</h3><p>{m.history.emptyText}</p></div> : game.history.map(r => <div className="history-row" key={r.round}><span>#{String(r.round).padStart(2, '0')}</span><HorseNumber id={r.winner} /><div><b>{horse(r.winner)}</b><small>{m.history.detail(m.picks.short[r.winner % 2 ? 'odd' : 'even'], m.picks.short[r.winner <= half ? 'small' : 'big'], n(r.stake))}</small></div><strong className={r.payout >= r.stake ? 'positive' : 'negative'}>{r.payout >= r.stake ? '+' : ''}{n(r.payout - r.stake)}<small>{m.history.net}</small></strong></div>)}<p className="muted">{m.history.kept}</p></div></Dialog>}
+    {modal === 'history' && <Dialog title={m.history.title} onClose={() => setModal(null)}><div className="history-list">{game.history.length === 0 ? <div className="history-empty"><History size={36} /><h3>{m.history.emptyTitle}</h3><p>{m.history.emptyText}</p></div> : game.history.map(r => <div className="history-row" key={r.round}><span>#{String(raceNumber(r.round)).padStart(2, '0')}</span><HorseNumber id={r.winner} /><div><b>{horse(r.winner)}</b><small>{m.history.detail(m.picks.short[r.winner % 2 ? 'odd' : 'even'], m.picks.short[r.winner <= half ? 'small' : 'big'], n(r.stake))}</small></div><strong className={r.payout >= r.stake ? 'positive' : 'negative'}>{r.payout >= r.stake ? '+' : ''}{n(r.payout - r.stake)}<small>{m.history.net}</small></strong></div>)}<p className="muted">{m.history.kept}</p></div></Dialog>}
   </>
 }

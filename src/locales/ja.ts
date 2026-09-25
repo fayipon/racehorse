@@ -17,7 +17,6 @@ const messages: Messages = {
     status: '3つのレースを同時開催',
     shared: 'チップは共通',
     cupInfo: (field, odds) => `${field}頭立て · 単勝オッズ × ${odds} · 2分ごとに発走`,
-    first: '入場するとスタート',
     racing: 'レース中',
     result: '結果確定中',
     open: clock => `投票受付中・${clock}`,

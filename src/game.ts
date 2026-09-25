@@ -1,4 +1,5 @@
-import { makeRacePlan, planProgress, type RacePlan } from './raceModel'
+import { buildRacePlan, makeRacePlan, planProgress, type RacePlan } from './raceModel'
+import { scriptOf } from './raceScript'
 
 export const BET_CLOSE_MS = 48_000
 export const BET_MS = 60_000
@@ -61,7 +62,9 @@ export function raceOrder(seed: number, round: number, field: number): number[] 
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]
   }
-  return order
+  // A script names the first finishers; the rest keep the drawn order.
+  const scripted = scriptOf(seed, round, field)?.script.order
+  return scripted ? [...scripted, ...order.filter(id => !scripted.includes(id))] : order
 }
 // Every market returns 95%: a winner pays the field size, a half of the field pays 2.
 export function odds(pick: Pick, field: number) { return pick.startsWith('horse:') ? Math.round(field * 95) / 100 : 1.9 }
@@ -115,12 +118,25 @@ export function cancelBet(game: Game, id: string, now: number): Game {
   return bet ? { ...current, balance: current.balance + bet.amount, bets: current.bets.filter(b => b.id !== id) } : current
 }
 // Smooth, monotonic distances. The finish order is exactly the settlement order.
-// One plan per round, shared with Godot; see raceModel.ts.
-let cachedPlan: { key: string; plan: RacePlan } | null = null
+// One plan per round, shared with Godot; see raceModel.ts. A scripted round is
+// keyed by its script too, and what it could not honour is reported once.
+const plans = new Map<string, RacePlan>()
 export function racePlan(seed: number, round: number, field: number): RacePlan {
-  const key = `${seed}:${round}:${field}`
-  if (cachedPlan?.key !== key) cachedPlan = { key, plan: makeRacePlan(raceOrder(seed, round, field), rng((seed ^ Math.imul(round, 2654435761) ^ 0x5bd1e995) >>> 0)) }
-  return cachedPlan.plan
+  const key = `${seed}:${round}:${field}:${scriptOf(seed, round, field)?.rev ?? ''}`
+  let plan = plans.get(key)
+  if (!plan) {
+    const built = planRound(seed, round, field)
+    if (built.dropped.length) console.warn(`Race ${round}: the script could not keep ${built.dropped.join(', ')}`)
+    plan = built.plan
+    plans.set(key, plan)
+    if (plans.size > 4) plans.delete(plans.keys().next().value!)
+  }
+  return plan
+}
+export function planRound(seed: number, round: number, field: number) {
+  const random = () => rng((seed ^ Math.imul(round, 2654435761) ^ 0x5bd1e995) >>> 0)
+  const entry = scriptOf(seed, round, field)
+  return entry ? buildRacePlan(raceOrder(seed, round, field), random, entry.script) : { plan: makeRacePlan(raceOrder(seed, round, field), random()), dropped: [] }
 }
 export function racePositions(seed: number, round: number, seconds: number, field: number) {
   const plan = racePlan(seed, round, field)
@@ -168,6 +184,38 @@ export function isStore(value: unknown): value is Store {
   return s.version === 3 && Number.isSafeInteger(s.balance) && s.balance >= 0 && !!s.cups && typeof s.cups === 'object'
     && Object.entries(s.cups).every(([cup, rounds]) => isCup(cup) && isGame({ ...rounds, version: 3, cup, balance: s.balance }))
 }
+// The shared schedule: a cup's round N opens for betting at epoch + (N − 1) rounds,
+// and every player runs the cup's one seed, so all see the same race at once.
+// Rounds count up from the epoch; the page shows the day's race number instead.
+export type CupClock = { epoch: number; seed: number }
+export const RACES_PER_DAY = 86_400_000 / ROUND_MS
+export const raceNumber = (round: number) => (round - 1) % RACES_PER_DAY + 1
+export const roundAt = (clock: CupClock, now: number) => Math.max(1, Math.floor((now - clock.epoch) / ROUND_MS) + 1)
+export const startOf = (clock: CupClock, round: number) => clock.epoch + (round - 1) * ROUND_MS
+// Brings every cup onto its schedule. A cup off schedule (an older save, or a
+// schedule that moved) settles what it can by its old clock, refunds a race that
+// will now never be shown, and starts afresh on the current round.
+export function alignStore(store: Store, now: number, clocks: Record<CupId, CupClock>): Store {
+  return (Object.keys(CUPS) as CupId[]).reduce((next, cup) => {
+    const clock = clocks[cup], rounds = next.cups[cup]
+    if (rounds && rounds.seed === clock.seed && rounds.startedAt === startOf(clock, rounds.round)) return next
+    let balance = next.balance
+    if (rounds) {
+      const old = advance(gameOf(next, cup, now), now)
+      balance = old.balance + (old.settled ? 0 : old.bets.reduce((sum, bet) => sum + bet.amount, 0))
+    }
+    const round = roundAt(clock, now)
+    return { ...next, balance, cups: { ...next.cups, [cup]: { seed: clock.seed, round, startedAt: startOf(clock, round), bets: [], settled: false, history: [] } } }
+  }, store)
+}
+// The latest finished rounds before `round`, the same for everyone, newest first.
+export function recentResults(seed: number, round: number, field: number, count: number): Result[] {
+  return Array.from({ length: Math.min(count, round - 1) }, (_, i) => {
+    const order = raceOrder(seed, round - 1 - i, field)
+    return { round: round - 1 - i, winner: order[0], order, stake: 0, payout: 0 }
+  })
+}
+
 // Saves from before the cups were split: one Sunny game holding the wallet.
 export function storeFromSunnySave(value: unknown): Store | undefined {
   if (!value || typeof value !== 'object' || (value as { version?: unknown }).version !== 2) return undefined

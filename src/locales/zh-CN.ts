@@ -17,7 +17,6 @@ const messages: Messages = {
     status: '三种赛事同时开放',
     shared: '筹码共用',
     cupInfo: (field, odds) => `${field} 匹小马 · 冠军赔率 × ${odds} · 每 2 分钟一场`,
-    first: '进场即开赛',
     racing: '比赛进行中',
     result: '赛果结算中',
     open: clock => `开放投注・${clock}`,

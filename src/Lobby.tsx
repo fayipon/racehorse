@@ -1,22 +1,22 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { ArrowUpRight, ChevronDown, Coins, Languages } from 'lucide-react'
-import { advanceStore, BET_CLOSE_MS, bettingOpen, CUPS, gameOf, HORSES, odds, phaseAt, type CupId } from './game'
+import { advanceStore, alignStore, BET_CLOSE_MS, bettingOpen, CUPS, gameOf, HORSES, odds, phaseAt, type CupId } from './game'
 import { read } from './useGame'
+import { currentClocks, serverNow } from './schedule'
 import { isLocale, LOCALE_NAMES, LOCALE_SHORT, LOCALES, useI18n } from './i18n'
 
 const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 // A few runners from each field for the card art.
 const FACES: Record<CupId, number[]> = { sunny: [3, 1, 7], thunder: [10, 8, 4], royal: [12, 11, 9] }
 
-// The lobby only reads the saved wallet and schedules; no race loads until a cup is opened.
+// The lobby only reads the saved wallet and the shared schedule; no race loads until a cup is opened.
 export default function Lobby() {
   const { m, n, price, locale, setLocale } = useI18n()
-  const [now, setNow] = useState(Date.now)
-  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer) }, [])
+  const [now, setNow] = useState(serverNow)
+  useEffect(() => { const timer = setInterval(() => setNow(serverNow()), 1000); return () => clearInterval(timer) }, [])
   useEffect(() => { document.title = m.lobby.title }, [m])
-  const store = advanceStore(read(), now)
+  const store = advanceStore(alignStore(read(), now, currentClocks()), now)
   const status = (id: CupId) => {
-    if (!store.cups[id]) return m.lobby.first
     const game = gameOf(store, id, now)
     const phase = phaseAt(game, now)
     if (phase === 'racing') return m.lobby.racing
