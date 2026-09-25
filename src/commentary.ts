@@ -1,21 +1,45 @@
 import course from '../godot/assets/course.json'
-import manifest from './commentary-clips.json'
 import { laneRadius, makeParadePlan } from './course'
-import { raceOrder, racePlan, type Result } from './game'
+import { CUPS, raceOrder, racePlan, type CupId, type Result } from './game'
+import type { Locale } from './i18n'
 import { racePresentationTime } from './presentation'
 import { HORSE_LENGTH, planProgress, referenceLap, WINNER_FINISH, type RacePlan } from './raceModel'
 
 // A race call built like a real broadcast. The whole race is known when the
 // gates open, so the call is planned in advance: each line is spoken when what
 // it describes is on screen, key calls first, and position reports fill the
-// gaps. Lines are short pre-recorded phrases (scripts/commentary-lines.json).
+// gaps. Lines are short pre-recorded phrases (scripts/commentary/<lang>.json); every
+// language records the same phrase ids, so one plan serves any voice.
 export type Utterance = { at: number; clips: string[]; priority: number }
 // `sprite` is 0 for the main voice file, 1 for the lines naming runners 9–12.
 export type Cue = { at: number; clip: string; offset: number; duration: number; sprite: 0 | 1 }
 
+export type VoiceManifest = { file: string; version: string; clips: Record<string, number[]>; extra: { file: string; version: string; clips: Record<string, number[]> } }
+// One language's recordings: each phrase's [start, duration, level] in its sprite.
 // Lines naming runners 9–12 are in a second file that only the bigger cups load.
-const EXTRA = manifest.extra.clips as Record<string, number[]>
-const CLIPS: Record<string, number[]> = { ...manifest.clips, ...EXTRA }
+export class Voice {
+  readonly clips: Record<string, number[]>
+  readonly extra: Record<string, number[]>
+  readonly files: readonly [string, string]
+  constructor(manifest: VoiceManifest) {
+    this.extra = manifest.extra.clips
+    this.clips = { ...manifest.clips, ...manifest.extra.clips }
+    this.files = [`${manifest.file}?v=${manifest.version}`, `${manifest.extra.file}?v=${manifest.extra.version}`]
+  }
+  // Horses without recorded lines are never named: a line naming one is dropped.
+  recorded(clips: string[]) { return clips.every(id => Object.hasOwn(this.clips, id)) }
+  length(clips: string[]) { return clips.reduce((sum, id) => sum + (this.clips[id]?.[1] ?? 0), 0) + WITHIN * (clips.length - 1) }
+}
+const voices: Record<'zh-TW' | 'en' | 'ja' | 'pt-BR', () => Promise<{ default: VoiceManifest }>> = {
+  'zh-TW': () => import('./commentary/zh-TW.json'),
+  en: () => import('./commentary/en.json'),
+  ja: () => import('./commentary/ja.json'),
+  'pt-BR': () => import('./commentary/pt-BR.json'),
+}
+// Simplified Chinese pages hear the Mandarin recording.
+export const voiceLanguage = (locale: Locale) => locale === 'zh-CN' ? 'zh-TW' : locale
+export const loadVoice = async (locale: Locale) => new Voice((await voices[voiceLanguage(locale)]()).default)
+const cupOf = (field: number) => (Object.keys(CUPS) as CupId[]).find(id => CUPS[id].field === field) ?? 'sunny'
 const METRES = 1200
 const STEP = .05
 const WITHIN = .06
@@ -28,9 +52,6 @@ function landmarks(field: number) {
 
 type Frame = { v: number; p: number[]; rank: number[] }
 const horse = (id: string, index: number) => `${id}.${index + 1}`
-// Horses without recorded lines are never named: a line naming one is dropped.
-const recorded = (clips: string[]) => clips.every(id => Object.hasOwn(CLIPS, id))
-export const clipLength = (clips: string[]) => clips.reduce((sum, id) => sum + (CLIPS[id]?.[1] ?? 0), 0) + WITHIN * (clips.length - 1)
 
 // The presentation clock only slows or holds, never reverses.
 export function realFromVisual(visual: number) {
@@ -46,6 +67,8 @@ function sample(plan: RacePlan, v: number): Frame {
 
 class Timeline {
   items: Utterance[] = []
+  readonly voice: Voice
+  constructor(voice: Voice) { this.voice = voice }
   // A beat between sentences: unhurried before the gates, shorter once the
   // race is flying.
   pause(at: number) { return at < 0 ? 1.2 : at > 36 ? .1 : .2 }
@@ -53,20 +76,20 @@ class Timeline {
   slot(desired: number, length: number) {
     let start = desired
     for (let guard = 0; guard < 40; guard++) {
-      const blocker = this.items.find(u => start < u.at + clipLength(u.clips) + this.pause(u.at) && start + length + this.pause(start) > u.at)
+      const blocker = this.items.find(u => start < u.at + this.voice.length(u.clips) + this.pause(u.at) && start + length + this.pause(start) > u.at)
       if (!blocker) break
-      start = blocker.at + clipLength(blocker.clips) + this.pause(blocker.at)
+      start = blocker.at + this.voice.length(blocker.clips) + this.pause(blocker.at)
     }
     return start
   }
   commit(at: number, clips: string[], priority: number) {
-    if (!recorded(clips)) return false
+    if (!this.voice.recorded(clips)) return false
     this.items.push({ at, clips, priority })
     this.items.sort((a, b) => a.at - b.at)
     return true
   }
   place(desired: number, clips: string[], priority: number, maxDelay: number) {
-    const start = this.slot(desired, clipLength(clips))
+    const start = this.slot(desired, this.voice.length(clips))
     if (start - desired > maxDelay) return false
     return this.commit(start, clips, priority)
   }
@@ -77,11 +100,12 @@ class Timeline {
 // running styles from this race's plan and paddock asides from what the horses
 // are doing on screen; the back stories are made up and fixed per horse.
 function planPreRace(timeline: Timeline, seed: number, round: number, field: number, history: Result[]) {
+  const clipLength = (clips: string[]) => timeline.voice.length(clips)
   let state = (seed ^ Math.imul(round, 374761393) ^ 0x9e3779b9) >>> 0
   const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296 }
   const shuffle = <T,>(items: T[]) => { for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]] } return items }
   const race = (betting: number) => betting - 60
-  timeline.place(race(1.5), [round === 1 ? 'welcome1' : round % 2 ? 'welcome2' : 'welcome3'], 8, 0)
+  timeline.place(race(1.5), [round === 1 ? `welcome1.${cupOf(field)}` : round % 2 ? `welcome2.${cupOf(field)}` : 'welcome3'], 8, 0)
   timeline.place(race(36), ['betReminder'], 8, 2)
   timeline.place(race(44.6), ['lastCall'], 9, .8)
   timeline.place(race(48.4), ['closed'], 9, .6)
@@ -147,7 +171,8 @@ function planPreRace(timeline: Timeline, seed: number, round: number, field: num
   }
 }
 
-export function planCommentary(seed: number, round: number, field: number, history: Result[] = []): Utterance[] {
+export function planCommentary(voice: Voice, seed: number, round: number, field: number, history: Result[] = []): Utterance[] {
+  const clipLength = (clips: string[]) => voice.length(clips)
   const plan = racePlan(seed, round, field)
   const order = raceOrder(seed, round, field)
   const lengths = (progress: number) => progress * referenceLap(field) / HORSE_LENGTH
@@ -161,13 +186,13 @@ export function planCommentary(seed: number, round: number, field: number, histo
   // The moment the pace reaches a progress mark.
   const reach = (progress: number) => frames.find(f => f.p[f.rank[0]] >= progress)?.v ?? WINNER_FINISH
   const toGo = (metres: number) => reach(1 - metres / METRES)
-  const timeline = new Timeline()
+  const timeline = new Timeline(voice)
   planPreRace(timeline, seed, round, field, history)
   const real = realFromVisual
 
   // The gates and the finish are fixed points the rest of the call fits around:
   // the winner's name twice, the crossing mid-phrase, then the verdict.
-  timeline.place(.08, ['gate', 'breakAway'], 10, 0)
+  timeline.place(.08, ['gate', `breakAway.${field}`], 10, 0)
   const crossing = real(WINNER_FINISH)
   const decider = frames.findLast(f => f.rank[0] !== winner)
   const lastLeadChange = decider ? decider.v : 0
@@ -247,9 +272,9 @@ export function planCommentary(seed: number, round: number, field: number, histo
       const id = typeof part === 'string' ? part : part(at(racePresentationTime(t)), named)
       if (!id) continue
       // A report naming a horse without recorded lines is not made at all.
-      if (!recorded([id])) return []
+      if (!voice.recorded([id])) return []
       clips.push(id)
-      t += CLIPS[id][1] + WITHIN
+      t += voice.clips[id][1] + WITHIN
     }
     return clips
   }
@@ -339,16 +364,15 @@ export function planCommentary(seed: number, round: number, field: number, histo
   return timeline.items
 }
 
-export function commentaryCues(utterances: Utterance[]): Cue[] {
+export function commentaryCues(utterances: Utterance[], voice: Voice): Cue[] {
   return utterances.flatMap(u => {
     let t = u.at
     return u.clips.map(clip => {
-      const [offset, duration] = CLIPS[clip]
-      const cue: Cue = { at: t, clip, offset, duration, sprite: Object.hasOwn(EXTRA, clip) ? 1 : 0 }
+      const [offset, duration] = voice.clips[clip]
+      const cue: Cue = { at: t, clip, offset, duration, sprite: Object.hasOwn(voice.extra, clip) ? 1 : 0 }
       t += duration + WITHIN
       return cue
     })
   })
 }
 
-export const commentaryFiles = [`${manifest.file}?v=${manifest.version}`, `${manifest.extra.file}?v=${manifest.extra.version}`] as const

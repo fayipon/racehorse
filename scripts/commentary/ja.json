@@ -1,0 +1,553 @@
+{
+  "voice": {
+    "engine": "fish",
+    "fish": "a8ac2a696ed54364952e415d40988775",
+    "edge": "ja-JP-KeitaNeural",
+    "levels": {
+      "0": {
+        "rate": -6,
+        "pitch": 0,
+        "gain": -1.5
+      },
+      "1": {
+        "rate": 14,
+        "pitch": 0,
+        "gain": 0
+      },
+      "2": {
+        "rate": 24,
+        "pitch": 10,
+        "gain": 1.5
+      },
+      "3": {
+        "rate": 34,
+        "pitch": 22,
+        "gain": 3
+      }
+    }
+  },
+  "names": [
+    "ルビーダッシュ",
+    "グリーンメロディ",
+    "サニーステップス",
+    "バイオレットドリーム",
+    "オレンジポップ",
+    "ベリーハート",
+    "ブルーブレイズ",
+    "ミッドナイトスター",
+    "ミントブリーズ",
+    "ココアサンダー",
+    "シルバームーン",
+    "ローズクラウン"
+  ],
+  "numbers": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12"
+  ],
+  "cups": {
+    "sunny": "サニーカップ",
+    "thunder": "サンダーカップ",
+    "royal": "ロイヤルカップ"
+  },
+  "fields": {
+    "8": "8",
+    "10": "10",
+    "12": "12"
+  },
+  "lines": [
+    {
+      "id": "welcome1",
+      "text": "皆さんこんにちは。{cup}へようこそ。",
+      "level": 0,
+      "cup": true
+    },
+    {
+      "id": "welcome2",
+      "text": "{cup}に戻ってまいりました。次のレースはまもなくです。",
+      "level": 0,
+      "cup": true
+    },
+    {
+      "id": "welcome3",
+      "text": "今日は快晴、芝の状態も上々です。",
+      "level": 0
+    },
+    {
+      "id": "warmup",
+      "text": "ポニーたちが場内を歩いてウォーミングアップ。みんなリラックスしていますね。",
+      "level": 0
+    },
+    {
+      "id": "firstRace",
+      "text": "本日の第1レース。まだ成績は横一線、チャンスはみんな平等です。",
+      "level": 0
+    },
+    {
+      "id": "equalOdds",
+      "text": "どのポニーも勝つ確率は同じ。今日の調子がものを言います。",
+      "level": 0
+    },
+    {
+      "id": "breeze",
+      "text": "今日は少し風があります。後ろから追い込む馬に有利かもしれません。",
+      "level": 0
+    },
+    {
+      "id": "fullStand",
+      "text": "スタンドは満員、熱気に包まれています。",
+      "level": 0
+    },
+    {
+      "id": "betReminder",
+      "text": "まだ投票していない方、お急ぎください。",
+      "level": 0
+    },
+    {
+      "id": "lastCall",
+      "text": "まもなく投票締め切りです。",
+      "level": 0
+    },
+    {
+      "id": "closed",
+      "text": "投票締め切り。ポニーたちがスタート地点へ向かいます。",
+      "level": 0
+    },
+    {
+      "id": "gateQuiet",
+      "text": "場内が静まり返りました。まもなくスタートです。",
+      "level": 0
+    },
+    {
+      "id": "formTop3",
+      "text": "{name}は最近好調、ずっと3着以内に入っています。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "lastWinner",
+      "text": "前のレースの勝ち馬は{name}。連勝なるでしょうか。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "twoWins",
+      "text": "{name}は最近すでに2勝、調子は上々です。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "runnerUp",
+      "text": "{name}は前走2着。今日こそはと燃えているはずです。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "slump",
+      "text": "{name}はここ数戦振るいませんが、今日は巻き返しを狙います。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleFront",
+      "text": "{name}はスタートから先頭に立つのが好きな馬です。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleStalk",
+      "text": "{name}は先行集団につけて、チャンスをうかがうタイプです。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleMid",
+      "text": "{name}はいつも中団から少しずつ進出していきます。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleClose",
+      "text": "{name}の末脚は驚異的です。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "grazing",
+      "text": "ご覧ください、{name}はまだのんびり草を食べています。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "looking",
+      "text": "{name}はきょろきょろ。スタンドのお客さんを見ているようです。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "resting",
+      "text": "{name}は頭を下げて、力をためています。",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "bio1",
+      "level": 0,
+      "texts": [
+        "ルビーダッシュは去年ケガをして、先月ようやく復帰しました。",
+        "グリーンメロディは今年デビューの新顔。まだ数戦しか走っていません。",
+        "サニーステップスは場内きってのベテラン。経験は豊富です。",
+        "バイオレットドリームは少し恥ずかしがり屋で、カメラが苦手です。",
+        "オレンジポップの名前は、子どもたちの投票で決まりました。",
+        "ベリーハートは観客の人気者。出てくるたびに声援が飛びます。",
+        "ブルーブレイズはよそから移籍してきたばかり。みんなまだ様子を見ています。",
+        "ミッドナイトスターは半年休んで、最近ようやく戻ってきました。",
+        "ミントブリーズは北の牧場の出身。走りがとても軽やかです。",
+        "ココアサンダーはチョコレート色の毛並み。厩舎いちばんの食いしん坊です。",
+        "シルバームーンは今シーズンから大舞台に上がった新星。調教師の期待も大きいです。",
+        "ローズクラウンは名門の出。歩く姿にも風格があります。"
+      ]
+    },
+    {
+      "id": "bio2",
+      "level": 0,
+      "texts": [
+        "ルビーダッシュの母親も、かつてサニーカップを制した名馬です。",
+        "グリーンメロディの調教師によると、雨上がりの芝が大好きだそうです。",
+        "サニーステップスは今朝も一周多く走ったそうで、元気いっぱいです。",
+        "バイオレットドリームは先月、調教師が替わりました。",
+        "オレンジポップは最近食欲旺盛で、少し体重が増えました。",
+        "ベリーハートは去年、あと一歩で年度代表馬でした。",
+        "ブルーブレイズはレース前に必ず場内を一周しないと落ち着きません。",
+        "ミッドナイトスターとオレンジポップは同じ厩舎の出身。古い友達です。",
+        "ミントブリーズは今日、新しい蹄鉄に替えました。効果が楽しみです。",
+        "ココアサンダーは調教師が大好きで、レース前には必ず頭をなでてもらいます。",
+        "シルバームーンの名前は、額にある白い三日月の模様から来ています。",
+        "ローズクラウンはレース前、いつもスタンドに向かって軽くうなずきます。"
+      ]
+    },
+    {
+      "id": "gate",
+      "text": "スタートしました！",
+      "level": 3
+    },
+    {
+      "id": "breakAway",
+      "text": "{field}頭そろって飛び出しました！",
+      "level": 3,
+      "field": true
+    },
+    {
+      "id": "evenBreak",
+      "text": "きれいなスタート！",
+      "level": 2
+    },
+    {
+      "id": "firstBend",
+      "text": "第1コーナーへ",
+      "level": 1
+    },
+    {
+      "id": "backStraight",
+      "text": "向こう正面",
+      "level": 1
+    },
+    {
+      "id": "finalBend",
+      "text": "最後のコーナー！",
+      "level": 2
+    },
+    {
+      "id": "homeStraight",
+      "text": "最後の直線！",
+      "level": 3
+    },
+    {
+      "id": "m1000",
+      "text": "残り1000",
+      "level": 1
+    },
+    {
+      "id": "m800",
+      "text": "残り800",
+      "level": 1
+    },
+    {
+      "id": "m600",
+      "text": "残り600",
+      "level": 2
+    },
+    {
+      "id": "m400",
+      "text": "残り400！",
+      "level": 2
+    },
+    {
+      "id": "m200",
+      "text": "残り200！",
+      "level": 3
+    },
+    {
+      "id": "m100",
+      "text": "残り100！",
+      "level": 3
+    },
+    {
+      "id": "m50",
+      "text": "残り50！",
+      "level": 3
+    },
+    {
+      "id": "tight",
+      "text": "馬群は一団",
+      "level": 1
+    },
+    {
+      "id": "closeBehind",
+      "text": "後ろがぴったりマーク",
+      "level": 2
+    },
+    {
+      "id": "byOne",
+      "text": "1馬身のリード",
+      "level": 1
+    },
+    {
+      "id": "byTwo",
+      "text": "2馬身のリード",
+      "level": 1
+    },
+    {
+      "id": "oneLength",
+      "text": "その差1馬身！",
+      "level": 3
+    },
+    {
+      "id": "halfLength",
+      "text": "半馬身！",
+      "level": 3
+    },
+    {
+      "id": "level",
+      "text": "並んだ！並んだ！",
+      "level": 3
+    },
+    {
+      "id": "levelTwo",
+      "text": "2頭が並んだ！",
+      "level": 3
+    },
+    {
+      "id": "line",
+      "text": "ゴールイン！",
+      "level": 3
+    },
+    {
+      "id": "photo",
+      "text": "ハナ差の勝負！写真判定です！",
+      "level": 3
+    },
+    {
+      "id": "lastStride",
+      "text": "最後の一完歩で逆転！",
+      "level": 3
+    },
+    {
+      "id": "comeback",
+      "text": "見事な逆転！",
+      "level": 3
+    },
+    {
+      "id": "wire",
+      "text": "逃げ切った！",
+      "level": 3
+    },
+    {
+      "id": "clear",
+      "text": "楽勝です！",
+      "level": 3
+    },
+    {
+      "id": "crowd",
+      "text": "場内総立ちです！",
+      "level": 3
+    },
+    {
+      "id": "quick",
+      "text": "{name}、好スタート！",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "lead",
+      "text": "{name}が先頭",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "leads",
+      "text": "{name}がリード",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "second",
+      "text": "2番手{name}",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "third",
+      "text": "3番手{name}",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "tracks",
+      "text": "{name}がぴったり続く",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "rail",
+      "text": "{name}は内ラチ沿い",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "wide",
+      "text": "{name}は外を回る",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "midfield",
+      "text": "{name}は中団",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "waiting",
+      "text": "{name}は後方で待機",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "last",
+      "text": "{name}は最後方",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "improving",
+      "text": "{name}がじわじわ進出",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "closing",
+      "text": "{name}が追い上げる！",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "passes",
+      "text": "{name}がかわした！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "takesLead",
+      "text": "{name}が先頭に立った！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "quickens",
+      "text": "{name}がスパート！",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "holds",
+      "text": "{name}、まだ先頭！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "fights",
+      "text": "{name}が粘る！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "outside",
+      "text": "外から{name}！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "inside",
+      "text": "内から{name}！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "nearer",
+      "text": "{name}、ぐんぐん迫る！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "drives",
+      "text": "{name}、突っ込んでくる！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "breaksOut",
+      "text": "{name}が抜け出した！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "call",
+      "text": "{name}！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "over",
+      "text": "{name}、そのまま駆け抜ける！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "wins",
+      "text": "{number}番{name}、優勝！",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "secondPlace",
+      "text": "2着は{name}",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "thirdPlace",
+      "text": "3着は{name}",
+      "level": 2,
+      "horse": true
+    }
+  ]
+}

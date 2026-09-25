@@ -1,19 +1,21 @@
 import { useEffect, useRef } from 'react'
-import { commentaryCues, commentaryFiles, planCommentary, type Cue } from './commentary'
+import { commentaryCues, loadVoice, planCommentary, type Cue, type Voice } from './commentary'
 import { BET_MS, fieldOf, type Game, type Result } from './game'
 import { fetchAsset } from './mirror'
+import type { Locale } from './i18n'
 
 const LOOKAHEAD = 1.2
 // The call runs from the paddock chat a minute before the gates to a few
-// seconds into the results.
+// seconds into the results (English, the slowest voice, finishes by about 56.5 s).
 const CALL_FROM = -60
-const CALL_UNTIL = 56
+const CALL_UNTIL = 58
 
 // Plays the planned race call against the race clock. Phrases are scheduled
 // ahead on the audio clock, so they land exactly on the moments they describe.
 export class CommentaryPlayer {
   private audio: AudioContext
   private output: GainNode
+  private voice: Voice | null = null
   private sprites: (AudioBuffer | null)[] = [null, null]
   private loading: (Promise<void> | null)[] = [null, null]
   private key = ''
@@ -36,23 +38,32 @@ export class CommentaryPlayer {
   }
 
   // The main file holds Sunny Cup's eight runners; bigger fields also load the lines naming 9–12.
-  load(field: number) {
+  load(voice: Voice, field: number) {
+    if (voice !== this.voice) {
+      this.stop()
+      this.voice = voice
+      this.sprites = [null, null]
+      this.loading = [null, null]
+      this.key = ''
+    }
     for (const index of field > 8 ? [0, 1] : [0]) {
-      this.loading[index] ??= fetchAsset(commentaryFiles[index])
+      this.loading[index] ??= fetchAsset(voice.files[index])
         .then(response => { if (!response.ok) throw new Error(`Commentary unavailable: ${response.status}`); return response.arrayBuffer() })
         .then(bytes => this.audio.decodeAudioData(bytes))
-        .then(buffer => { this.sprites[index] = buffer })
-        .catch(() => { this.loading[index] = null })
+        .then(buffer => { if (this.voice === voice) this.sprites[index] = buffer })
+        .catch(() => { if (this.voice === voice) this.loading[index] = null })
     }
   }
 
   // `seconds` is real time since the gates opened.
   update(seed: number, round: number, field: number, history: Result[], seconds: number) {
+    const voice = this.voice
+    if (!voice) return
     const key = `${seed}:${round}:${field}`
     if (key !== this.key) {
       this.stop()
       this.key = key
-      this.cues = planCommentary(seed, round, field, history).flatMap(u => commentaryCues([u]).map((cue, i) => ({ ...cue, opens: i === 0 })))
+      this.cues = planCommentary(voice, seed, round, field, history).flatMap(u => commentaryCues([u], voice).map((cue, i) => ({ ...cue, opens: i === 0 })))
     }
     if (!this.sprites[0] || this.audio.state !== 'running') return
     // Joining late starts at the next full sentence, never mid-phrase.
@@ -79,7 +90,8 @@ export class CommentaryPlayer {
   }
 }
 
-export function useCommentary(game: Game, enabled: boolean, duck: (start: number, end: number) => void) {
+// The race caller speaks the page's language; its recording loads with the first unmute.
+export function useCommentary(game: Game, enabled: boolean, duck: (start: number, end: number) => void, locale: Locale) {
   const player = useRef<CommentaryPlayer | null>(null)
   const latest = useRef({ game, duck })
   useEffect(() => { latest.current = { game, duck } })
@@ -98,8 +110,8 @@ export function useCommentary(game: Game, enabled: boolean, duck: (start: number
   }, [enabled])
   return {
     enable: (audio: AudioContext) => {
-      player.current ??= new CommentaryPlayer(audio)
-      player.current.load(fieldOf(latest.current.game))
+      const current = player.current ??= new CommentaryPlayer(audio)
+      void loadVoice(locale).then(voice => current.load(voice, fieldOf(latest.current.game)))
     },
   }
 }

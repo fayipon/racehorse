@@ -54,16 +54,28 @@
     "十一",
     "十二"
   ],
+  "cups": {
+    "sunny": "陽光盃",
+    "thunder": "雷霆盃",
+    "royal": "皇家盃"
+  },
+  "fields": {
+    "8": "八",
+    "10": "十",
+    "12": "十二"
+  },
   "lines": [
     {
       "id": "welcome1",
-      "text": "各位觀眾午安，歡迎來到陽光盃。",
-      "level": 0
+      "text": "各位觀眾午安，歡迎來到{cup}。",
+      "level": 0,
+      "cup": true
     },
     {
       "id": "welcome2",
-      "text": "歡迎回到陽光盃，下一場比賽馬上就要開始。",
-      "level": 0
+      "text": "歡迎回到{cup}，下一場比賽馬上就要開始。",
+      "level": 0,
+      "cup": true
     },
     {
       "id": "welcome3",
@@ -230,8 +242,9 @@
     },
     {
       "id": "breakAway",
-      "text": "八匹馬一起衝出來！",
-      "level": 3
+      "text": "{field}匹馬一起衝出來！",
+      "level": 3,
+      "field": true
     },
     {
       "id": "evenBreak",

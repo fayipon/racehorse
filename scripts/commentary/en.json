@@ -1,0 +1,553 @@
+{
+  "voice": {
+    "engine": "fish",
+    "fish": "f3199d67940c4ef3a029a5baf92ee8c2",
+    "edge": "en-GB-RyanNeural",
+    "levels": {
+      "0": {
+        "rate": -6,
+        "pitch": 0,
+        "gain": -1.5
+      },
+      "1": {
+        "rate": 14,
+        "pitch": 0,
+        "gain": 0
+      },
+      "2": {
+        "rate": 24,
+        "pitch": 10,
+        "gain": 1.5
+      },
+      "3": {
+        "rate": 34,
+        "pitch": 22,
+        "gain": 3
+      }
+    }
+  },
+  "names": [
+    "Ruby Dash",
+    "Green Melody",
+    "Sunny Steps",
+    "Violet Dream",
+    "Orange Pop",
+    "Berry Heart",
+    "Blue Blaze",
+    "Midnight Star",
+    "Mint Breeze",
+    "Cocoa Thunder",
+    "Silver Moon",
+    "Rose Crown"
+  ],
+  "numbers": [
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+    "seven",
+    "eight",
+    "nine",
+    "ten",
+    "eleven",
+    "twelve"
+  ],
+  "cups": {
+    "sunny": "Sunny Cup",
+    "thunder": "Thunder Cup",
+    "royal": "Royal Cup"
+  },
+  "fields": {
+    "8": "eight",
+    "10": "ten",
+    "12": "twelve"
+  },
+  "lines": [
+    {
+      "id": "welcome1",
+      "text": "Good afternoon everyone, and welcome to the {cup}.",
+      "level": 0,
+      "cup": true
+    },
+    {
+      "id": "welcome2",
+      "text": "Welcome back to the {cup}. The next race is only moments away.",
+      "level": 0,
+      "cup": true
+    },
+    {
+      "id": "welcome3",
+      "text": "Clear skies today, and the turf is in great shape.",
+      "level": 0
+    },
+    {
+      "id": "warmup",
+      "text": "The ponies are strolling round to warm up, and they all look nice and relaxed.",
+      "level": 0
+    },
+    {
+      "id": "firstRace",
+      "text": "It's the first race of the day, so nobody has any form yet. Anyone can win this.",
+      "level": 0
+    },
+    {
+      "id": "equalOdds",
+      "text": "Every pony has exactly the same chance. It all comes down to who is on song today.",
+      "level": 0
+    },
+    {
+      "id": "breeze",
+      "text": "There's a light breeze today, which could suit the ones who come from behind.",
+      "level": 0
+    },
+    {
+      "id": "fullStand",
+      "text": "The stands are packed, and the atmosphere is electric.",
+      "level": 0
+    },
+    {
+      "id": "betReminder",
+      "text": "If you haven't placed a bet yet, now's the time.",
+      "level": 0
+    },
+    {
+      "id": "lastCall",
+      "text": "Betting is about to close.",
+      "level": 0
+    },
+    {
+      "id": "closed",
+      "text": "Betting has closed, and the ponies are heading to the start.",
+      "level": 0
+    },
+    {
+      "id": "gateQuiet",
+      "text": "A hush falls over the crowd. They're ready for the off.",
+      "level": 0
+    },
+    {
+      "id": "formTop3",
+      "text": "{name} has been in fine form lately, top three every time.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "lastWinner",
+      "text": "{name} won the last race. Can we see it again today?",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "twoWins",
+      "text": "{name} has already won two of the last few, and is in great shape.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "runnerUp",
+      "text": "{name} was only second last time, and will be itching to go one better.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "slump",
+      "text": "{name} has had a rough few races, and wants to bounce back today.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleFront",
+      "text": "{name} loves to go straight to the front.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleStalk",
+      "text": "{name} likes to sit just behind the leaders and wait.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleMid",
+      "text": "{name} usually makes steady progress from midfield.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleClose",
+      "text": "{name} has a devastating finishing kick.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "grazing",
+      "text": "Look at {name}, still happily grazing.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "looking",
+      "text": "{name} is looking all around, maybe checking out the crowd.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "resting",
+      "text": "{name} is keeping the head down, saving energy.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "bio1",
+      "level": 0,
+      "texts": [
+        "Ruby Dash was injured last year, and only came back to racing last month.",
+        "Green Melody is a new face this year, with only a handful of starts.",
+        "Sunny Steps is a seasoned veteran with a wealth of experience.",
+        "Violet Dream is a little shy, and not a big fan of the cameras.",
+        "Orange Pop was named in a vote by the local kids.",
+        "Berry Heart is the crowd favourite, and always gets a big cheer.",
+        "Blue Blaze has just moved here from out of town, and everyone is still getting to know this one.",
+        "Midnight Star took six months off, and has only just come back to the track.",
+        "Mint Breeze comes from a farm up north, and moves especially lightly.",
+        "Cocoa Thunder has a chocolate coat, and is the greediest eater in the stable.",
+        "Silver Moon only stepped up to the big races this season, and the trainer has high hopes.",
+        "Rose Crown comes from a famous family, and walks with real presence."
+      ]
+    },
+    {
+      "id": "bio2",
+      "level": 0,
+      "texts": [
+        "Ruby Dash's mother won the Sunny Cup in her day.",
+        "Green Melody's trainer says this pony loves soft turf after the rain.",
+        "Word is Sunny Steps did an extra lap this morning, and is full of beans.",
+        "Violet Dream switched to a new trainer last month.",
+        "Orange Pop has had a big appetite lately, and put on a little weight.",
+        "Berry Heart came within a whisker of pony of the year last season.",
+        "Before every race, Blue Blaze has to walk a lap of the track to settle.",
+        "Midnight Star and Orange Pop came from the same stable, so they are old friends.",
+        "Mint Breeze has new shoes today, and everyone wants to see the difference.",
+        "Cocoa Thunder adores the trainer, and needs a pat on the head before every race.",
+        "Silver Moon is named after the white crescent on the forehead.",
+        "Before every race, Rose Crown gives a little nod to the stands."
+      ]
+    },
+    {
+      "id": "gate",
+      "text": "And they're off!",
+      "level": 3
+    },
+    {
+      "id": "breakAway",
+      "text": "All {field} away together!",
+      "level": 3,
+      "field": true
+    },
+    {
+      "id": "evenBreak",
+      "text": "A clean, even start!",
+      "level": 2
+    },
+    {
+      "id": "firstBend",
+      "text": "Into the first bend",
+      "level": 1
+    },
+    {
+      "id": "backStraight",
+      "text": "Along the back straight",
+      "level": 1
+    },
+    {
+      "id": "finalBend",
+      "text": "Into the final bend!",
+      "level": 2
+    },
+    {
+      "id": "homeStraight",
+      "text": "Into the home straight!",
+      "level": 3
+    },
+    {
+      "id": "m1000",
+      "text": "A thousand to go",
+      "level": 1
+    },
+    {
+      "id": "m800",
+      "text": "Eight hundred to go",
+      "level": 1
+    },
+    {
+      "id": "m600",
+      "text": "Six hundred to go",
+      "level": 2
+    },
+    {
+      "id": "m400",
+      "text": "Four hundred to go!",
+      "level": 2
+    },
+    {
+      "id": "m200",
+      "text": "Two hundred to go!",
+      "level": 3
+    },
+    {
+      "id": "m100",
+      "text": "A hundred metres left!",
+      "level": 3
+    },
+    {
+      "id": "m50",
+      "text": "Fifty metres!",
+      "level": 3
+    },
+    {
+      "id": "tight",
+      "text": "The field is tightly bunched",
+      "level": 1
+    },
+    {
+      "id": "closeBehind",
+      "text": "They're right on the leader's heels",
+      "level": 2
+    },
+    {
+      "id": "byOne",
+      "text": "Leading by a length",
+      "level": 1
+    },
+    {
+      "id": "byTwo",
+      "text": "Leading by two lengths",
+      "level": 1
+    },
+    {
+      "id": "oneLength",
+      "text": "Just a length in it!",
+      "level": 3
+    },
+    {
+      "id": "halfLength",
+      "text": "Half a length!",
+      "level": 3
+    },
+    {
+      "id": "level",
+      "text": "They're level! They're level!",
+      "level": 3
+    },
+    {
+      "id": "levelTwo",
+      "text": "Two of them side by side!",
+      "level": 3
+    },
+    {
+      "id": "line",
+      "text": "Across the line!",
+      "level": 3
+    },
+    {
+      "id": "photo",
+      "text": "It's a photo finish!",
+      "level": 3
+    },
+    {
+      "id": "lastStride",
+      "text": "Snatched it on the line!",
+      "level": 3
+    },
+    {
+      "id": "comeback",
+      "text": "What a comeback!",
+      "level": 3
+    },
+    {
+      "id": "wire",
+      "text": "Led from start to finish!",
+      "level": 3
+    },
+    {
+      "id": "clear",
+      "text": "Won with plenty to spare!",
+      "level": 3
+    },
+    {
+      "id": "crowd",
+      "text": "The whole crowd is on its feet!",
+      "level": 3
+    },
+    {
+      "id": "quick",
+      "text": "{name} is quickest away!",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "lead",
+      "text": "{name} leads",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "leads",
+      "text": "{name} in front",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "second",
+      "text": "{name} second",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "third",
+      "text": "{name} third",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "tracks",
+      "text": "{name} tracking them",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "rail",
+      "text": "{name} on the rail",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "wide",
+      "text": "{name} out wide",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "midfield",
+      "text": "{name} in midfield",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "waiting",
+      "text": "{name} biding time at the back",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "last",
+      "text": "{name} at the rear",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "improving",
+      "text": "{name} making ground",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "closing",
+      "text": "{name} is closing in!",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "passes",
+      "text": "{name} goes past!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "takesLead",
+      "text": "{name} takes the lead!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "quickens",
+      "text": "{name} picks up the pace!",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "holds",
+      "text": "{name} still leads!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "fights",
+      "text": "{name} is fighting back!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "outside",
+      "text": "{name} flying down the outside!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "inside",
+      "text": "{name} coming up the inside!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "nearer",
+      "text": "{name} getting closer and closer!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "drives",
+      "text": "{name} drives forward!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "breaksOut",
+      "text": "{name} bursts clear!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "call",
+      "text": "{name}!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "over",
+      "text": "{name} storms home!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "wins",
+      "text": "Number {number}, {name}, wins it!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "secondPlace",
+      "text": "Second, {name}",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "thirdPlace",
+      "text": "Third, {name}",
+      "level": 2,
+      "horse": true
+    }
+  ]
+}

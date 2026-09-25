@@ -1,0 +1,553 @@
+{
+  "voice": {
+    "engine": "fish",
+    "fish": "5626e9626f8c43b09edfff7467002114",
+    "edge": "pt-BR-AntonioNeural",
+    "levels": {
+      "0": {
+        "rate": -6,
+        "pitch": 0,
+        "gain": -1.5
+      },
+      "1": {
+        "rate": 14,
+        "pitch": 0,
+        "gain": 0
+      },
+      "2": {
+        "rate": 24,
+        "pitch": 10,
+        "gain": 1.5
+      },
+      "3": {
+        "rate": 34,
+        "pitch": 22,
+        "gain": 3
+      }
+    }
+  },
+  "names": [
+    "Ruby Dash",
+    "Green Melody",
+    "Sunny Steps",
+    "Violet Dream",
+    "Orange Pop",
+    "Berry Heart",
+    "Blue Blaze",
+    "Midnight Star",
+    "Mint Breeze",
+    "Cocoa Thunder",
+    "Silver Moon",
+    "Rose Crown"
+  ],
+  "numbers": [
+    "um",
+    "dois",
+    "três",
+    "quatro",
+    "cinco",
+    "seis",
+    "sete",
+    "oito",
+    "nove",
+    "dez",
+    "onze",
+    "doze"
+  ],
+  "cups": {
+    "sunny": "Copa Sol",
+    "thunder": "Copa Trovão",
+    "royal": "Copa Real"
+  },
+  "fields": {
+    "8": "oito",
+    "10": "dez",
+    "12": "doze"
+  },
+  "lines": [
+    {
+      "id": "welcome1",
+      "text": "Boa tarde a todos, e sejam bem-vindos à {cup}!",
+      "level": 0,
+      "cup": true
+    },
+    {
+      "id": "welcome2",
+      "text": "Estamos de volta à {cup}, e a próxima corrida já vai começar.",
+      "level": 0,
+      "cup": true
+    },
+    {
+      "id": "welcome3",
+      "text": "Céu limpo hoje, e a grama está em ótimas condições.",
+      "level": 0
+    },
+    {
+      "id": "warmup",
+      "text": "Os pôneis estão passeando para se aquecer, e parecem bem tranquilos.",
+      "level": 0
+    },
+    {
+      "id": "firstRace",
+      "text": "É a primeira corrida do dia, ninguém tem retrospecto ainda. Todos com a mesma chance.",
+      "level": 0
+    },
+    {
+      "id": "equalOdds",
+      "text": "Todos os pôneis têm a mesma chance. Vai depender de quem estiver num dia bom.",
+      "level": 0
+    },
+    {
+      "id": "breeze",
+      "text": "Tem uma brisa leve hoje, o que pode favorecer quem vem de trás.",
+      "level": 0
+    },
+    {
+      "id": "fullStand",
+      "text": "As arquibancadas estão lotadas, o clima é de festa.",
+      "level": 0
+    },
+    {
+      "id": "betReminder",
+      "text": "Quem ainda não apostou, corre que ainda dá tempo.",
+      "level": 0
+    },
+    {
+      "id": "lastCall",
+      "text": "As apostas estão quase encerrando.",
+      "level": 0
+    },
+    {
+      "id": "closed",
+      "text": "Apostas encerradas, os pôneis seguem para a largada.",
+      "level": 0
+    },
+    {
+      "id": "gateQuiet",
+      "text": "Silêncio no hipódromo. Tudo pronto para a largada.",
+      "level": 0
+    },
+    {
+      "id": "formTop3",
+      "text": "{name} vem em ótima fase, sempre entre os três primeiros.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "lastWinner",
+      "text": "{name} venceu a última corrida. Será que repete a dose hoje?",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "twoWins",
+      "text": "{name} já venceu duas das últimas corridas e está voando.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "runnerUp",
+      "text": "{name} ficou em segundo na última, e vem com sangue nos olhos.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "slump",
+      "text": "{name} vem de corridas ruins, e quer dar a volta por cima hoje.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleFront",
+      "text": "{name} gosta de disparar na frente logo de cara.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleStalk",
+      "text": "{name} costuma correr colado nos líderes, esperando a hora certa.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleMid",
+      "text": "{name} costuma vir crescendo do meio do pelotão.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "styleClose",
+      "text": "{name} tem uma arrancada final impressionante.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "grazing",
+      "text": "Olha só {name}, ainda pastando com toda a calma.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "looking",
+      "text": "{name} está olhando para todos os lados, parece curtir a torcida.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "resting",
+      "text": "{name} está de cabeça baixa, guardando energia.",
+      "level": 0,
+      "horse": true
+    },
+    {
+      "id": "bio1",
+      "level": 0,
+      "texts": [
+        "Ruby Dash se machucou no ano passado, e só voltou a correr no mês passado.",
+        "Green Melody é novidade este ano, com poucas corridas no currículo.",
+        "Sunny Steps é um veterano da pista, com muita experiência.",
+        "Violet Dream é meio tímido, e não gosta muito das câmeras.",
+        "O nome de Orange Pop foi escolhido numa votação da criançada.",
+        "Berry Heart é o queridinho da torcida, sempre aplaudido quando entra na pista.",
+        "Blue Blaze acabou de chegar de outra cidade, e todo mundo ainda está conhecendo o pônei.",
+        "Midnight Star ficou seis meses parado, e acabou de voltar às pistas.",
+        "Mint Breeze veio de um haras do norte, e corre com uma leveza incrível.",
+        "Cocoa Thunder tem a pelagem cor de chocolate, e é o mais comilão da cocheira.",
+        "Silver Moon subiu para as grandes corridas nesta temporada, e o treinador aposta alto nele.",
+        "Rose Crown vem de família nobre, e tem uma presença de respeito."
+      ]
+    },
+    {
+      "id": "bio2",
+      "level": 0,
+      "texts": [
+        "A mãe de Ruby Dash também foi campeã da Copa Sol.",
+        "O treinador de Green Melody diz que ele adora a grama molhada depois da chuva.",
+        "Dizem que Sunny Steps deu uma volta extra hoje de manhã, e está cheio de energia.",
+        "Violet Dream trocou de treinador no mês passado.",
+        "Orange Pop anda com muito apetite, e ganhou um pouquinho de peso.",
+        "Berry Heart quase foi o campeão do ano na temporada passada.",
+        "Antes de toda corrida, Blue Blaze precisa dar uma volta na pista para se acalmar.",
+        "Midnight Star e Orange Pop vieram da mesma cocheira, são velhos amigos.",
+        "Mint Breeze estreia ferraduras novas hoje, e todo mundo quer ver o resultado.",
+        "Cocoa Thunder é grudado no treinador, e precisa de um carinho na cabeça antes de correr.",
+        "O nome de Silver Moon vem da meia-lua branca que ele tem na testa.",
+        "Antes de cada corrida, Rose Crown faz um aceno de cabeça para a arquibancada."
+      ]
+    },
+    {
+      "id": "gate",
+      "text": "Foi dada a largada!",
+      "level": 3
+    },
+    {
+      "id": "breakAway",
+      "text": "Os {field} largaram juntos!",
+      "level": 3,
+      "field": true
+    },
+    {
+      "id": "evenBreak",
+      "text": "Largada perfeita!",
+      "level": 2
+    },
+    {
+      "id": "firstBend",
+      "text": "Entrando na primeira curva",
+      "level": 1
+    },
+    {
+      "id": "backStraight",
+      "text": "Na reta oposta",
+      "level": 1
+    },
+    {
+      "id": "finalBend",
+      "text": "Entrando na última curva!",
+      "level": 2
+    },
+    {
+      "id": "homeStraight",
+      "text": "Entrando na reta final!",
+      "level": 3
+    },
+    {
+      "id": "m1000",
+      "text": "Faltam mil metros",
+      "level": 1
+    },
+    {
+      "id": "m800",
+      "text": "Faltam oitocentos",
+      "level": 1
+    },
+    {
+      "id": "m600",
+      "text": "Faltam seiscentos",
+      "level": 2
+    },
+    {
+      "id": "m400",
+      "text": "Faltam quatrocentos!",
+      "level": 2
+    },
+    {
+      "id": "m200",
+      "text": "Faltam duzentos metros!",
+      "level": 3
+    },
+    {
+      "id": "m100",
+      "text": "Últimos cem metros!",
+      "level": 3
+    },
+    {
+      "id": "m50",
+      "text": "Cinquenta metros!",
+      "level": 3
+    },
+    {
+      "id": "tight",
+      "text": "O pelotão está bem compacto",
+      "level": 1
+    },
+    {
+      "id": "closeBehind",
+      "text": "Quem vem atrás está colado",
+      "level": 2
+    },
+    {
+      "id": "byOne",
+      "text": "Vantagem de um corpo",
+      "level": 1
+    },
+    {
+      "id": "byTwo",
+      "text": "Vantagem de dois corpos",
+      "level": 1
+    },
+    {
+      "id": "oneLength",
+      "text": "Só um corpo de diferença!",
+      "level": 3
+    },
+    {
+      "id": "halfLength",
+      "text": "Meio corpo!",
+      "level": 3
+    },
+    {
+      "id": "level",
+      "text": "Emparelharam! Emparelharam!",
+      "level": 3
+    },
+    {
+      "id": "levelTwo",
+      "text": "Dois pôneis lado a lado!",
+      "level": 3
+    },
+    {
+      "id": "line",
+      "text": "Cruzou a linha!",
+      "level": 3
+    },
+    {
+      "id": "photo",
+      "text": "Chegada no focinho! Vai para o photochart!",
+      "level": 3
+    },
+    {
+      "id": "lastStride",
+      "text": "Virada no último passo!",
+      "level": 3
+    },
+    {
+      "id": "comeback",
+      "text": "Que virada sensacional!",
+      "level": 3
+    },
+    {
+      "id": "wire",
+      "text": "De ponta a ponta!",
+      "level": 3
+    },
+    {
+      "id": "clear",
+      "text": "Vitória com sobras!",
+      "level": 3
+    },
+    {
+      "id": "crowd",
+      "text": "A torcida está toda de pé!",
+      "level": 3
+    },
+    {
+      "id": "quick",
+      "text": "{name} larga melhor!",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "lead",
+      "text": "{name} na frente",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "leads",
+      "text": "{name} lidera",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "second",
+      "text": "{name} em segundo",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "third",
+      "text": "{name} em terceiro",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "tracks",
+      "text": "{name} vem logo atrás",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "rail",
+      "text": "{name} colado na cerca",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "wide",
+      "text": "{name} por fora",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "midfield",
+      "text": "{name} no meio do pelotão",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "waiting",
+      "text": "{name} esperando a hora lá atrás",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "last",
+      "text": "{name} em último",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "improving",
+      "text": "{name} vem crescendo",
+      "level": 1,
+      "horse": true
+    },
+    {
+      "id": "closing",
+      "text": "{name} vem chegando!",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "passes",
+      "text": "{name} passou!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "takesLead",
+      "text": "{name} assume a ponta!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "quickens",
+      "text": "{name} acelera!",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "holds",
+      "text": "{name} continua na frente!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "fights",
+      "text": "{name} resiste!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "outside",
+      "text": "{name} vem voando por fora!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "inside",
+      "text": "{name} vem por dentro!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "nearer",
+      "text": "{name} cada vez mais perto!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "drives",
+      "text": "{name} vem com tudo!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "breaksOut",
+      "text": "{name} dispara!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "call",
+      "text": "{name}!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "over",
+      "text": "{name} passa voando!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "wins",
+      "text": "Número {number}, {name}, é o campeão!",
+      "level": 3,
+      "horse": true
+    },
+    {
+      "id": "secondPlace",
+      "text": "Em segundo, {name}",
+      "level": 2,
+      "horse": true
+    },
+    {
+      "id": "thirdPlace",
+      "text": "Em terceiro, {name}",
+      "level": 2,
+      "horse": true
+    }
+  ]
+}

@@ -9,8 +9,13 @@
 
 ## 賽事轉播語音
 
-- 以 [Fish Audio](https://fish.audio) 的 S2.1 Pro 模型（`s2.1-pro-free`）生成，聲音為公開聲音模型「影視解說」（ID `39ea63baf6c0480cb8148dc7955db78e`，作者暱稱 张磊）。文字全為專案自寫（`scripts/commentary-lines.json`），由 `scripts/generate_commentary.py` 修剪、調整音量並合成 `public/audio/commentary/voice.mp3`。使用依 Fish Audio 服務條款；免費模型的請求可能被用於改進模型，年營收超過 100 萬美元的產品需先聯繫 Fish Audio。
-- 點名第 9–12 號馬的台詞另存為 `public/audio/commentary/voice-extra.mp3`，只有雷霆盃與皇家盃載入；陽光盃只載入 `voice.mp3`。
+- 以 [Fish Audio](https://fish.audio) 的 S2.1 Pro 模型（`s2.1-pro-free`）生成。文字全為專案自寫（`scripts/commentary/<語言>.json`），由 `scripts/generate_commentary.py` 修剪、調整音量並合成 `public/audio/commentary/<語言>/voice.mp3`。使用依 Fish Audio 服務條款；免費模型的請求可能被用於改進模型，年營收超過 100 萬美元的產品需先聯繫 Fish Audio。
+- 使用的公開聲音模型：
+  - 普通話（繁中、簡中共用）：「影視解說」，ID `39ea63baf6c0480cb8148dc7955db78e`，作者暱稱 张磊。
+  - 英文：「Sports commentary」，ID `f3199d67940c4ef3a029a5baf92ee8c2`，作者暱稱 cgpt80633。
+  - 日文：「アツ実況」，ID `a8ac2a696ed54364952e415d40988775`，作者暱稱 BLUE。
+  - 巴西葡文：「KAI」，ID `5626e9626f8c43b09edfff7467002114`，作者暱稱 Robert Ferreira Sousa。
+- 點名第 9–12 號馬的台詞與十、十二匹的開閘句另存為各語言的 `voice-extra.mp3`，只有雷霆盃與皇家盃載入；陽光盃只載入 `voice.mp3`。
 - 挑選聲音時排除了模仿真人（知名主持人、解說員）的聲音模型。
 - 語氣參考 `design/` 內使用者提供的 Fish Audio 試驗音（中文與日文衝線口播），參考音本身不打包進網站。
 - 先前以 `zh-TW-YunJheNeural` 生成的整句播報（`public/audio/announcer/`）已移除。

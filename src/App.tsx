@@ -145,7 +145,7 @@ function Dialog({ title, children, onClose }: { title: string; children: React.R
   return <dialog ref={ref} onCancel={onClose} onClick={e => { if (e.target === ref.current) onClose() }}><div className="dialog-head"><h2>{title}</h2><button className="icon-button" aria-label={m.dialog.close} onClick={onClose}><X size={20} /></button></div>{children}</dialog>
 }
 export default function App({ cup: cupId }: { cup: CupId }) {
-  const { m, n, price, horse } = useI18n()
+  const { m, n, price, horse, locale } = useI18n()
   const cup = CUPS[cupId]
   const local = m.cups[cupId]
   const field = cup.field
@@ -170,7 +170,7 @@ export default function App({ cup: cupId }: { cup: CupId }) {
   const crowd = useCrowd(game, now, gameReady && !muted)
   // One audio context, unlocked by the sound button, carries the crowd and the race caller.
   const audio = useRef<AudioContext | null>(null)
-  const commentary = useCommentary(game, gameReady && !muted, crowd.duck)
+  const commentary = useCommentary(game, gameReady && !muted, crowd.duck, locale)
   const phase = phaseAt(game, now)
   const locked = !gameReady || !bettingOpen(game, now)
   const totalStake = game.bets.reduce((sum, b) => sum + b.amount, 0)

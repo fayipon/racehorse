@@ -1,9 +1,11 @@
-"""Build the race commentary voice sprite from scripts/commentary-lines.json.
+"""Build a language's race commentary voice sprite from scripts/commentary/<lang>.json.
 
-Every line is spoken once per horse where it names one, trimmed, levelled by
-intensity and packed into an MP3 (public/audio/commentary/voice.mp3). Lines naming
-runners 9-12 go in a second MP3 (voice-extra.mp3) that only the bigger cups load.
-The clip offsets go to src/commentary-clips.json, which the planner reads for timing.
+Every line is spoken once per horse where it names one (and once per cup or
+field size where it names that), trimmed, levelled by intensity and packed into
+an MP3 (public/audio/commentary/<lang>/voice.mp3). Lines naming runners 9-12, and
+the break for ten or twelve, go in a second MP3 (voice-extra.mp3) that only the
+bigger cups load. The clip offsets go to src/commentary/<lang>.json, which the
+planner reads for timing. Simplified Chinese pages reuse the zh-TW voice.
 
 Engines (the catalog's voice.engine is the default):
   edge            Microsoft Edge neural voices via edge-tts==7.2.8. Free.
@@ -17,7 +19,7 @@ Engines (the catalog's voice.engine is the default):
 
 Requires imageio-ffmpeg (tmp/python-tools). Generated parts are cached in
 dev/commentary-parts, so only changed lines are requested again.
-Run: python scripts/generate_commentary.py [--engine edge|fish] [--preview]
+Run: python scripts/generate_commentary.py [--lang zh-TW|en|ja|pt-BR] [--engine edge|fish] [--preview]
 --preview renders only a short reel (dev/commentary-preview.mp3) to judge a
 voice before generating every line; its clips are cached for the full run.
 """
@@ -40,13 +42,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tmp" / "python-tools"))
 import imageio_ffmpeg  # noqa: E402
 
-CATALOG = ROOT / "scripts" / "commentary-lines.json"
+LANGUAGES = ["zh-TW", "en", "ja", "pt-BR"]
+CATALOGS = ROOT / "scripts" / "commentary"
 PARTS = ROOT / "dev" / "commentary-parts"
-SPRITE = ROOT / "public" / "audio" / "commentary" / "voice.mp3"
-EXTRA_SPRITE = SPRITE.with_name("voice-extra.mp3")
+SPRITES = ROOT / "public" / "audio" / "commentary"
 # Sunny Cup runs eight; lines naming a later runner go in the extra sprite.
 BASE_RUNNERS = 8
-MANIFEST = ROOT / "src" / "commentary-clips.json"
+MANIFESTS = ROOT / "src" / "commentary"
 RATE = 24000
 LEAD_IN = 0.3
 SPACING = 0.2
@@ -54,7 +56,7 @@ SPACING = 0.2
 LEVEL_RMS = {0: -21.5, 1: -21.0, 2: -19.5, 3: -18.0}
 PREVIEW = ROOT / "dev" / "commentary-preview.mp3"
 # A paddock aside, then a whole run-in in the reference call's order.
-PREVIEW_LINES = ["welcome1", "bio1.1", "lastWinner.3", "styleClose.7", "m200", "holds.6", "outside.7", "nearer.7",
+PREVIEW_LINES = ["welcome1.sunny", "bio1.1", "lastWinner.3", "styleClose.7", "m200", "holds.6", "outside.7", "nearer.7",
                  "oneLength", "halfLength", "level", "breaksOut.7", "fights.6", "call.7", "call.7", "over.7", "line",
                  "lastStride", "wins.7"]
 SHORT_PREVIEW = ["bio1.1", "m200", "holds.6", "outside.7", "halfLength", "level", "call.7", "call.7", "over.7",
@@ -89,6 +91,14 @@ def expand(catalog):
             for index, name in enumerate(catalog["names"]):
                 text = line["text"].replace("{name}", name).replace("{number}", catalog["numbers"][index])
                 lines.append({"id": f"{line['id']}.{index + 1}", "text": text, "level": line["level"]})
+        elif line.get("cup"):
+            # Welcomes name the cup being run.
+            for cup, name in catalog["cups"].items():
+                lines.append({"id": f"{line['id']}.{cup}", "text": line["text"].replace("{cup}", name), "level": line["level"]})
+        elif line.get("field"):
+            # The break counts the runners; ids end in the field size, so ten and twelve land in the extra sprite.
+            for field, spoken in catalog["fields"].items():
+                lines.append({"id": f"{line['id']}.{field}", "text": line["text"].replace("{field}", spoken), "level": line["level"]})
         else:
             lines.append({"id": line["id"], "text": line["text"], "level": line["level"]})
     return lines
@@ -203,6 +213,7 @@ def fish_clip(line, target):
 
 async def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--lang", choices=LANGUAGES, default="zh-TW")
     parser.add_argument("--engine", choices=["edge", "fish"])
     parser.add_argument("--preview", action="store_true")
     parser.add_argument("--short", action="store_true", help="a shorter preview reel, for comparing voices")
@@ -211,7 +222,7 @@ async def main():
     options = parser.parse_args()
     if options.voice:
         os.environ["FISH_VOICE_ID"] = options.voice
-    catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
+    catalog = json.loads((CATALOGS / f"{options.lang}.json").read_text(encoding="utf-8"))
     settings = catalog["voice"]
     engine = options.engine or settings.get("engine", "edge")
     global FISH_VOICE
@@ -221,7 +232,7 @@ async def main():
         by_id = {line["id"]: line for line in lines}
         lines = [by_id[key] for key in (SHORT_PREVIEW if options.short else PREVIEW_LINES)]
     PARTS.mkdir(parents=True, exist_ok=True)
-    semaphore = asyncio.Semaphore(4 if engine == "edge" else 2)
+    semaphore = asyncio.Semaphore(4 if engine == "edge" else int(setting("FISH_CONCURRENCY", "2")))
 
     async def fetch(line):
         voice = settings["edge"] if engine == "edge" else f'{setting("FISH_MODEL", "s2.1-pro-free")}:{setting("FISH_VOICE_ID", FISH_VOICE or "reference")}'
@@ -252,16 +263,20 @@ async def main():
         return int(tail) if head and tail.isdigit() else 0
 
     pairs = list(zip(lines, targets))
-    base = build_sprite([p for p in pairs if runner(p[0]) <= BASE_RUNNERS], SPRITE, settings)
-    extra = build_sprite([p for p in pairs if runner(p[0]) > BASE_RUNNERS], EXTRA_SPRITE, settings)
+    sprite = SPRITES / options.lang / "voice.mp3"
+    base = build_sprite([p for p in pairs if runner(p[0]) <= BASE_RUNNERS], sprite, settings)
+    extra = build_sprite([p for p in pairs if runner(p[0]) > BASE_RUNNERS], sprite.with_name("voice-extra.mp3"), settings)
 
     def rows(clips):
         return ",\n".join(f'  "{key}": {json.dumps(value)}' for key, value in clips.items())
 
-    MANIFEST.write_text(f'{{\n"file": "audio/commentary/voice.mp3",\n"version": "{base[1]}",\n"engine": "{engine}",\n'
-                        f'"clips": {{\n{rows(base[0])}\n}},\n'
-                        f'"extra": {{\n"file": "audio/commentary/voice-extra.mp3",\n"version": "{extra[1]}",\n'
-                        f'"clips": {{\n{rows(extra[0])}\n}}\n}}\n}}\n', encoding="utf-8")
+    MANIFESTS.mkdir(parents=True, exist_ok=True)
+    served = f"audio/commentary/{options.lang}"
+    (MANIFESTS / f"{options.lang}.json").write_text(
+        f'{{\n"file": "{served}/voice.mp3",\n"version": "{base[1]}",\n"engine": "{engine}",\n'
+        f'"clips": {{\n{rows(base[0])}\n}},\n'
+        f'"extra": {{\n"file": "{served}/voice-extra.mp3",\n"version": "{extra[1]}",\n'
+        f'"clips": {{\n{rows(extra[0])}\n}}\n}}\n}}\n', encoding="utf-8")
 
 
 def build_sprite(pairs, sprite, settings):
