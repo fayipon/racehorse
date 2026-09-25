@@ -1,22 +1,34 @@
 import { useCallback, useEffect, useState } from 'react'
-import { advance, cancelBet, createGame, isGame, placeBet, type Game, type Pick } from './game'
-const KEY = 'sunny-cup-v2'
-let memory: Game | undefined
-function read() {
-  try { const data: unknown = JSON.parse(localStorage.getItem(KEY) || 'null'); if (isGame(data)) return data } catch { /* Private browsing can disable storage. */ }
-  return memory ??= createGame(Date.now())
+import { advance, advanceStore, cancelBet, createStore, gameOf, isStore, placeBet, storeFromSunnySave, withGame, type CupId, type Game, type Pick, type Store } from './game'
+const KEY = 'racehorse-v3'
+const SUNNY_SAVE = 'sunny-cup-v2'
+let memory: Store | undefined
+export function read(): Store {
+  try {
+    const data: unknown = JSON.parse(localStorage.getItem(KEY) || 'null')
+    if (isStore(data)) return data
+    const older = storeFromSunnySave(JSON.parse(localStorage.getItem(SUNNY_SAVE) || 'null'))
+    if (older) return older
+  } catch { /* Private browsing can disable storage. */ }
+  return memory ??= createStore()
 }
-function save(game: Game) { memory = game; try { localStorage.setItem(KEY, JSON.stringify(game)) } catch { /* In-memory play still works. */ } }
-export function useGame() {
-  const [game, setGame] = useState(() => advance(read(), Date.now()))
+function save(store: Store) { memory = store; try { localStorage.setItem(KEY, JSON.stringify(store)) } catch { /* In-memory play still works. */ } }
+export function useGame(cup: CupId) {
+  const [game, setGame] = useState(() => advance(gameOf(read(), cup, Date.now()), Date.now()))
   const [now, setNow] = useState(Date.now)
-  const transact = useCallback(async (fn: (g: Game) => Game) => {
-    const run = () => { const current = read(); const next = fn(current); save(next); setGame(next); setNow(Date.now()) }
+  // Each change settles every cup into the shared wallet, then applies to this cup.
+  const transact = useCallback(async (fn: (g: Game) => Game, whole: (s: Store) => Store = s => s) => {
+    const run = () => {
+      const time = Date.now()
+      const current = whole(advanceStore(read(), time))
+      const next = fn(advance(gameOf(current, cup, time), time))
+      save(withGame(current, next)); setGame(next); setNow(time)
+    }
     if (navigator.locks) await navigator.locks.request(KEY, run)
     else run()
-  }, [])
+  }, [cup])
   useEffect(() => {
-    const tick = () => { void transact(g => advance(g, Date.now())) }
+    const tick = () => { void transact(g => g) }
     tick()
     const timer = window.setInterval(tick, 250)
     window.addEventListener('storage', tick)
@@ -29,6 +41,7 @@ export function useGame() {
     return error
   }
   const cancel = (id: string) => transact(g => cancelBet(g, id, Date.now()))
-  const refill = () => transact(g => g.balance < 10 && g.bets.length === 0 ? { ...g, balance: 10_000 } : g)
+  // Free chips only once nothing is riding on any cup.
+  const refill = () => transact(g => g, s => s.balance < 10 && Object.values(s.cups).every(r => r.settled || r.bets.length === 0) ? { ...s, balance: 10_000 } : s)
   return { game, now, bet, cancel, refill }
 }

@@ -2,9 +2,14 @@ extends RefCounted
 
 # Shared with React's src/course.ts. A stadium course with two straightaways.
 var config: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/course.json"))
+var field := 8
 
-func lane_radius(lane: int) -> float:
-	return float(config.laneStart) + lane * float(config.laneSpacing)
+# Bigger fields close the lanes up so the outside horse still runs inside the rail.
+func lane_spacing() -> float:
+	return minf(float(config.laneSpacing),(float(config.maxLaneRadius)-float(config.laneStart))/(field-1))
+
+func lane_radius(lane: float) -> float:
+	return float(config.laneStart) + lane * lane_spacing()
 
 func sample(progress: float, radius: float) -> Dictionary:
 	var half := float(config.halfStraight)

@@ -4,13 +4,15 @@ extends SceneTree
 # so coats and cloths match. The head faces left, toward the band's text.
 const HORSE = preload("res://scripts/asset_horse.gd")
 const SIZE := 512
+# The whole stable, as in src/game.ts; the biggest cup runs all twelve.
+const RUNNERS := 12
 var views: Array[SubViewport] = []
 
 func _initialize() -> void:
 	call_deferred("render_heads")
 
 func render_heads() -> void:
-	for index in range(8):
+	for index in range(RUNNERS):
 		var view:=SubViewport.new()
 		view.size=Vector2i(SIZE,SIZE)
 		view.transparent_bg=true
@@ -48,7 +50,7 @@ func render_heads() -> void:
 		camera.fov=26.0
 		camera.current=true
 	for frame in range(4): await process_frame
-	for index in range(8):
+	for index in range(RUNNERS):
 		var horse=views[index].get_child(0)
 		var poll: Vector3=horse.horse_from_skeleton*horse.skeleton.get_bone_global_pose(horse.head_bone).origin
 		var neck: Vector3=horse.horse_from_skeleton*horse.skeleton.get_bone_global_pose(horse.skeleton.find_bone("Neck1")).origin
@@ -61,7 +63,7 @@ func render_heads() -> void:
 	for frame in range(8): await process_frame
 	await RenderingServer.frame_post_draw
 	var error:=OK
-	for i in range(8):
+	for i in range(RUNNERS):
 		var picture:=views[i].get_texture().get_image()
 		var output:=ProjectSettings.globalize_path("res://../public/assets/horse-head-%d.webp" % (i+1))
 		error=maxi(error,picture.save_webp(output,true,.9))

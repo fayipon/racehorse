@@ -4,5 +4,6 @@
   "trackWidth": 13.5,
   "laneStart": 21.8,
   "laneSpacing": 1.3,
-  "laneCount": 8
+  "laneCount": 8,
+  "maxLaneRadius": 32.3
 }

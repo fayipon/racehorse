@@ -1,12 +1,15 @@
 import course from '../godot/assets/course.json'
 
 export const COURSE = course
+// Bigger fields close the lanes up so the outside horse still runs inside the rail.
+export const laneSpacing = (field: number) => Math.min(course.laneSpacing, (course.maxLaneRadius - course.laneStart) / (field - 1))
+export const laneRadius = (lane: number, field: number) => course.laneStart + lane * laneSpacing(field)
 // A stroll segment eases x (shared with the minimap) and a lateral offset `lat`
 // within the lane (Godot only). While standing, `mood` picks what the horse
 // does: 0 stands, 1 looks around, 2 rests its head low, 3 grazes.
 export type ParadeSegment = { start: number; end: number; from: number; to: number; lat: number; mood: number }
-export function makeParadePlan(seed: number, round: number): ParadeSegment[][] {
-  return Array.from({length:course.laneCount},(_,lane) => {
+export function makeParadePlan(seed: number, round: number, field: number): ParadeSegment[][] {
+  return Array.from({length:field},(_,lane) => {
     let state=(seed ^ Math.imul(round,2654435761) ^ Math.imul(lane+1,1597334677))>>>0
     const random=()=>{ state=(Math.imul(state,1664525)+1013904223)>>>0; return state/4294967296 }
     const segments: ParadeSegment[]=[]
@@ -31,7 +34,7 @@ export function makeParadePlan(seed: number, round: number): ParadeSegment[][] {
     return segments
   })
 }
-const DEFAULT_PARADE=makeParadePlan(123,1)
+const DEFAULT_PARADE=makeParadePlan(123,1,course.laneCount)
 export function paradeState(seconds: number, segments: ParadeSegment[]) {
   const segment=segments.find(s=>seconds<=s.end)??segments[segments.length-1]
   const t=Math.max(0,Math.min(1,(seconds-segment.start)/(segment.end-segment.start)))
@@ -39,19 +42,19 @@ export function paradeState(seconds: number, segments: ParadeSegment[]) {
   return { x:segment.from+(segment.to-segment.from)*ease, speed:(segment.to-segment.from)*30*t*t*(1-t)*(1-t)/(segment.end-segment.start) }
 }
 export function paradePositions(seconds: number, plan=DEFAULT_PARADE) {
-  return Array.from({length:course.laneCount},(_,lane) => {
+  return Array.from({length:plan.length},(_,lane) => {
     let x=paradeState(Math.min(seconds,47),plan[lane]).x
     if (seconds>=48) {
       const t=Math.max(0,Math.min(1,(seconds-48)/5))
       x*=1-t*t*(3-2*t)
     }
-    const radius=course.laneStart+lane*course.laneSpacing
+    const radius=laneRadius(lane,plan.length)
     return x/(4*course.halfStraight+2*Math.PI*radius)
   })
 }
-export function coursePoint(progress: number, lane: number) {
+export function coursePoint(progress: number, lane: number, field: number) {
   const half = course.halfStraight
-  const radius = course.laneStart + lane * course.laneSpacing
+  const radius = laneRadius(lane, field)
   const lap = 4 * half + 2 * Math.PI * radius
   let distance = ((progress % 1 + 1) % 1) * lap
   if (distance <= half) return { x: distance, z: radius }

@@ -16,7 +16,10 @@ const UPRIGHT_PODIUM_SHIFT := .135
 # and the open betting panel covers its lower part, so the parade shifts up.
 const WIDE_ASPECT := 16.0/9.0
 const WIDE_BETTING_SHIFT := .18
-const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df")]
+const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df"), Color("38a893"), Color("a8765a"), Color("9ca8b5"), Color("c44f68")]
+# The cup page sets the field size (8, 10 or 12 runners) and the cup's name.
+var field := 8
+var cup := "sunny"
 var horses: Array[Node3D] = []
 var camera: Camera3D
 var phase := "betting"
@@ -24,9 +27,9 @@ var seconds := 0.0
 var race_round := 1
 var winner := 1
 var shot := 0
-var positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-var visual_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
-var track_positions: Array = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+var positions: Array = []
+var visual_positions: Array = []
+var track_positions: Array = []
 var elapsed := 0.0
 var bridge_timer := 0.0
 var bridge_version := -1
@@ -34,7 +37,7 @@ var venue: Node3D
 var landscape_node: Node3D
 var infield_node: Node3D
 var track_node: Node3D
-var standings: Array = [0,1,2,3,4,5,6,7]
+var standings: Array = []
 var confetti_rain = preload("res://scripts/confetti_rain.gd").new()
 var previous_shot := -1
 var rng := RandomNumberGenerator.new()
@@ -44,7 +47,7 @@ var race_clock := 0.0
 const MOTION = preload("res://scripts/race_motion.gd")
 var motion_clock = MOTION.new()
 var parade_clock = MOTION.new()
-var finish_times: Array = [44.5,45.15,45.8,46.45,47.1,47.75,48.4,49.05]
+var finish_times: Array = []
 # How each horse runs this round; React sends it, native previews use a fixture.
 var race_plan: Dictionary = MOTION.preview_plan()
 var preview_paused := false
@@ -86,7 +89,7 @@ var dust_outwards: Array[Vector3] = []
 var podium = preload("res://scripts/podium.gd").new()
 var featured_runner := 0
 var winner_nose := NOSE
-var paddock_shift := PackedFloat32Array([0,0,0,0,0,0,0,0])
+var paddock_shift := PackedFloat32Array()
 var paddock_clock := 0.0
 var paddock_settled := false
 # Scene parts shown one per frame while the web build warms up its shaders.
@@ -112,7 +115,7 @@ func course_point(progress: float, lane: int) -> Vector3:
 # Yield only on the web; native previews retain synchronous scene setup.
 func loading_checkpoint(step: int) -> void:
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-build',step:%d,total:14},window.location.origin)" % step)
+		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-build',step:%d,total:%d},window.location.origin)" % [step,6+field])
 		await get_tree().create_timer(0.001).timeout
 
 func _ready() -> void:
@@ -122,6 +125,8 @@ func _ready() -> void:
 	await loading_checkpoint(0)
 	rng.seed = 61293
 	if OS.has_feature("web"):
+		field = int(JavaScriptBridge.eval("window.raceField||8"))
+		cup = str(JavaScriptBridge.eval("window.raceCup||'sunny'"))
 		reduced_motion = bool(JavaScriptBridge.eval("window.matchMedia('(prefers-reduced-motion: reduce)').matches"))
 		# Phones and tablets get the power-saving tier: 30 fps, a lighter crowd and
 		# planting, no MSAA or glow, and a smaller shadow map.
@@ -130,12 +135,25 @@ func _ready() -> void:
 	if low_power:
 		get_viewport().msaa_3d=Viewport.MSAA_DISABLED
 		RenderingServer.directional_shadow_atlas_set_size(2048,true)
+	else:
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("--field="): field=clampi(int(arg.trim_prefix("--field=")),8,12)
+	course.field=field
+	for i in range(field):
+		positions.append(0.0)
+		visual_positions.append(0.0)
+		track_positions.append(0.0)
+		standings.append(i)
+		finish_times.append(44.5+i*.65)
+	paddock_shift.resize(field)
+	# Until React sends this round's plan, the fixture's runners stand in for the field.
+	race_plan=MOTION.fit_plan(race_plan,field)
 	if not OS.has_feature("web"):
-		parade_plan=PARADE.preview_plan(61293)
+		parade_plan=PARADE.preview_plan(61293,field)
 		winner=int(race_plan.winner)+1
 		finish_times=race_plan.finishTimes
 	await build_environment()
-	for i in range(8):
+	for i in range(field):
 		build_horse(i)
 		await loading_checkpoint(6+i)
 	add_child(podium)
@@ -177,7 +195,7 @@ func _ready() -> void:
 	impact_material.shader=preload("res://shaders/impact_frame.gdshader")
 	impact_rect=fullscreen_rect(impact_material)
 	fx_layer.add_child(impact_rect)
-	await loading_checkpoint(14)
+	await loading_checkpoint(6+field)
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("window.parent.postMessage({type:'godot-ready'},window.location.origin)")
 		# WebGL compiles each material's shaders the first time it draws, all on the
@@ -249,7 +267,7 @@ func build_environment() -> void:
 	await loading_checkpoint(4)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
-	venue.build(reduced_motion,COLORS,low_power)
+	venue.build(reduced_motion,COLORS,low_power,field,{"thunder":"THUNDER CUP","royal":"ROYAL CUP"}.get(cup,"SUNNY CUP"))
 	await loading_checkpoint(5)
 
 # Shots are framed as a vertical angle on a wide stage. An upright phone stage
@@ -364,7 +382,7 @@ func read_bridge() -> void:
 	var next_round := int(data.get("round",1))
 	var reset_clock := next_round!=race_round or phase!=str(data.get("phase","betting"))
 	if next_round != race_round:
-		visual_positions = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]
+		visual_positions.fill(0.0)
 		race_round = next_round
 		finished=false
 		previous_shot=-1
@@ -377,9 +395,9 @@ func read_bridge() -> void:
 		motion_clock.sync(seconds,reset_clock)
 		race_clock=motion_clock.seconds
 	var incoming_times = data.get("finishTimes",[])
-	if incoming_times is Array and incoming_times.size()==8: finish_times=incoming_times
+	if incoming_times is Array and incoming_times.size()==field: finish_times=incoming_times
 	var incoming_plan = data.get("racePlan",null)
-	if incoming_plan is Dictionary and incoming_plan.get("knots",[]).size()==8: race_plan=incoming_plan
+	if incoming_plan is Dictionary and incoming_plan.get("knots",[]).size()==field: race_plan=incoming_plan
 	preview_paused=bool(data.get("paused",false))
 	stage_visible=bool(data.get("visible",true))
 	# Off screen the race keeps its clock but draws only a few frames a second.
@@ -418,7 +436,7 @@ func _process(delta: float) -> void:
 		seconds=maxf(0.0,t-60)
 		race_clock=seconds
 		shot=0 if t<60 else 1 if seconds<7 else 2 if seconds<24 else 3 if seconds<37 else 5 if t<110 else 4
-		for i in range(8): positions[i]=clampf(seconds/(44.5+i*.65),0,1)
+		for i in range(field): positions[i]=clampf(seconds/(44.5+i*.65),0,1)
 		if phase=="betting" and finished:
 			finished=false
 	var playback: Vector2=motion_clock.presentation(race_clock)
@@ -427,7 +445,7 @@ func _process(delta: float) -> void:
 	var sprint_effort:=smoothstep(34.0,41.5,race_clock) if phase=="racing" else 0.0
 	animation_clock+=delta*slow_motion
 	var strolls: Array=paddock_poses(delta) if phase=="betting" else []
-	for i in range(8):
+	for i in range(field):
 		track_positions[i]=MOTION.plan_progress(race_plan,i,presentation_clock) if phase!="betting" else 0.0
 		visual_positions[i]=minf(float(track_positions[i]),1.0)
 		var p := float(track_positions[i])
@@ -480,9 +498,9 @@ func _process(delta: float) -> void:
 	var mean_progress := 0.0
 	# Track the pack as a whole. Following a changing leader caused lateral
 	# jumps; following the body's bounce caused unnecessary vertical motion.
-	for i in range(8):
-		target+=horses[i].position/8.0
-		mean_progress+=float(visual_positions[i])/8.0
+	for i in range(field):
+		target+=horses[i].position/float(field)
+		mean_progress+=float(visual_positions[i])/float(field)
 	# From the far turn, ease toward the front group without cutting to the
 	# preselected winner or jumping whenever the live leader changes.
 	if phase=="racing":
@@ -490,7 +508,7 @@ func _process(delta: float) -> void:
 		var front_target:=Vector3.ZERO
 		var front_progress:=0.0
 		var total_weight:=0.0
-		for i in range(8):
+		for i in range(field):
 			var weight: float=pow(clampf(1.0-(leading_progress-float(visual_positions[i]))/.085,0.0,1.0),2)
 			front_target+=horses[i].position*weight
 			front_progress+=float(visual_positions[i])*weight
@@ -499,7 +517,7 @@ func _process(delta: float) -> void:
 		target=target.lerp(front_target/total_weight,frame_front)
 		mean_progress=lerpf(mean_progress,front_progress/total_weight,frame_front)
 	target.y=1.45
-	var path: Dictionary=course.sample(mean_progress,course.lane_radius(3)+.65)
+	var path: Dictionary=course.sample(mean_progress,course.lane_radius((field-1)*.5))
 	if finished or phase=="result":
 		target=horses[focus_index].position
 		target.y=1.45
@@ -526,7 +544,7 @@ func _process(delta: float) -> void:
 	var fov := 49.0
 	lines_target=0.0
 	var aspect:=get_viewport().get_visible_rect().size.aspect()
-	var middle_lane:=float(course.config.laneStart)+3.5*float(course.config.laneSpacing)
+	var middle_lane:=course.lane_radius((field-1)*.5)
 	match active_shot:
 		0:
 			fixed=true
@@ -659,27 +677,30 @@ func paddock_poses(delta: float) -> Array:
 	paddock_clock=betting_clock
 	var poses: Array=[]
 	var walking: Array[bool]=[]
-	for i in range(8):
-		var pose: Dictionary=PARADE.pose(betting_clock,parade_plan[i] if parade_plan.size()==8 else [])
+	for i in range(field):
+		var pose: Dictionary=PARADE.pose(betting_clock,parade_plan[i] if parade_plan.size()==field else [])
 		poses.append(pose)
 		walking.append((pose.velocity as Vector2).length()>.02 or not paddock_settled)
-	var desired:=PackedFloat32Array([0,0,0,0,0,0,0,0])
-	for i in range(8):
+	var desired:=PackedFloat32Array()
+	desired.resize(field)
+	for i in range(field):
 		if not walking[i]: desired[i]=paddock_shift[i]
+	# Closer lanes in bigger fields allow a little less room between neighbours.
+	var room:=minf(1.05,course.lane_spacing()*.9)
 	for sweep in range(3):
-		for i in range(7):
+		for i in range(field-1):
 			var inner: Dictionary=poses[i]
 			var outer: Dictionary=poses[i+1]
 			var alongside:=1.0-smoothstep(2.2,3.0,absf(float(inner.x)-float(outer.x)))
-			var gap:=float(course.config.laneSpacing)+float(outer.lat)+desired[i+1]-float(inner.lat)-desired[i]
-			var need:=maxf(0.0,1.05-gap)*alongside
+			var gap:=course.lane_spacing()+float(outer.lat)+desired[i+1]-float(inner.lat)-desired[i]
+			var need:=maxf(0.0,room-gap)*alongside
 			if need<=0.0: continue
 			if walking[i] and walking[i+1]:
 				desired[i]-=need*.5
 				desired[i+1]+=need*.5
 			elif walking[i]: desired[i]-=need
 			elif walking[i+1]: desired[i+1]+=need
-	for i in range(8):
+	for i in range(field):
 		var before:=paddock_shift[i]
 		var pace:=(poses[i].velocity as Vector2).length()
 		# Side-steps stay slower than the walk itself, and turn the head with them.
@@ -691,7 +712,7 @@ func paddock_poses(delta: float) -> Array:
 
 # The infield screen shows live standings, then the official finishing order.
 func update_board(delta: float) -> void:
-	standings.assign([0,1,2,3,4,5,6,7])
+	standings.assign(range(field))
 	if phase=="racing":
 		standings.sort_custom(func(a: int,b: int) -> bool:
 			var pa:=float(track_positions[a])

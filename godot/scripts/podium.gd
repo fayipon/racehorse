@@ -152,7 +152,7 @@ func present(finish_times: Array, colors: Array, round_id: int) -> void:
 		remove_child(horse)
 		horse.queue_free()
 	runners.clear()
-	order.assign([0,1,2,3,4,5,6,7])
+	order.assign(range(finish_times.size()))
 	order.sort_custom(func(a: int,b: int) -> bool: return float(finish_times[a])<float(finish_times[b]))
 	for rank in range(3):
 		var horse:=HORSE.new()

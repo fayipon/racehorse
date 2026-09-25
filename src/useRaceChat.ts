@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ROUND_MS, BET_MS, bettingOpen, phaseAt, raceOrder, racePositions, type Game } from './game'
+import { ROUND_MS, BET_MS, bettingOpen, fieldOf, phaseAt, raceOrder, racePositions, type Game } from './game'
 import { racePresentationTime } from './presentation'
 
 const people = [
@@ -47,9 +47,10 @@ export function useRaceChat(game: Game, now: number) {
       lastLine.current = template
       const person = (lastPerson.current + 1 + Math.floor(Math.random() * (people.length - 1))) % people.length
       lastPerson.current = person
-      const positions = racePositions(current.seed, current.round, seconds)
+      const field = fieldOf(current)
+      const positions = racePositions(current.seed, current.round, seconds, field)
       const leader = positions.indexOf(Math.max(...positions)) + 1
-      const text = template.replace('{leader}', String(leader)).replace('{winner}', String(raceOrder(current.seed, current.round)[0])).replace('{horse}', String(1 + Math.floor(Math.random() * 8)))
+      const text = template.replace('{leader}', String(leader)).replace('{winner}', String(raceOrder(current.seed, current.round, field)[0])).replace('{horse}', String(1 + Math.floor(Math.random() * field)))
       const message = { id: nextId.current++, person, text, time: Date.now() }
       setMessages(previous => [...previous, message].slice(-60))
       timer = setTimeout(tick, 4500 + Math.random() * 6500)

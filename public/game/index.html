@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Sunny Cup 3D 賽場</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#b4cbd0}canvas{display:block;width:100%;height:100%;outline:0}#status{position:absolute;inset:0;display:grid;place-items:center;font:14px system-ui;color:#fff;background:#304933}#status:empty{display:none}</style></head><body><canvas id="canvas" tabindex="-1"></canvas><div id="status">準備 3D 賽場…</div><script src="index.js"></script><script>
 window.raceState=null;
+// The cup page names its cup and field size, so the scene builds that many runners.
+(function(){const query=new URLSearchParams(location.search),field=Number(query.get('field'));window.raceField=Number.isInteger(field)&&field>=8&&field<=12?field:8;window.raceCup=query.get('cup')||'sunny';})();
 // The scene posts game-visible itself once its staged shader warm-up has drawn.
 // Phones report 3x pixel ratios; rendering the stage at 1.5x looks the same and
 // draws a quarter of the pixels. Desktops stop at 2x.
@@ -17,7 +19,7 @@ window.raceState=null;
 // Each post bumps a version, so the scene only parses a state it has not seen.
 window.raceStateVersion=0;
 window.addEventListener('message',event=>{if(event.source===window.parent&&event.origin===window.location.origin&&event.data?.type==='race-state'){window.raceState=event.data;window.raceStateVersion++;}});
-const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":3075040,"index.wasm":39514754},"focusCanvas":false,"gdextensionLibs":[],"godotPoolSize":4};
+const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":3076656,"index.wasm":39514754},"focusCanvas":false,"gdextensionLibs":[],"godotPoolSize":4};
 const engine=new Engine(config);
 let gameLoaded=false;
 engine.startGame({canvas:document.getElementById('canvas'),onProgress:(current,total)=>{if(gameLoaded)return;window.parent.postMessage({type:'godot-progress',progress:total?Math.round(current/total*100):0},window.location.origin);document.getElementById('status').textContent=total?'準備賽場 '+Math.round(current/total*100)+'%':'準備 3D 賽場…';}}).then(()=>{gameLoaded=true;document.getElementById('status').textContent='';}).catch(error=>{document.getElementById('status').textContent='3D 賽場無法載入，請重新整理';console.error(error);window.parent.postMessage({type:'godot-error'},window.location.origin);});

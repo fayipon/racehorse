@@ -1,9 +1,9 @@
 import course from '../godot/assets/course.json'
 import manifest from './commentary-clips.json'
-import { makeParadePlan } from './course'
-import { HORSES, raceOrder, racePlan, type Result } from './game'
+import { laneRadius, makeParadePlan } from './course'
+import { raceOrder, racePlan, type Result } from './game'
 import { racePresentationTime } from './presentation'
-import { HORSE_LENGTH, lapLength, planProgress, REFERENCE_LAP, WINNER_FINISH, type RacePlan } from './raceModel'
+import { HORSE_LENGTH, planProgress, referenceLap, WINNER_FINISH, type RacePlan } from './raceModel'
 
 // A race call built like a real broadcast. The whole race is known when the
 // gates open, so the call is planned in advance: each line is spoken when what
@@ -16,20 +16,18 @@ const CLIPS = manifest.clips as Record<string, number[]>
 const METRES = 1200
 const STEP = .05
 const WITHIN = .06
-const lengths = (progress: number) => progress * REFERENCE_LAP / HORSE_LENGTH
-// Where the pace reaches each part of the oval, on the middle lane.
-const lap = lapLength((course.laneCount - 1) / 2)
-const bend = Math.PI * (course.laneStart + (course.laneCount - 1) / 2 * course.laneSpacing)
-const TURN_ONE = course.halfStraight / lap
-const BACK_STRAIGHT = (course.halfStraight + bend) / lap
-const FINAL_BEND = (3 * course.halfStraight + bend) / lap
-const HOME_STRAIGHT = (3 * course.halfStraight + 2 * bend) / lap
-const INSIDE = 2
-const OUTSIDE = 5
+// Where the pace reaches each part of the oval, on the middle lane of the field.
+function landmarks(field: number) {
+  const lap = referenceLap(field)
+  const bend = Math.PI * laneRadius((field - 1) / 2, field)
+  return { turnOne: course.halfStraight / lap, backStraight: (course.halfStraight + bend) / lap, finalBend: (3 * course.halfStraight + bend) / lap, homeStraight: (3 * course.halfStraight + 2 * bend) / lap }
+}
 
 type Frame = { v: number; p: number[]; rank: number[] }
 const horse = (id: string, index: number) => `${id}.${index + 1}`
-export const clipLength = (clips: string[]) => clips.reduce((sum, id) => sum + CLIPS[id][1], 0) + WITHIN * (clips.length - 1)
+// Horses without recorded lines are never named: a line naming one is dropped.
+const recorded = (clips: string[]) => clips.every(id => Object.hasOwn(CLIPS, id))
+export const clipLength = (clips: string[]) => clips.reduce((sum, id) => sum + (CLIPS[id]?.[1] ?? 0), 0) + WITHIN * (clips.length - 1)
 
 // The presentation clock only slows or holds, never reverses.
 export function realFromVisual(visual: number) {
@@ -39,7 +37,7 @@ export function realFromVisual(visual: number) {
 }
 
 function sample(plan: RacePlan, v: number): Frame {
-  const p = HORSES.map((_, i) => planProgress(plan, i, v))
+  const p = plan.knots.map((_, i) => planProgress(plan, i, v))
   return { v, p, rank: p.map((_, i) => i).sort((a, b) => p[b] - p[a]) }
 }
 
@@ -59,14 +57,15 @@ class Timeline {
     return start
   }
   commit(at: number, clips: string[], priority: number) {
+    if (!recorded(clips)) return false
     this.items.push({ at, clips, priority })
     this.items.sort((a, b) => a.at - b.at)
+    return true
   }
   place(desired: number, clips: string[], priority: number, maxDelay: number) {
     const start = this.slot(desired, clipLength(clips))
     if (start - desired > maxDelay) return false
-    this.commit(start, clips, priority)
-    return true
+    return this.commit(start, clips, priority)
   }
 }
 
@@ -74,7 +73,7 @@ class Timeline {
 // (60 s before the gates open is 0). Form lines come from the real results,
 // running styles from this race's plan and paddock asides from what the horses
 // are doing on screen; the back stories are made up and fixed per horse.
-function planPreRace(timeline: Timeline, seed: number, round: number, history: Result[]) {
+function planPreRace(timeline: Timeline, seed: number, round: number, field: number, history: Result[]) {
   let state = (seed ^ Math.imul(round, 374761393) ^ 0x9e3779b9) >>> 0
   const random = () => { state = (Math.imul(state, 1664525) + 1013904223) >>> 0; return state / 4294967296 }
   const shuffle = <T,>(items: T[]) => { for (let i = items.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [items[i], items[j]] = [items[j], items[i]] } return items }
@@ -87,7 +86,7 @@ function planPreRace(timeline: Timeline, seed: number, round: number, history: R
 
   // A horse grazing, looking about or resting its head is pointed out while it
   // is still doing it.
-  const parade = makeParadePlan(seed, round)
+  const parade = makeParadePlan(seed, round, field)
   const moods = ['', 'looking', 'resting', 'grazing']
   const asides = shuffle(parade.flatMap((segments, index) => segments
     .filter(s => s.mood > 0 && s.from === s.to && s.start > 6 && s.end < 45)
@@ -106,13 +105,13 @@ function planPreRace(timeline: Timeline, seed: number, round: number, history: R
   if (!recent.length) stories.push(['firstRace'])
   else {
     const place = (r: Result, index: number) => r.order.indexOf(index + 1)
-    const all = shuffle(HORSES.map((_, i) => i))
+    const all = shuffle(Array.from({ length: field }, (_, i) => i))
     const facts: [string, number | undefined][] = [
       ['lastWinner', recent[0].order[0] - 1],
       ['formTop3', recent.length >= 3 ? all.find(i => recent.slice(0, 3).every(r => place(r, i) < 3)) : undefined],
       ['twoWins', all.find(i => recent.filter(r => place(r, i) === 0).length >= 2)],
       ['runnerUp', recent[0].order[1] - 1],
-      ['slump', recent.length >= 2 ? all.find(i => recent.slice(0, 2).every(r => place(r, i) >= 6)) : undefined],
+      ['slump', recent.length >= 2 ? all.find(i => recent.slice(0, 2).every(r => place(r, i) >= field - 2)) : undefined],
     ]
     for (const [id, index] of facts) {
       if (index === undefined || mentioned.has(index) || mentioned.size >= 3) continue
@@ -122,9 +121,9 @@ function planPreRace(timeline: Timeline, seed: number, round: number, history: R
   }
   // Interleaved with the form: made-up back stories and a word on how a horse
   // likes to run, which this race's plan then bears out.
-  const plan = racePlan(seed, round)
+  const plan = racePlan(seed, round, field)
   const styleLine = { front: 'styleFront', stalk: 'styleStalk', mid: 'styleMid', close: 'styleClose' } as const
-  const others = shuffle(HORSES.map((_, i) => i).filter(i => !mentioned.has(i)))
+  const others = shuffle(Array.from({ length: field }, (_, i) => i).filter(i => !mentioned.has(i)))
   const telling = [...others].sort((a, b) => Number(['close', 'front'].includes(plan.styles[b])) - Number(['close', 'front'].includes(plan.styles[a]))).slice(0, 2)
   const bios = others.filter(i => !telling.includes(i))
   const bio = (index: number) => [horse(random() < .5 ? 'bio1' : 'bio2', index)]
@@ -145,9 +144,11 @@ function planPreRace(timeline: Timeline, seed: number, round: number, history: R
   }
 }
 
-export function planCommentary(seed: number, round: number, history: Result[] = []): Utterance[] {
-  const plan = racePlan(seed, round)
-  const order = raceOrder(seed, round)
+export function planCommentary(seed: number, round: number, field: number, history: Result[] = []): Utterance[] {
+  const plan = racePlan(seed, round, field)
+  const order = raceOrder(seed, round, field)
+  const lengths = (progress: number) => progress * referenceLap(field) / HORSE_LENGTH
+  const { turnOne, backStraight, finalBend, homeStraight } = landmarks(field)
   const winner = order[0] - 1
   const frames: Frame[] = []
   for (let v = 0; v <= WINNER_FINISH + .001; v += STEP) frames.push(sample(plan, Math.min(v, WINNER_FINISH)))
@@ -158,7 +159,7 @@ export function planCommentary(seed: number, round: number, history: Result[] = 
   const reach = (progress: number) => frames.find(f => f.p[f.rank[0]] >= progress)?.v ?? WINNER_FINISH
   const toGo = (metres: number) => reach(1 - metres / METRES)
   const timeline = new Timeline()
-  planPreRace(timeline, seed, round, history)
+  planPreRace(timeline, seed, round, field, history)
   const real = realFromVisual
 
   // The gates and the finish are fixed points the rest of the call fits around:
@@ -242,6 +243,8 @@ export function planCommentary(seed: number, round: number, history: Result[] = 
     for (const part of parts) {
       const id = typeof part === 'string' ? part : part(at(racePresentationTime(t)), named)
       if (!id) continue
+      // A report naming a horse without recorded lines is not made at all.
+      if (!recorded([id])) return []
       clips.push(id)
       t += CLIPS[id][1] + WITHIN
     }
@@ -278,16 +281,16 @@ export function planCommentary(seed: number, round: number, history: Result[] = 
 
   // Landmarks of the first three quarters, each with a word on the order.
   placeLive(real(2.2), [inPlace('quick', 0)], 7, 1)
-  placeLive(real(reach(TURN_ONE)), ['firstBend', inPlace('lead', 0), inPlace('second', 1), inPlace('tracks', 2)], 7, 1.5)
+  placeLive(real(reach(turnOne)), ['firstBend', inPlace('lead', 0), inPlace('second', 1), inPlace('tracks', 2)], 7, 1.5)
   placeLive(real(toGo(1000)), ['m1000', ...pace], 6, 1.5)
-  timeline.place(real(reach(BACK_STRAIGHT)), ['backStraight'], 5, 1.5)
+  timeline.place(real(reach(backStraight)), ['backStraight'], 5, 1.5)
   placeLive(real(toGo(600)), ['m600', ...pace], 6, 1.5)
-  placeLive(real(reach(FINAL_BEND)), ['finalBend', inPlace('leads', 0)], 7, 1.2)
+  placeLive(real(reach(finalBend)), ['finalBend', inPlace('leads', 0)], 7, 1.2)
   // The horse moving best into the straight gets the call at 400 m.
   const at400 = at(toGo(400)), before400 = at(toGo(400) - 2)
   const mover = at400.rank.slice(1, 6).sort((a, b) => (at400.p[b] - before400.p[b]) - (at400.p[a] - before400.p[a]))[0]
   timeline.place(real(toGo(400)), ['m400', horse('quickens', mover)], 7, 1)
-  const home = reach(HOME_STRAIGHT)
+  const home = reach(homeStraight)
   if (home > toGo(200) + 1.5) timeline.place(real(home), ['homeStraight'], 6, .6)
 
   // Position reports fill the quiet stretches.
@@ -302,15 +305,15 @@ export function planCommentary(seed: number, round: number, history: Result[] = 
   const reports: ((time: number) => Part[])[] = [
     () => [inPlace('lead', 0), inPlace('second', 1)],
     () => [inPlace('third', 2)],
-    time => [pick('rail', f => f.rank.slice(0, 4).find(i => i <= INSIDE))(time)],
-    time => [pick('wide', f => f.rank.slice(1, 5).find(i => i >= OUTSIDE))(time)],
-    () => [inPlace('midfield', 4)],
-    time => [pick('waiting', f => f.rank.slice(5).find(i => plan.styles[i] === 'close'))(time), (f, named) => named.size ? null : inPlace('last', 7)(f, named)],
+    time => [pick('rail', f => f.rank.slice(0, 4).find(i => i <= 2))(time)],
+    time => [pick('wide', f => f.rank.slice(1, 5).find(i => i >= field - 3))(time)],
+    () => [inPlace('midfield', Math.floor(field / 2))],
+    time => [pick('waiting', f => f.rank.slice(5).find(i => plan.styles[i] === 'close'))(time), (f, named) => named.size ? null : inPlace('last', field - 1)(f, named)],
     time => [pick('improving', (f, t) => {
       const earlier = at(racePresentationTime(Math.max(0, t - 5)))
       return f.rank.find(i => earlier.rank.indexOf(i) - f.rank.indexOf(i) >= 2 && f.rank.indexOf(i) > 0)
     })(time)],
-    () => [f => lengths(f.p[f.rank[0]] - f.p[f.rank[7]]) < 5 ? 'tight' : null],
+    () => [f => lengths(f.p[f.rank[0]] - f.p[f.rank[field - 1]]) < 5 ? 'tight' : null],
     () => [f => margin1(f) < .4 ? 'closeBehind' : null],
   ]
   let turnIndex = 0

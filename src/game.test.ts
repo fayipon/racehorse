@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { advance, cancelBet, createGame, HORSES, isGame, payoutFor, phaseAt, placeBet, raceOrder, racePlan, racePositions, ROUND_MS, wins, type Pick } from './game'
+import { advance, advanceStore, cancelBet, createGame, createStore, CUPS, gameOf, isGame, isStore, odds, storeFromSunnySave, validPick, withGame, payoutFor, phaseAt, placeBet, raceOrder, racePlan, racePositions, ROUND_MS, wins, type Pick } from './game'
 import { planProgress } from './raceModel'
 const START = 1_800_000_000_000
 describe('two-minute race lifecycle', () => {
   it('starts racing at precisely 60s, settles at 110s and starts again at 120s', () => {
-    const g = createGame(START, 123)
+    const g = createGame(START, 'sunny', 123)
     expect(phaseAt(g, START + 59999)).toBe('betting')
     expect(phaseAt(g, START + 60000)).toBe('racing')
     expect(phaseAt(g, START + 109999)).toBe('racing')
@@ -12,7 +12,7 @@ describe('two-minute race lifecycle', () => {
     expect(advance(g, START + 120000)).toMatchObject({ round: 2, startedAt: START + 120000, settled: false, bets: [] })
   })
   it('rejects late bets and cancellations even with a stale UI', () => {
-    const g = placeBet(createGame(START, 42), 'horse:1', 100, START).game
+    const g = placeBet(createGame(START, 'sunny', 42), 'horse:1', 100, START).game
     expect(placeBet(g, 'odd', 100, START + 47999).error).toBeUndefined()
     for (const time of [48000, 53000, 59999, 60000]) {
       expect(placeBet(g, 'odd', 100, START + time).error).toBeTruthy()
@@ -22,8 +22,8 @@ describe('two-minute race lifecycle', () => {
     expect(cancelBet(g, g.bets[0].id, START + 47999).balance).toBe(10000)
   })
   it('pays all winning markets once, including principal', () => {
-    let g = createGame(START, 56)
-    const winner = raceOrder(g.seed, g.round)[0]
+    let g = createGame(START, 'sunny', 56)
+    const winner = raceOrder(g.seed, g.round, 8)[0]
     const picks: Pick[] = [`horse:${winner}`, winner % 2 ? 'odd' : 'even', winner <= 4 ? 'small' : 'big']
     for (const pick of picks) g = placeBet(g, pick, 100, START).game
     expect(g.balance).toBe(9700)
@@ -34,8 +34,8 @@ describe('two-minute race lifecycle', () => {
     expect(advance(JSON.parse(JSON.stringify(g)), START + 119999).balance).toBe(10840)
   })
   it('keeps a settled round closed when the clock moves backwards', () => {
-    let g = createGame(START, 56)
-    const winner = raceOrder(g.seed, g.round)[0]
+    let g = createGame(START, 'sunny', 56)
+    const winner = raceOrder(g.seed, g.round, 8)[0]
     g = placeBet(g, `horse:${winner}`, 100, START).game
     g = advance(g, START + 110000)
     expect(g.balance).toBe(10660)
@@ -45,8 +45,8 @@ describe('two-minute race lifecycle', () => {
     expect(cancelBet(g, g.bets[0].id, START + 1000).balance).toBe(10660)
   })
   it('restores sleep and skipped rounds without losing or duplicating settlements', () => {
-    let g = createGame(START, 88)
-    const winner = raceOrder(g.seed, 1)[0]
+    let g = createGame(START, 'sunny', 88)
+    const winner = raceOrder(g.seed, 1, 8)[0]
     g = placeBet(g, `horse:${winner}`, 100, START).game
     const after = advance(g, START + ROUND_MS * 1000 + 62000)
     expect(after.round).toBe(1001)
@@ -56,7 +56,7 @@ describe('two-minute race lifecycle', () => {
     expect(phaseAt(after, START + ROUND_MS * 1000 + 62000)).toBe('racing')
   })
   it('validates amounts and balance', () => {
-    const g = createGame(START, 12)
+    const g = createGame(START, 'sunny', 12)
     for (const amount of [0, -10, 5, 15, 10001, 20000, NaN, Infinity]) expect(placeBet(g, 'odd', amount, START).error).toBeTruthy()
     const empty = placeBet(g, 'big', 10000, START).game
     expect(placeBet(empty, 'odd', 10, START).error).toBeTruthy()
@@ -65,37 +65,71 @@ describe('two-minute race lifecycle', () => {
 })
 describe('race integrity', () => {
   it('keeps every horse moving forward and matches animation finish order to payout', () => {
-    for (let round = 1; round <= 50; round++) {
-      const order = raceOrder(987654, round)
-      expect(new Set(order).size).toBe(8)
-      let previous = racePositions(987654, round, 0)
+    for (const field of [8, 10, 12]) for (let round = 1; round <= (field === 8 ? 50 : 20); round++) {
+      const order = raceOrder(987654, round, field)
+      expect(new Set(order).size).toBe(field)
+      let previous = racePositions(987654, round, 0, field)
       const crossed: number[] = []
       for (let t = .1; t <= 50.1; t += .1) {
-        const positions = racePositions(987654, round, t)
+        const positions = racePositions(987654, round, t, field)
         positions.forEach((p, i) => expect(p).toBeGreaterThanOrEqual(previous[i] - 1e-9))
         // A photo finish can put two noses over within one sample: the one
         // further past the line crossed first.
-        const unclamped = HORSES.map((_, i) => planProgress(racePlan(987654, round), i, t))
-        crossed.push(...HORSES.map(h => h.id).filter(id => positions[id - 1] >= 1 && !crossed.includes(id)).sort((a, b) => unclamped[b - 1] - unclamped[a - 1]))
+        const unclamped = Array.from({ length: field }, (_, i) => planProgress(racePlan(987654, round, field), i, t))
+        crossed.push(...Array.from({ length: field }, (_, i) => i + 1).filter(id => positions[id - 1] >= 1 && !crossed.includes(id)).sort((a, b) => unclamped[b - 1] - unclamped[a - 1]))
         previous = positions
       }
       expect(crossed).toEqual(order)
-      const finishes = racePlan(987654, round).finishTimes
+      const finishes = racePlan(987654, round, field).finishTimes
       expect(finishes[order[0] - 1]).toBeCloseTo(44.5, 3)
       order.slice(1).forEach((id, i) => expect(finishes[id - 1]).toBeGreaterThan(finishes[order[i] - 1]))
     }
   })
   it('uses the specified parity and size boundaries for all eight winners', () => {
     for (let winner = 1; winner <= 8; winner++) {
-      expect(wins('odd', winner)).toBe(winner % 2 === 1)
-      expect(wins('even', winner)).toBe(winner % 2 === 0)
-      expect(wins('small', winner)).toBe(winner <= 4)
-      expect(wins('big', winner)).toBe(winner >= 5)
-      expect(payoutFor([{id:'x',pick:`horse:${winner}`,amount:10}],winner)).toBe(76)
+      expect(wins('odd', winner, 8)).toBe(winner % 2 === 1)
+      expect(wins('even', winner, 8)).toBe(winner % 2 === 0)
+      expect(wins('small', winner, 8)).toBe(winner <= 4)
+      expect(wins('big', winner, 8)).toBe(winner >= 5)
+      expect(payoutFor([{id:'x',pick:`horse:${winner}`,amount:10}],winner,8)).toBe(76)
     }
   })
   it('rejects incompatible or malformed saves', () => {
-    expect(isGame(createGame(START, 1))).toBe(true)
-    for (const bad of [null, {}, { ...createGame(START, 1), balance: -1 }, { ...createGame(START, 1), history: [{}] }]) expect(isGame(bad)).toBe(false)
+    expect(isGame(createGame(START, 'sunny', 1))).toBe(true)
+    for (const bad of [null, {}, { ...createGame(START, 'sunny', 1), balance: -1 }, { ...createGame(START, 'sunny', 1), history: [{}] }]) expect(isGame(bad)).toBe(false)
+  })
+})
+describe('cups', () => {
+  it('runs each cup with its own field, odds and size boundaries', () => {
+    for (const cup of Object.values(CUPS)) {
+      expect([...raceOrder(99, 3, cup.field)].sort((a, b) => a - b)).toEqual(Array.from({ length: cup.field }, (_, i) => i + 1))
+      expect(odds('horse:1', cup.field)).toBeCloseTo(cup.field * .95, 9)
+      expect(validPick(`horse:${cup.field}`, cup.field)).toBe(true)
+      expect(validPick(`horse:${cup.field + 1}`, cup.field)).toBe(false)
+      for (let winner = 1; winner <= cup.field; winner++) {
+        expect(wins('small', winner, cup.field)).toBe(winner <= cup.field / 2)
+        expect(wins('big', winner, cup.field)).toBe(winner > cup.field / 2)
+      }
+    }
+    expect(odds('horse:1', 10)).toBe(9.5)
+    expect(odds('horse:1', 12)).toBe(11.4)
+  })
+  it('settles every cup into one wallet, including a cup not on screen', () => {
+    let store = withGame(createStore(), createGame(START, 'thunder', 7))
+    const winner = raceOrder(7, 1, 10)[0]
+    store = withGame(store, placeBet(gameOf(store, 'thunder', START), `horse:${winner}`, 100, START).game)
+    expect(gameOf(store, 'sunny', START).balance).toBe(9900)
+    store = advanceStore(store, START + 110000)
+    expect(store.balance).toBe(9900 + 950)
+    expect(advanceStore(store, START + 115000).balance).toBe(10850)
+    expect(isStore(store)).toBe(true)
+  })
+  it('moves the old Sunny save into the shared wallet', () => {
+    const { cup: _cup, ...old } = { ...createGame(START, 'sunny', 5), balance: 4321, version: 2 }
+    const store = storeFromSunnySave(old)
+    expect(store?.balance).toBe(4321)
+    expect(store?.cups.sunny?.seed).toBe(5)
+    expect(isStore(store)).toBe(true)
+    expect(storeFromSunnySave({ ...old, version: 1 })).toBeUndefined()
   })
 })

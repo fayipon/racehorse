@@ -1,13 +1,15 @@
 extends SceneTree
 
 const HORSE = preload("res://scripts/asset_horse.gd")
+# The whole stable, as in src/game.ts; the biggest cup runs all twelve.
+const RUNNERS := 12
 var views: Array[SubViewport] = []
 
 func _initialize() -> void:
 	call_deferred("render_portraits")
 
 func render_portraits() -> void:
-	for index in range(8):
+	for index in range(RUNNERS):
 		var view:=SubViewport.new()
 		view.size=Vector2i(384,320)
 		view.transparent_bg=true
@@ -46,8 +48,8 @@ func render_portraits() -> void:
 		camera.current=true
 	for frame in range(8): await process_frame
 	await RenderingServer.frame_post_draw
-	var atlas:=Image.create(1536,640,false,Image.FORMAT_RGBA8)
-	for i in range(8):
+	var atlas:=Image.create(1536,320*ceili(RUNNERS/4.0),false,Image.FORMAT_RGBA8)
+	for i in range(RUNNERS):
 		var picture:=views[i].get_texture().get_image()
 		picture.save_png(ProjectSettings.globalize_path("res://../public/assets/horse-%d.png" % (i+1)))
 		atlas.blit_rect(picture,Rect2i(0,0,384,320),Vector2i((i%4)*384,(i/4)*320))

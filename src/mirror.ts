@@ -26,6 +26,6 @@ export async function fetchAsset(path: string) {
 }
 
 // The game page loads the engine and game pack itself, so it gets their commits
-// and builds the mirror URLs from its own site's repo.
+// and builds the mirror URLs from its own site's repo. It also learns its cup and field size.
 const engine = commits['mirror/index.wasm.gz'], pack = commits['public/game/index.pck']
-export const gameSource = `${import.meta.env.BASE_URL}game/index.html${repo && engine && pack ? `?${new URLSearchParams({ wasm: engine, pck: pack })}` : ''}`
+export const gameSource = (cup: string, field: number) => `${import.meta.env.BASE_URL}game/index.html?${new URLSearchParams({ cup, field: String(field), ...(repo && engine && pack ? { wasm: engine, pck: pack } : {}) })}`

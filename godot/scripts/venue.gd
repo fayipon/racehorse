@@ -30,6 +30,8 @@ var people: Dictionary = {}
 var crowd_material: ShaderMaterial
 var spectator_count := 0
 var palette: Array = []
+var field := 8
+var board_title := "SUNNY CUP"
 var reduce_motion := false
 var attendance := .88
 var coarse := false
@@ -38,10 +40,12 @@ var chips: Array[Node3D] = []
 var board_round: Label3D
 var board_status: Label3D
 
-func build(reduced: bool, colors: Array, sparse := false) -> void:
+func build(reduced: bool, colors: Array, sparse := false, runners := 8, title := "SUNNY CUP") -> void:
 	random.seed = 247019
 	reduce_motion = reduced
 	palette = colors
+	field = runners
+	board_title = title
 	# The crowd dominates the vertex budget; the power-saving tier seats fewer.
 	attendance = .42 if sparse else .88
 	coarse = sparse
@@ -206,29 +210,37 @@ func giant_screen(st: SurfaceTool) -> void:
 	header.position=c+Vector3(0,12.85,.36)
 	header.material_override=unlit(GOLD)
 	add_child(header)
-	label("SUNNY CUP",c+Vector3(-7.4,14.25,.42),150,.0098,Color("f5d98f"))
+	label(board_title,c+Vector3(-7.4,14.25,.42),150,.0098,Color("f5d98f"))
 	board_round=label("RACE 01",c+Vector3(9.0,14.25,.42),150,.0098,Color("f3efe2"))
 	board_status=label("PLACE YOUR BETS",c+Vector3(0,11.7,.42),96,.0085,Color("9fd6ae"))
-	for i in range(8):
+	var scale:=chip_step()/3.5
+	for i in range(field):
 		var chip := Node3D.new()
-		chip.position=c+Vector3(-12.25+i*3.5,8.5,.4)
+		chip.position=c+Vector3(chip_x(i),8.5,.4)
 		var tile := MeshInstance3D.new()
 		var tile_mesh := QuadMesh.new()
-		tile_mesh.size=Vector2(2.9,2.9)
+		tile_mesh.size=Vector2(2.9,2.9)*scale
 		tile.mesh=tile_mesh
 		tile.material_override=unlit(palette[i])
 		chip.add_child(tile)
 		var number := Label3D.new()
 		number.text=str(i+1)
 		number.font_size=150
-		number.pixel_size=.0125
+		number.pixel_size=.0125*scale
 		number.outline_size=0
-		number.modulate=Color("fffaf0") if i in [0,3,7] else Color("1b2420")
+		number.modulate=Color("fffaf0") if i in [0,3,7,8,9,11] else Color("1b2420")
 		number.position.z=.05
 		chip.add_child(number)
 		add_child(chip)
 		chips.append(chip)
-		label(str(i+1),c+Vector3(-12.25+i*3.5,6.35,.42),72,.009,Color("c9c4b3"))
+		label(str(i+1),c+Vector3(chip_x(i),6.35,.42),72,.009*maxf(scale,.8),Color("c9c4b3"))
+
+# Eight chips sit 3.5 apart; bigger fields share the same width.
+func chip_step() -> float:
+	return minf(3.5,28.0/field)
+
+func chip_x(rank: int) -> float:
+	return (rank-(field-1)*.5)*chip_step()
 
 func unlit(color: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
@@ -256,7 +268,7 @@ func update_board(phase: String, round_id: int, order: Array, delta: float) -> v
 	var ease := 1.0-exp(-delta*6.0)
 	for rank in range(order.size()):
 		var chip: Node3D=chips[int(order[rank])]
-		chip.position.x=lerpf(chip.position.x,SCREEN.x-12.25+rank*3.5,ease)
+		chip.position.x=lerpf(chip.position.x,SCREEN.x+chip_x(rank),ease)
 
 func marquee(st: SurfaceTool, c: Vector3, size: float) -> void:
 	var half := size*.5

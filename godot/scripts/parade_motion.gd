@@ -2,11 +2,11 @@ extends RefCounted
 
 # Native preview only: mirrors makeParadePlan in src/course.ts. In the browser
 # React sends its per-round plan, which also drives the minimap.
-static func preview_plan(seed_value: int) -> Array:
+static func preview_plan(seed_value: int, field: int) -> Array:
 	var random:=RandomNumberGenerator.new()
 	random.seed=seed_value
 	var plan: Array=[]
-	for lane in range(8):
+	for lane in range(field):
 		var segments: Array=[]
 		var time:=0.0
 		var x:=random.randf_range(-10,-2)

@@ -24,7 +24,7 @@ func build(index: int, _color: Color) -> void:
 	var style: Dictionary=styles[index]
 	var coat:=Color(style.coat)
 	gait_phase=fposmod(index*.381966,1.0)
-	cadence=[.96,1.02,1.05,.98,1.01,.94,1.04,.99][index]
+	cadence=[.96,1.02,1.05,.98,1.01,.94,1.04,.99,1.03,.97,1.0,.95][index]
 	model = HORSE.instantiate()
 	model.scale = Vector3.ONE*.62
 	model.rotation.y = PI # Source faces +Z; the course uses -Z as forward.
@@ -181,12 +181,13 @@ func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
 		var number := Label3D.new()
 		number.text=str(index+1)
 		number.font_size=96
-		number.pixel_size=.009
+		# Two-digit numbers set smaller to stay on the cloth.
+		number.pixel_size=.009 if index<9 else .0066
 		number.outline_size=0
 		number.shaded=true
 		number.layers=3
 		number.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		number.modulate=Color("fff7e7") if index in [0,3,7] else Color("202822")
+		number.modulate=Color("fff7e7") if index in [0,3,7,8,9,11] else Color("202822")
 		number.position=Vector3(side*.722,2.73,-.35)
 		number.rotation.y=side*PI/2
 		cloth.add_child(number)

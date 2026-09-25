@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { commentaryCues, commentaryFile, planCommentary, type Cue } from './commentary'
-import { BET_MS, type Game, type Result } from './game'
+import { BET_MS, fieldOf, type Game, type Result } from './game'
 import { fetchAsset } from './mirror'
 
 const LOOKAHEAD = 1.2
@@ -44,12 +44,12 @@ export class CommentaryPlayer {
   }
 
   // `seconds` is real time since the gates opened.
-  update(seed: number, round: number, history: Result[], seconds: number) {
-    const key = `${seed}:${round}`
+  update(seed: number, round: number, field: number, history: Result[], seconds: number) {
+    const key = `${seed}:${round}:${field}`
     if (key !== this.key) {
       this.stop()
       this.key = key
-      this.cues = planCommentary(seed, round, history).flatMap(u => commentaryCues([u]).map((cue, i) => ({ ...cue, opens: i === 0 })))
+      this.cues = planCommentary(seed, round, field, history).flatMap(u => commentaryCues([u]).map((cue, i) => ({ ...cue, opens: i === 0 })))
     }
     if (!this.sprite || this.audio.state !== 'running') return
     // Joining late starts at the next full sentence, never mid-phrase.
@@ -87,7 +87,7 @@ export function useCommentary(game: Game, enabled: boolean, duck: (start: number
       current.onSpeak = dip
       const seconds = (Date.now() - g.startedAt - BET_MS) / 1000
       if (document.hidden || seconds < CALL_FROM || seconds > CALL_UNTIL) { current.stop(); return }
-      current.update(g.seed, g.round, g.history, seconds)
+      current.update(g.seed, g.round, fieldOf(g), g.history, seconds)
     }, 150)
     return () => { window.clearInterval(timer); player.current?.stop() }
   }, [enabled])

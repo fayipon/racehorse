@@ -1,5 +1,5 @@
-import { BET_MS, phaseAt, racePositions, type Game } from './game'
-import { COURSE } from './course'
+import { BET_MS, fieldOf, phaseAt, racePositions, type Game } from './game'
+import { COURSE, laneRadius } from './course'
 import { racePresentationTime } from './presentation'
 import { fetchAsset } from './mirror'
 
@@ -7,10 +7,10 @@ export type CrowdMix = readonly [number, number, number]
 export const SILENT_CROWD: CrowdMix = [0, 0, 0]
 export const CROWD_FILES = ['ambient.ogg', 'cheer.ogg', 'roar.ogg'] as const
 const ROUND_END_FADE_SECONDS = 5
-const finalBendProgress = Array.from({ length: COURSE.laneCount }, (_, lane) => {
-  const radius = COURSE.laneStart + lane * COURSE.laneSpacing
+const finalBendProgress = (lane: number, field: number) => {
+  const radius = laneRadius(lane, field)
   return (3 * COURSE.halfStraight + Math.PI * radius) / (4 * COURSE.halfStraight + 2 * Math.PI * radius)
-})
+}
 
 export function crowdMixAt(game: Game, now: number): CrowdMix {
   const phase = phaseAt(game, now)
@@ -18,9 +18,9 @@ export function crowdMixAt(game: Game, now: number): CrowdMix {
   const visualSeconds = racePresentationTime((now - game.startedAt - BET_MS) / 1000)
   // One continuous swell starts before the final bend and crests midway
   // through it. There is no separate gain switch on entry or at the finish.
-  const positions = racePositions(game.seed, game.round, visualSeconds)
+  const positions = racePositions(game.seed, game.round, visualSeconds, fieldOf(game))
   const approach = Math.min(1, Math.max(0, ...positions.map((progress, lane) =>
-    (progress - finalBendProgress[lane] + 0.12) / 0.26)))
+    (progress - finalBendProgress(lane, positions.length) + 0.12) / 0.26)))
   // Smootherstep keeps both the gain and its slope continuous at each end.
   const swell = approach ** 3 * (approach * (approach * 6 - 15) + 10)
   return [0.24 - swell * 0.06, 0.2 + swell * 0.5, swell * 0.95]

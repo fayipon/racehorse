@@ -7,7 +7,7 @@ import { COURSE, coursePoint } from './course'
 afterEach(() => { vi.unstubAllGlobals() })
 
 describe('crowd follows the visible race', () => {
-  const game = createGame(1000, 123)
+  const game = createGame(1000, 'sunny', 123)
   const at = (seconds: number) => game.startedAt + BET_MS + seconds * 1000
 
   it('swells into the final bend and reaches the sustained climax while turning', () => {
@@ -16,8 +16,8 @@ describe('crowd follows the visible race', () => {
     expect(sprint[1]).toBeGreaterThan(early[1])
     let bendEntry: number | undefined
     for (let seconds = 0; seconds < 50; seconds += 0.025) {
-      const positions = racePositions(game.seed, game.round, racePresentationTime(seconds))
-      if (positions.some((progress, lane) => coursePoint(progress, lane).x < -COURSE.halfStraight)) {
+      const positions = racePositions(game.seed, game.round, racePresentationTime(seconds), 8)
+      if (positions.some((progress, lane) => coursePoint(progress,lane,8).x < -COURSE.halfStraight)) {
         bendEntry = seconds
         break
       }

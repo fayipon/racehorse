@@ -1,4 +1,5 @@
 import course from '../godot/assets/course.json'
+import { laneRadius } from './course'
 
 // A race run to form. Each horse has a running style, and its distance behind a
 // virtual pace-setter is a smooth curve over the race, pinned at the line to
@@ -20,8 +21,10 @@ export type RacePlan = {
 export const WINNER_FINISH = 44.5
 // On-screen metres: the minimap's nominal 1200 m is one lap of the oval.
 export const HORSE_LENGTH = 2.4
-export const lapLength = (lane: number) => 4 * course.halfStraight + 2 * Math.PI * (course.laneStart + lane * course.laneSpacing)
-export const REFERENCE_LAP = lapLength((course.laneCount - 1) / 2)
+export const lapLength = (lane: number, field: number) => 4 * course.halfStraight + 2 * Math.PI * laneRadius(lane, field)
+// Margins are measured on the middle lane of the field.
+export const referenceLap = (field: number) => lapLength((field - 1) / 2, field)
+export const REFERENCE_LAP = referenceLap(course.laneCount)
 const EASE = 1.1
 const CRUISE = 1 / (WINNER_FINISH - EASE * (1 - Math.exp(-WINNER_FINISH / EASE)))
 const STAGES = [0, .06, .2, .45, .65, .8, .92, 1]
@@ -73,16 +76,19 @@ export function planProgress(plan: RacePlan, index: number, time: number) {
   return stage - (hermite(plan.knots[index], stage) - hermite(plan.knots[plan.winner], stage))
 }
 
-// `order` is the official result; `random` is seeded per round.
+// `order` is the official result, one entry per runner; `random` is seeded per round.
 export function makeRacePlan(order: number[], random: () => number): RacePlan {
+  const field = order.length
   const between = ([low, high]: number[]) => low + random() * (high - low)
-  const pool: Style[] = ['front', 'stalk', 'stalk', 'mid', 'mid', 'close', 'close', (['front', 'stalk', 'mid'] as Style[])[Math.floor(random() * 3)]]
+  // Seven set styles, then one near the pace and, in bigger fields, any style.
+  const extra = Array.from({ length: field - 7 }, (_, i): Style => i === 0 ? (['front', 'stalk', 'mid'] as Style[])[Math.floor(random() * 3)] : (['front', 'stalk', 'mid', 'close'] as Style[])[Math.floor(random() * 4)])
+  const pool: Style[] = ['front', 'stalk', 'stalk', 'mid', 'mid', 'close', 'close', ...extra]
   for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]] }
   // Winners come from anywhere, but most often from just off the pace.
   const roll = random()
   const wanted: Style = roll < .25 ? 'front' : roll < .6 ? 'stalk' : roll < .85 ? 'mid' : 'close'
   pool.splice(pool.indexOf(wanted), 1)
-  const styles: Style[] = new Array(8)
+  const styles: Style[] = new Array(field)
   styles[order[0] - 1] = wanted
   order.slice(1).forEach((id, i) => { styles[id - 1] = pool[i] })
   // Finishing margins, in reference-lap metres, when the winner hits the line.
@@ -91,10 +97,10 @@ export function makeRacePlan(order: number[], random: () => number): RacePlan {
   const margins = [0]
   const photo = random()
   margins.push(photo < .2 ? between([.1, .6]) : photo < .45 ? between([.6, 1.4]) : photo < .75 ? between([1.4, 3.5]) : between([3.5, 7]))
-  for (let rank = 2; rank < 8; rank++) margins.push(margins[rank - 1] + between(rank <= 3 ? [.3, 2.6] : [.4, 3.2]))
+  for (let rank = 2; rank < field; rank++) margins.push(margins[rank - 1] + between(rank <= 3 ? [.3, 2.6] : [.4, 3.2]))
   // Half the races have a mid-race move: a stalker or closer from off the pace
   // runs up to dispute the lead down the back straight, then drops back in.
-  const mover = random() < .5 ? Math.floor(random() * 8) : -1
+  const mover = random() < .5 ? Math.floor(random() * field) : -1
   const knots = styles.map((style, index) => {
     const rank = order.indexOf(index + 1)
     const early = FORM[style].map(between)
@@ -103,7 +109,7 @@ export function makeRacePlan(order: number[], random: () => number): RacePlan {
     const turn = early[3]
     const kick = KICK[style].map(share => turn + (final - turn) * share + between([-.3, .3]))
     const metres = [0, ...early, ...kick, final]
-    return monotoneKnots(STAGES, metres.map(m => Math.max(0, m) / REFERENCE_LAP))
+    return monotoneKnots(STAGES, metres.map(m => Math.max(0, m) / referenceLap(field)))
   })
   const plan: RacePlan = { winner: order[0] - 1, ease: EASE, cruise: CRUISE, styles, knots, finishTimes: [] }
   // Each horse finishes when its own curve reaches the line.
