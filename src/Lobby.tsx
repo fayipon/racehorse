@@ -23,7 +23,7 @@ export default function Lobby() {
     return bettingOpen(game, now) ? `開放投注・${clock(Math.max(0, Math.ceil((game.startedAt + BET_CLOSE_MS - now) / 1000)))}` : '集合中・即將開跑'
   }
   return <>
-    <header className="app-header"><a className="brand" href={import.meta.env.BASE_URL} aria-label="小馬競速俱樂部 大廳"><span className="brand-icon">♞</span><span>SUNNY<span className="brand-light">CUP</span><small>小馬競速俱樂部</small></span></a><div className="header-wallet"><span className="coin-icon"><Coins size={17} /></span><div><small>我的籌碼</small><strong>{fmt(store.balance)}</strong></div><span className="practice-label">練習模式</span></div></header>
+    <header className="app-header"><a className="brand" href={import.meta.env.BASE_URL} aria-label="小馬競速俱樂部 大廳"><span className="brand-icon">♞</span><span>小馬競速<span className="brand-light">俱樂部</span><small>賽事大廳</small></span></a><div className="header-wallet"><span className="coin-icon"><Coins size={17} /></span><div><small>我的籌碼</small><strong>{fmt(store.balance)}</strong></div><span className="practice-label">練習模式</span></div></header>
     <main className="app-main lobby">
       <div className="page-heading"><div><span className="overline">CHOOSE YOUR RACE</span><h1>今天想看哪一場<span>？</span></h1></div><p><span className="online-dot" />三種賽事同時開放 <span className="divider">/</span> 籌碼共用</p></div>
       <ul className="cup-list">{(Object.keys(CUPS) as CupId[]).map(id => {
