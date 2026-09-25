@@ -138,6 +138,7 @@ func _ready() -> void:
 	else:
 		for arg in OS.get_cmdline_user_args():
 			if arg.begins_with("--field="): field=clampi(int(arg.trim_prefix("--field=")),8,12)
+			if arg.begins_with("--cup="): cup=arg.trim_prefix("--cup=")
 	course.field=field
 	for i in range(field):
 		positions.append(0.0)
@@ -267,7 +268,8 @@ func build_environment() -> void:
 	await loading_checkpoint(4)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
-	venue.build(reduced_motion,COLORS,low_power,field,{"thunder":"THUNDER CUP","royal":"ROYAL CUP"}.get(cup,"SUNNY CUP"))
+	var emblem: String = cup if cup in ["thunder","royal"] else "sunny"
+	venue.build(reduced_motion,COLORS,low_power,field,{"thunder":"THUNDER CUP","royal":"ROYAL CUP"}.get(cup,"SUNNY CUP"),emblem)
 	await loading_checkpoint(5)
 
 # Shots are framed as a vertical angle on a wide stage. An upright phone stage

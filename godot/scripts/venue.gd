@@ -32,6 +32,7 @@ var spectator_count := 0
 var palette: Array = []
 var field := 8
 var board_title := "SUNNY CUP"
+var board_emblem := "sunny"
 var reduce_motion := false
 var attendance := .88
 var coarse := false
@@ -40,12 +41,13 @@ var chips: Array[Node3D] = []
 var board_round: Label3D
 var board_status: Label3D
 
-func build(reduced: bool, colors: Array, sparse := false, runners := 8, title := "SUNNY CUP") -> void:
+func build(reduced: bool, colors: Array, sparse := false, runners := 8, title := "SUNNY CUP", emblem := "sunny") -> void:
 	random.seed = 247019
 	reduce_motion = reduced
 	palette = colors
 	field = runners
 	board_title = title
+	board_emblem = emblem
 	# The crowd dominates the vertex budget; the power-saving tier seats fewer.
 	attendance = .42 if sparse else .88
 	coarse = sparse
@@ -66,6 +68,14 @@ func build(reduced: bool, colors: Array, sparse := false, runners := 8, title :=
 	build_sails()
 	build_flags()
 	flush_people()
+
+# A flat gold shape on the sign plane, wound to face the track whatever order its corners come in.
+func flat_triangle(st: SurfaceTool, z: float, a: Vector2, b: Vector2, c: Vector2, color: Color) -> void:
+	if (b-a).cross(c-a)>0.0:
+		var swap := b
+		b = c
+		c = swap
+	KIT.triangle(st,Vector3(a.x,a.y,z),Vector3(b.x,b.y,z),Vector3(c.x,c.y,z),color)
 
 func main_stand(st: SurfaceTool, glass: SurfaceTool) -> void:
 	var length := STAND_HALF*2.0
@@ -102,21 +112,36 @@ func main_stand(st: SurfaceTool, glass: SurfaceTool) -> void:
 		KIT.cylinder(st,mast+Vector3(0,21.2,0),Vector3(x,13.9,front-.8),.035,WHITE,4)
 		KIT.cylinder(st,mast+Vector3(0,20.0,0),Vector3(x,16.6,back+3.4),.03,WHITE,4)
 		flag_tops.append(mast+Vector3(.2,22.0,0))
-	# Club sign and golden sun above the centre bay.
+	# Cup sign above the centre bay, crowned by the cup's golden emblem.
 	KIT.box(st,Vector3(0,16.0,front-.45),Vector3(15.0,2.6,.35),DEEP_GREEN)
 	for y in [14.62,17.38]: KIT.box(st,Vector3(0,y,front-.45),Vector3(15.2,.16,.4),GOLD)
 	for x in [-4.5,4.5]: KIT.box(st,Vector3(x,14.1,front-.45),Vector3(.25,1.0,.25),WHITE)
-	var sun := Vector3(0,18.9,front-.5)
-	KIT.disc(st,sun,1.15,GOLD,Vector3.FORWARD,24)
-	var frame := KIT.axis_frame(Vector3.FORWARD)
-	for i in range(12):
-		var angle := TAU*i/12.0
-		var tip: Vector3=sun+(frame[0]*cos(angle)+frame[1]*sin(angle))*2.05
-		var left: Vector3=sun+(frame[0]*cos(angle-.16)+frame[1]*sin(angle-.16))*1.32
-		var right: Vector3=sun+(frame[0]*cos(angle+.16)+frame[1]*sin(angle+.16))*1.32
-		KIT.triangle(st,right,left,tip,GOLD)
+	var sign_z := front-.5
+	match board_emblem:
+		"thunder":
+			# A lightning bolt from two overlapping wedges; the stand faces -z, so -x is the viewer's right.
+			flat_triangle(st,sign_z,Vector2(-.75,20.8),Vector2(.95,18.75),Vector2(-.35,18.75),GOLD)
+			flat_triangle(st,sign_z,Vector2(.35,19.05),Vector2(-.95,19.05),Vector2(.75,17.3),GOLD)
+		"royal":
+			# A three-point crown with a rose jewel on the band.
+			KIT.box(st,Vector3(0,18.0,sign_z),Vector3(3.6,.8,.2),GOLD)
+			for peak: Array in [[-1.8,-.5,Vector2(-1.45,19.9)],[-.75,.75,Vector2(0,20.5)],[.5,1.8,Vector2(1.45,19.9)]]:
+				var tip: Vector2 = peak[2]
+				flat_triangle(st,sign_z,Vector2(peak[0],18.35),Vector2(peak[1],18.35),tip,GOLD)
+				KIT.disc(st,Vector3(tip.x,tip.y,sign_z-.01),.24,GOLD,Vector3.FORWARD,12)
+			KIT.disc(st,Vector3(0,18.0,sign_z-.12),.28,Color("b8475e"),Vector3.FORWARD,16)
+		_:
+			var sun := Vector3(0,18.9,sign_z)
+			KIT.disc(st,sun,1.15,GOLD,Vector3.FORWARD,24)
+			var frame := KIT.axis_frame(Vector3.FORWARD)
+			for i in range(12):
+				var angle := TAU*i/12.0
+				var tip: Vector3=sun+(frame[0]*cos(angle)+frame[1]*sin(angle))*2.05
+				var left: Vector3=sun+(frame[0]*cos(angle-.16)+frame[1]*sin(angle-.16))*1.32
+				var right: Vector3=sun+(frame[0]*cos(angle+.16)+frame[1]*sin(angle+.16))*1.32
+				KIT.triangle(st,right,left,tip,GOLD)
 	var title := Label3D.new()
-	title.text="SUNNY CUP"
+	title.text=board_title
 	title.font_size=128
 	title.pixel_size=.0135
 	title.outline_size=0

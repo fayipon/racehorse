@@ -21,9 +21,9 @@ export const HORSES = [
   { id: 12, name: '玫瑰王冠', en: 'ROSE CROWN', color: '#b8475e' },
 ] as const
 export const CUPS = {
-  sunny: { id: 'sunny', name: '陽光盃', en: 'SUNNY CUP', field: 8 },
-  thunder: { id: 'thunder', name: '雷霆盃', en: 'THUNDER CUP', field: 10 },
-  royal: { id: 'royal', name: '皇家盃', en: 'ROYAL CUP', field: 12 },
+  sunny: { id: 'sunny', name: '陽光盃', en: 'SUNNY CUP', field: 8, venue: '陽光賽場', motto: '讓每一場比賽，都多一點陽光。' },
+  thunder: { id: 'thunder', name: '雷霆盃', en: 'THUNDER CUP', field: 10, venue: '雷霆賽場', motto: '讓每一次衝線，都像一聲響雷。' },
+  royal: { id: 'royal', name: '皇家盃', en: 'ROYAL CUP', field: 12, venue: '皇家賽場', motto: '讓每一匹小馬，都有機會戴上王冠。' },
 } as const
 export type CupId = keyof typeof CUPS
 export const isCup = (value: unknown): value is CupId => typeof value === 'string' && Object.hasOwn(CUPS, value)
