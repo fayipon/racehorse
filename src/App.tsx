@@ -26,7 +26,7 @@ function HorseNumber({ id, small = false }: { id: number; small?: boolean }) {
 function MiniTrack({ positions }: { positions: number[] }) {
   const radius = COURSE.innerRadius + COURSE.trackWidth / 2
   const half = COURSE.halfStraight
-  return <svg className="minitrack" viewBox="-67 -41 134 82" aria-label="八匹馬的賽道位置：兩段直線與兩端半圓，底部中央為終點">
+  return <svg className="minitrack" viewBox="-67 -41 134 82" aria-label={`${positions.length} 匹馬的賽道位置：兩段直線與兩端半圓，底部中央為終點`}>
     <rect x={-half-radius} y={-radius} width={2*(half+radius)} height={2*radius} rx={radius} fill="none" stroke="#ffffff30" strokeWidth={COURSE.trackWidth} />
     <rect x={-half-radius} y={-radius} width={2*(half+radius)} height={2*radius} rx={radius} fill="none" stroke="#ffffff80" strokeWidth=".7" />
     {positions.map((p,i) => { const point = coursePoint(p,i,positions.length); return <circle key={i} cx={point.x} cy={point.z} r="2.7" fill={HORSES[i].color} stroke="white" strokeWidth=".65" /> })}
@@ -122,8 +122,8 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
     {finishing && !winnerCutIn && <div key={`finish-${game.round}`} className="finish-sequence" aria-live="polite"><div className="finish-announcement"><span className="finish-kicker">FIRST ACROSS THE LINE · 率先衝線</span><strong>{HORSES[order[0]-1].name}</strong><div><HorseNumber id={order[0]} /><span>本場冠軍<small>{HORSES[order[0]-1].en}</small></span><Trophy size={22} /></div></div></div>}
     {phase === 'result' && <PodiumResults key={`podium-${game.round}`} order={order} round={game.round} />}
     <div className="stage-bottom">
-      <div className="live-ranking"><small>即時排名</small><div className="ranking-list" key={game.round} role="list" aria-label="即時排名">{ranking.map((h, i) => <div key={h.id} className={`ranking-row ${i < 3 ? 'is-podium' : ''}`} role="listitem" style={{ '--rank': i, '--rank-color': h.color, zIndex: 8 - i } as CSSProperties}><span className="ranking-place">{i + 1}</span><HorseNumber id={h.id} small /><b>{h.en}</b></div>)}</div></div>
-      <div className="race-progress"><div><span>{phase === 'betting' ? '準備就緒 · 等待開跑' : 'RACE PROGRESS'}</span><b>{phase === 'betting' ? '1200 M' : `${Math.round(Math.max(...positions) * 1200)} / 1200 M`}</b></div><div className="progress-rail"><span style={{ width: `${phase === 'betting' ? 0 : Math.max(...positions) * 100}%` }} /></div><small><i />{shot.label} <span>自動分鏡</span></small></div>
+      <div className="live-ranking"><small>即時排名</small><div className="ranking-list" key={game.round} role="list" aria-label="即時排名">{ranking.map((h, i) => <div key={h.id} className={`ranking-row ${i < 3 ? 'is-podium' : ''}`} role="listitem" style={{ '--rank': i, '--rank-color': h.color, zIndex: field - i } as CSSProperties}><span className="ranking-place">{i + 1}</span><HorseNumber id={h.id} small /><b>{h.en}</b></div>)}</div></div>
+      <div className="race-progress"><div><span>{phase === 'betting' ? '準備就緒 · 等待開跑' : 'RACE PROGRESS'}</span><b>{phase === 'betting' ? '1200 M' : `${Math.round(Math.max(...positions) * 1200)} / 1200 M`}</b></div><div className="progress-rail"><span style={{ width: `${phase === 'betting' ? 0 : Math.max(...positions) * 100}%` }} /></div></div>
       <MiniTrack positions={phase === 'betting' ? paradePositions((now-game.startedAt)/1000,paradePlan) : positions} />
     </div>
     {ready && phase === 'betting' && !assembling && children}
