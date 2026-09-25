@@ -5,25 +5,25 @@ export const BET_MS = 60_000
 export const RACE_MS = 50_000
 export const RESULT_MS = 10_000
 export const ROUND_MS = BET_MS + RACE_MS + RESULT_MS
-// The whole stable; a cup runs the first `field` of them.
+// The whole stable; a cup runs the first `field` of them. Local names are in src/locales.
 export const HORSES = [
-  { id: 1, name: '赤焰疾風', en: 'RUBY DASH', color: '#e55a53' },
-  { id: 2, name: '綠野旋律', en: 'GREEN MELODY', color: '#7da567' },
-  { id: 3, name: '日光漫步', en: 'SUNNY STEPS', color: '#e6b73e' },
-  { id: 4, name: '紫羅蘭夢', en: 'VIOLET DREAM', color: '#aa8ac7' },
-  { id: 5, name: '橘子汽水', en: 'ORANGE POP', color: '#e89950' },
-  { id: 6, name: '莓果甜心', en: 'BERRY HEART', color: '#d77bac' },
-  { id: 7, name: '晴空之翼', en: 'BLUE BLAZE', color: '#6dbbcc' },
-  { id: 8, name: '午夜星辰', en: 'MIDNIGHT STAR', color: '#6686d0' },
-  { id: 9, name: '薄荷微風', en: 'MINT BREEZE', color: '#2f9a88' },
-  { id: 10, name: '可可雷霆', en: 'COCOA THUNDER', color: '#9b6b4b' },
-  { id: 11, name: '銀月流光', en: 'SILVER MOON', color: '#8f9aa6' },
-  { id: 12, name: '玫瑰王冠', en: 'ROSE CROWN', color: '#b8475e' },
+  { id: 1, en: 'RUBY DASH', color: '#e55a53' },
+  { id: 2, en: 'GREEN MELODY', color: '#7da567' },
+  { id: 3, en: 'SUNNY STEPS', color: '#e6b73e' },
+  { id: 4, en: 'VIOLET DREAM', color: '#aa8ac7' },
+  { id: 5, en: 'ORANGE POP', color: '#e89950' },
+  { id: 6, en: 'BERRY HEART', color: '#d77bac' },
+  { id: 7, en: 'BLUE BLAZE', color: '#6dbbcc' },
+  { id: 8, en: 'MIDNIGHT STAR', color: '#6686d0' },
+  { id: 9, en: 'MINT BREEZE', color: '#2f9a88' },
+  { id: 10, en: 'COCOA THUNDER', color: '#9b6b4b' },
+  { id: 11, en: 'SILVER MOON', color: '#8f9aa6' },
+  { id: 12, en: 'ROSE CROWN', color: '#b8475e' },
 ] as const
 export const CUPS = {
-  sunny: { id: 'sunny', name: '陽光盃', en: 'SUNNY CUP', field: 8, venue: '陽光賽場', motto: '讓每一場比賽，都多一點陽光。' },
-  thunder: { id: 'thunder', name: '雷霆盃', en: 'THUNDER CUP', field: 10, venue: '雷霆賽場', motto: '讓每一次衝線，都像一聲響雷。' },
-  royal: { id: 'royal', name: '皇家盃', en: 'ROYAL CUP', field: 12, venue: '皇家賽場', motto: '讓每一匹小馬，都有機會戴上王冠。' },
+  sunny: { id: 'sunny', en: 'SUNNY CUP', field: 8 },
+  thunder: { id: 'thunder', en: 'THUNDER CUP', field: 10 },
+  royal: { id: 'royal', en: 'ROYAL CUP', field: 12 },
 } as const
 export type CupId = keyof typeof CUPS
 export const isCup = (value: unknown): value is CupId => typeof value === 'string' && Object.hasOwn(CUPS, value)
@@ -70,10 +70,6 @@ export function validPick(value: unknown, field: number): value is Pick {
   const horse = /^horse:(\d+)$/.exec(value)
   return horse ? Number(horse[1]) >= 1 && Number(horse[1]) <= field : ['odd', 'even', 'small', 'big'].includes(value)
 }
-export function pickLabel(pick: Pick) {
-  if (pick.startsWith('horse:')) { const id = Number(pick.split(':')[1]); return `${id} 號・${HORSES[id - 1].name}` }
-  return { odd: '冠軍馬號・單', even: '冠軍馬號・雙', small: '冠軍馬號・小', big: '冠軍馬號・大' }[pick as 'odd' | 'even' | 'small' | 'big']
-}
 // Small is the lower half of the numbers, big the upper half.
 export function wins(pick: Pick, winner: number, field: number) {
   if (pick.startsWith('horse:')) return Number(pick.split(':')[1]) === winner
@@ -103,12 +99,13 @@ export function advance(game: Game, now: number): Game {
   next = { ...next, round: game.round + skipped, startedAt: game.startedAt + skipped * ROUND_MS, bets: [], settled: false }
   return now >= next.startedAt + BET_MS + RACE_MS ? settle(next) : next
 }
-export function placeBet(game: Game, pick: Pick, amount: number, now: number): { game: Game; error?: string } {
+export type BetError = 'closed' | 'amount' | 'balance' | 'limit'
+export function placeBet(game: Game, pick: Pick, amount: number, now: number): { game: Game; error?: BetError } {
   const current = advance(game, now)
-  if (!bettingOpen(current, now)) return { game: current, error: '本場已封盤，下一場再試試手氣。' }
-  if (!validPick(pick, fieldOf(current)) || !Number.isSafeInteger(amount) || amount < 10 || amount > 10_000 || amount % 10 !== 0) return { game: current, error: '投注金額須為 10–10,000，且為 10 的倍數。' }
-  if (amount > current.balance) return { game: current, error: '可用籌碼不足，請調整投注金額。' }
-  if (current.bets.length >= 100) return { game: current, error: '本輪最多 100 筆注單。' }
+  if (!bettingOpen(current, now)) return { game: current, error: 'closed' }
+  if (!validPick(pick, fieldOf(current)) || !Number.isSafeInteger(amount) || amount < 10 || amount > 10_000 || amount % 10 !== 0) return { game: current, error: 'amount' }
+  if (amount > current.balance) return { game: current, error: 'balance' }
+  if (current.bets.length >= 100) return { game: current, error: 'limit' }
   return { game: { ...current, balance: current.balance - amount, bets: [...current.bets, { id: crypto.randomUUID(), pick, amount }] } }
 }
 export function cancelBet(game: Game, id: string, now: number): Game {
@@ -129,13 +126,11 @@ export function racePositions(seed: number, round: number, seconds: number, fiel
   const plan = racePlan(seed, round, field)
   return Array.from({ length: field }, (_, index) => Math.max(0, Math.min(1, planProgress(plan, index, seconds))))
 }
+// The Godot camera cut for this moment.
 export function cameraShot(phase: Phase, seconds: number) {
-  if (phase === 'betting') return { id: 0, label: '賽前巡禮' }
-  if (phase === 'result') return { id: 4, label: '前三名頒獎' }
-  if (seconds < 7) return { id: 1, label: '起跑鏡頭' }
-  if (seconds < 24) return { id: 2, label: '側面追拍' }
-  if (seconds < 37) return { id: 3, label: '彎道追逐' }
-  return { id: 5, label: seconds < 39.5 ? '終點衝刺' : seconds < 42.3 ? '衝刺特寫' : seconds < 45.8 ? '衝線時刻' : '終點定鏡' }
+  if (phase === 'betting') return 0
+  if (phase === 'result') return 4
+  return seconds < 7 ? 1 : seconds < 24 ? 2 : seconds < 37 ? 3 : 5
 }
 export function isGame(value: unknown): value is Game {
   if (!value || typeof value !== 'object') return false

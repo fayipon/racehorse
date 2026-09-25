@@ -62,3 +62,8 @@
 @keyframes ceremony-reveal{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @container(max-width:650px){.race-stage.phase-result .payout-celebration{right:12px;padding:5px 8px}.race-stage.phase-result .payout-celebration strong{font-size:18px}.race-stage.phase-result .payout-kicker{display:none}.race-stage.is-cinematic .finish-announcement>strong{font-size:27px}}
 @media(prefers-reduced-motion:reduce){.podium-cutin,.podium-cutin:before,.podium-cutin img,.race-stage.is-cinematic .finish-announcement,.race-stage.phase-result .payout-celebration{animation:none}}
+/* Names stay on their row; places shorter than 第 10 名 (4th, 10º, 10着) give the name the room. */
+.podium-rest strong{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+:root:not([lang^=zh]) .podium-rest li{grid-template-columns:36px 23px minmax(0,1fr) auto}
+:root:not([lang^=zh]) .podium-rest:has(li:nth-child(6)) li{grid-template-columns:30px 21px minmax(0,1fr)}
+[data-script=latin] .podium-rest strong{letter-spacing:.2px}

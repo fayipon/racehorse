@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { advance, advanceStore, cancelBet, createStore, gameOf, isStore, placeBet, storeFromSunnySave, withGame, type CupId, type Game, type Pick, type Store } from './game'
+import { advance, advanceStore, cancelBet, createStore, gameOf, isStore, placeBet, storeFromSunnySave, withGame, type BetError, type CupId, type Game, type Pick, type Store } from './game'
 const KEY = 'racehorse-v3'
 const SUNNY_SAVE = 'sunny-cup-v2'
 let memory: Store | undefined
@@ -36,7 +36,7 @@ export function useGame(cup: CupId) {
     return () => { clearInterval(timer); window.removeEventListener('storage', tick); document.removeEventListener('visibilitychange', tick) }
   }, [transact])
   const bet = async (pick: Pick, amount: number) => {
-    let error: string | undefined
+    let error: BetError | undefined
     await transact(g => { const result = placeBet(g, pick, amount, Date.now()); error = result.error; return result.game })
     return error
   }
