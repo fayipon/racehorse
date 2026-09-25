@@ -13,7 +13,7 @@ export function PodiumResults({ order, round }: { order: number[]; round: number
         </li>
       })}
     </ol>
-    <ol className="podium-rest" start={4} aria-label={`第 4 至第 ${order.length} 名`}>
+    <ol className="podium-rest" start={4} aria-label={`第 4 至第 ${order.length} 名`} style={{ '--rest-rows': Math.min(5, order.length - 3) } as CSSProperties}>
       {order.slice(3).map((id, index) => {
         const horse = HORSES[id - 1]
         return <li key={id} value={index + 4} style={{ '--horse': horse.color } as CSSProperties}>
