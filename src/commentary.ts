@@ -10,9 +10,12 @@ import { HORSE_LENGTH, planProgress, referenceLap, WINNER_FINISH, type RacePlan 
 // it describes is on screen, key calls first, and position reports fill the
 // gaps. Lines are short pre-recorded phrases (scripts/commentary-lines.json).
 export type Utterance = { at: number; clips: string[]; priority: number }
-export type Cue = { at: number; clip: string; offset: number; duration: number }
+// `sprite` is 0 for the main voice file, 1 for the lines naming runners 9–12.
+export type Cue = { at: number; clip: string; offset: number; duration: number; sprite: 0 | 1 }
 
-const CLIPS = manifest.clips as Record<string, number[]>
+// Lines naming runners 9–12 are in a second file that only the bigger cups load.
+const EXTRA = manifest.extra.clips as Record<string, number[]>
+const CLIPS: Record<string, number[]> = { ...manifest.clips, ...EXTRA }
 const METRES = 1200
 const STEP = .05
 const WITHIN = .06
@@ -341,11 +344,11 @@ export function commentaryCues(utterances: Utterance[]): Cue[] {
     let t = u.at
     return u.clips.map(clip => {
       const [offset, duration] = CLIPS[clip]
-      const cue = { at: t, clip, offset, duration }
+      const cue: Cue = { at: t, clip, offset, duration, sprite: Object.hasOwn(EXTRA, clip) ? 1 : 0 }
       t += duration + WITHIN
       return cue
     })
   })
 }
 
-export const commentaryFile = `${manifest.file}?v=${manifest.version}`
+export const commentaryFiles = [`${manifest.file}?v=${manifest.version}`, `${manifest.extra.file}?v=${manifest.extra.version}`] as const

@@ -10,6 +10,7 @@ export const MIRRORED = [
   'mirror/index.wasm.gz',
   'public/game/index.pck',
   'public/audio/commentary/voice.mp3',
+  'public/audio/commentary/voice-extra.mp3',
   'public/audio/crowd/ambient.ogg',
   'public/audio/crowd/cheer.ogg',
   'public/audio/crowd/roar.ogg',

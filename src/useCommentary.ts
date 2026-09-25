@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { commentaryCues, commentaryFile, planCommentary, type Cue } from './commentary'
+import { commentaryCues, commentaryFiles, planCommentary, type Cue } from './commentary'
 import { BET_MS, fieldOf, type Game, type Result } from './game'
 import { fetchAsset } from './mirror'
 
@@ -14,8 +14,8 @@ const CALL_UNTIL = 56
 export class CommentaryPlayer {
   private audio: AudioContext
   private output: GainNode
-  private sprite: AudioBuffer | null = null
-  private loading: Promise<void> | null = null
+  private sprites: (AudioBuffer | null)[] = [null, null]
+  private loading: (Promise<void> | null)[] = [null, null]
   private key = ''
   private cues: (Cue & { opens: boolean })[] = []
   private next = 0
@@ -35,12 +35,15 @@ export class CommentaryPlayer {
     this.output.connect(limiter)
   }
 
-  load() {
-    this.loading ??= fetchAsset(commentaryFile)
-      .then(response => { if (!response.ok) throw new Error(`Commentary unavailable: ${response.status}`); return response.arrayBuffer() })
-      .then(bytes => this.audio.decodeAudioData(bytes))
-      .then(buffer => { this.sprite = buffer })
-      .catch(() => { this.loading = null })
+  // The main file holds Sunny Cup's eight runners; bigger fields also load the lines naming 9–12.
+  load(field: number) {
+    for (const index of field > 8 ? [0, 1] : [0]) {
+      this.loading[index] ??= fetchAsset(commentaryFiles[index])
+        .then(response => { if (!response.ok) throw new Error(`Commentary unavailable: ${response.status}`); return response.arrayBuffer() })
+        .then(bytes => this.audio.decodeAudioData(bytes))
+        .then(buffer => { this.sprites[index] = buffer })
+        .catch(() => { this.loading[index] = null })
+    }
   }
 
   // `seconds` is real time since the gates opened.
@@ -51,13 +54,15 @@ export class CommentaryPlayer {
       this.key = key
       this.cues = planCommentary(seed, round, field, history).flatMap(u => commentaryCues([u]).map((cue, i) => ({ ...cue, opens: i === 0 })))
     }
-    if (!this.sprite || this.audio.state !== 'running') return
+    if (!this.sprites[0] || this.audio.state !== 'running') return
     // Joining late starts at the next full sentence, never mid-phrase.
     while (this.next < this.cues.length && (this.cues[this.next].at < seconds - .05 || (!this.cues[this.next].opens && !this.playing.size))) this.next++
     while (this.next < this.cues.length && this.cues[this.next].at < seconds + LOOKAHEAD) {
       const cue = this.cues[this.next++]
+      const buffer = this.sprites[cue.sprite]
+      if (!buffer) continue
       const source = this.audio.createBufferSource()
-      source.buffer = this.sprite
+      source.buffer = buffer
       source.connect(this.output)
       const start = this.audio.currentTime + Math.max(0, cue.at - seconds)
       source.start(start, cue.offset, cue.duration)
@@ -94,7 +99,7 @@ export function useCommentary(game: Game, enabled: boolean, duck: (start: number
   return {
     enable: (audio: AudioContext) => {
       player.current ??= new CommentaryPlayer(audio)
-      player.current.load()
+      player.current.load(fieldOf(latest.current.game))
     },
   }
 }

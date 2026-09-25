@@ -10,6 +10,7 @@
 ## 賽事轉播語音
 
 - 以 [Fish Audio](https://fish.audio) 的 S2.1 Pro 模型（`s2.1-pro-free`）生成，聲音為公開聲音模型「影視解說」（ID `39ea63baf6c0480cb8148dc7955db78e`，作者暱稱 张磊）。文字全為專案自寫（`scripts/commentary-lines.json`），由 `scripts/generate_commentary.py` 修剪、調整音量並合成 `public/audio/commentary/voice.mp3`。使用依 Fish Audio 服務條款；免費模型的請求可能被用於改進模型，年營收超過 100 萬美元的產品需先聯繫 Fish Audio。
+- 點名第 9–12 號馬的台詞另存為 `public/audio/commentary/voice-extra.mp3`，只有雷霆盃與皇家盃載入；陽光盃只載入 `voice.mp3`。
 - 挑選聲音時排除了模仿真人（知名主持人、解說員）的聲音模型。
 - 語氣參考 `design/` 內使用者提供的 Fish Audio 試驗音（中文與日文衝線口播），參考音本身不打包進網站。
 - 先前以 `zh-TW-YunJheNeural` 生成的整句播報（`public/audio/announcer/`）已移除。

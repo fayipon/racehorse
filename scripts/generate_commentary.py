@@ -1,8 +1,9 @@
 """Build the race commentary voice sprite from scripts/commentary-lines.json.
 
 Every line is spoken once per horse where it names one, trimmed, levelled by
-intensity and packed into one MP3 (public/audio/commentary/voice.mp3). The clip
-offsets go to src/commentary-clips.json, which the planner reads for timing.
+intensity and packed into an MP3 (public/audio/commentary/voice.mp3). Lines naming
+runners 9-12 go in a second MP3 (voice-extra.mp3) that only the bigger cups load.
+The clip offsets go to src/commentary-clips.json, which the planner reads for timing.
 
 Engines (the catalog's voice.engine is the default):
   edge            Microsoft Edge neural voices via edge-tts==7.2.8. Free.
@@ -42,6 +43,9 @@ import imageio_ffmpeg  # noqa: E402
 CATALOG = ROOT / "scripts" / "commentary-lines.json"
 PARTS = ROOT / "dev" / "commentary-parts"
 SPRITE = ROOT / "public" / "audio" / "commentary" / "voice.mp3"
+EXTRA_SPRITE = SPRITE.with_name("voice-extra.mp3")
+# Sunny Cup runs eight; lines naming a later runner go in the extra sprite.
+BASE_RUNNERS = 8
 MANIFEST = ROOT / "src" / "commentary-clips.json"
 RATE = 24000
 LEAD_IN = 0.3
@@ -242,20 +246,40 @@ async def main():
                 "-b:a", "96k", str(options.out or PREVIEW)], reel.tobytes())
         print(f"Preview: {options.out or PREVIEW} ({len(reel) / RATE:.1f}s)", flush=True)
         return
+
+    def runner(line):
+        head, _, tail = line["id"].rpartition(".")
+        return int(tail) if head and tail.isdigit() else 0
+
+    pairs = list(zip(lines, targets))
+    base = build_sprite([p for p in pairs if runner(p[0]) <= BASE_RUNNERS], SPRITE, settings)
+    extra = build_sprite([p for p in pairs if runner(p[0]) > BASE_RUNNERS], EXTRA_SPRITE, settings)
+
+    def rows(clips):
+        return ",\n".join(f'  "{key}": {json.dumps(value)}' for key, value in clips.items())
+
+    MANIFEST.write_text(f'{{\n"file": "audio/commentary/voice.mp3",\n"version": "{base[1]}",\n"engine": "{engine}",\n'
+                        f'"clips": {{\n{rows(base[0])}\n}},\n'
+                        f'"extra": {{\n"file": "audio/commentary/voice-extra.mp3",\n"version": "{extra[1]}",\n'
+                        f'"clips": {{\n{rows(extra[0])}\n}}\n}}\n}}\n', encoding="utf-8")
+
+
+def build_sprite(pairs, sprite, settings):
+    """Pack (line, part) pairs into one MP3; returns the clip offsets and a digest."""
     pcm = array.array("h", bytes(int(RATE * LEAD_IN) * 2))
     placed = {}
-    for line, target in zip(lines, targets):
+    for line, target in pairs:
         clip = level(trim(decode(target)), LEVEL_RMS[line["level"]] + settings["levels"][str(line["level"])]["gain"])
         placed[line["id"]] = (len(pcm), len(clip), line["level"])
         pcm.extend(clip)
         pcm.extend(bytes(int(RATE * SPACING) * 2))
-    SPRITE.parent.mkdir(parents=True, exist_ok=True)
+    sprite.parent.mkdir(parents=True, exist_ok=True)
     ffmpeg(["-y", "-f", "s16le", "-ac", "1", "-ar", str(RATE), "-i", "pipe:0", "-codec:a", "libmp3lame",
-            "-b:a", "32k", str(SPRITE)], pcm.tobytes())
+            "-b:a", "32k", str(sprite)], pcm.tobytes())
     # Measure where the first clip actually lands after encoding, so offsets
     # hold however the decoder trims the MP3 start.
-    decoded = decode(SPRITE)
-    first_start, first_length, _ = placed[lines[0]["id"]]
+    decoded = decode(sprite)
+    first_start, first_length, _ = placed[pairs[0][0]["id"]]
     window = pcm[first_start:first_start + min(first_length, RATE // 2)]
     best, shift = -1.0, 0
     for candidate in range(-2400, 2401, 4):
@@ -268,12 +292,10 @@ async def main():
     # Each clip: [start seconds, duration seconds, intensity level].
     clips = {key: [round((start + shift) / RATE, 3), round(length / RATE, 3), intensity]
              for key, (start, length, intensity) in placed.items()}
-    digest = hashlib.sha256(SPRITE.read_bytes()).hexdigest()[:10]
-    rows = ",\n".join(f'  "{key}": {json.dumps(value)}' for key, value in clips.items())
-    MANIFEST.write_text(f'{{\n"file": "audio/commentary/voice.mp3",\n"version": "{digest}",\n"engine": "{engine}",\n'
-                        f'"clips": {{\n{rows}\n}}\n}}\n', encoding="utf-8")
-    total = len(decoded) / RATE
-    print(f"{len(clips)} clips, {total:.1f}s, {SPRITE.stat().st_size // 1024} KB, encoder shift {shift} samples", flush=True)
+    digest = hashlib.sha256(sprite.read_bytes()).hexdigest()[:10]
+    print(f"{sprite.name}: {len(clips)} clips, {len(decoded) / RATE:.1f}s, {sprite.stat().st_size // 1024} KB, "
+          f"encoder shift {shift} samples", flush=True)
+    return clips, digest
 
 
 if __name__ == "__main__":

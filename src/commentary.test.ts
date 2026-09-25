@@ -5,7 +5,7 @@ import { raceOrder, racePlan } from './game'
 import { racePresentationTime } from './presentation'
 import { HORSE_LENGTH, planProgress, REFERENCE_LAP } from './raceModel'
 
-const clips = manifest.clips as Record<string, number[]>
+const clips = { ...manifest.clips, ...manifest.extra.clips } as Record<string, number[]>
 const rounds = Array.from({ length: 80 }, (_, i) => i + 1)
 function standing(seed: number, round: number, real: number) {
   const plan = racePlan(seed, round, 8)
@@ -28,11 +28,15 @@ describe('race commentary', () => {
       expect(speaking).toBeGreaterThan(25)
     }
   })
-  it('calls the bigger fields with recorded phrases only', () => {
+  it('calls the bigger fields by name, from the extra voice file only for runners 9–12', () => {
+    expect(rounds.flatMap(round => commentaryCues(planCommentary(2468, round, 8))).every(cue => cue.sprite === 0)).toBe(true)
     for (const field of [10, 12]) for (const round of rounds.slice(0, 30)) {
       const call = planCommentary(2468, round, field)
       call.forEach(u => u.clips.forEach(id => expect(clips[id], `${field} ${id}`).toBeDefined()))
       expect(call.find(u => u.at >= 0)!.clips[0]).toBe('gate')
+      const winner = raceOrder(2468, round, field)[0]
+      expect(call.some(u => u.clips.includes(`wins.${winner}`)), `${field} ${round} wins.${winner}`).toBe(true)
+      commentaryCues(call).forEach(cue => expect(cue.sprite).toBe(Number(cue.clip.split('.')[1]) > 8 ? 1 : 0))
     }
   })
   it('crosses the line mid-phrase and names the right winner and places', () => {
