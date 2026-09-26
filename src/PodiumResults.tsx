@@ -10,7 +10,7 @@ export function PodiumResults({ order, round }: { order: number[]; round: number
       {order.slice(0, 3).map((id, rank) => {
         return <li key={id} className={`podium-cutin place-${rank + 1}`} style={{ '--horse': HORSES[id - 1].color } as CSSProperties}>
           <div><span className="cutin-rank">{['1ST', '2ND', '3RD'][rank]}<b>{m.podium.places[rank]}</b></span><strong><b className="podium-number">{id}</b>{horse(id)}</strong><small>{horseAlias(id)}</small></div>
-          <img src={`${import.meta.env.BASE_URL}assets/horse-head-${id}.webp`} alt="" />
+          <img src={`${import.meta.env.BASE_URL}assets/horse-band-${id}.webp`} alt="" />
         </li>
       })}
     </ol>

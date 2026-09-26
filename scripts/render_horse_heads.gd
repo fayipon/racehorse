@@ -1,9 +1,15 @@
 extends SceneTree
 
-# Head-and-neck close-ups for the results cut-ins, rendered from the race model
-# so coats and cloths match. The head faces left, toward the band's text.
+# Head-and-neck close-ups for the lobby and the results cut-ins, rendered from
+# the race model so coats and cloths match. The head faces left, toward the
+# band's text. Each picture is rendered wide, the head framed in its left
+# square and the neck, cloth and body running on to the right, so a results
+# band shows the horse carrying on past its edge: horse-band-N.webp is the whole
+# picture and horse-head-N.webp its left square.
 const HORSE = preload("res://scripts/asset_horse.gd")
 const SIZE := 512
+const WIDE := 1.5
+const FOV := 26.0
 # The whole stable, as in src/game.ts; the biggest cup runs all twelve.
 const RUNNERS := 12
 var views: Array[SubViewport] = []
@@ -14,7 +20,7 @@ func _initialize() -> void:
 func render_heads() -> void:
 	for index in range(RUNNERS):
 		var view:=SubViewport.new()
-		view.size=Vector2i(SIZE,SIZE)
+		view.size=Vector2i(roundi(SIZE*WIDE),SIZE)
 		view.transparent_bg=true
 		view.own_world_3d=true
 		view.render_target_update_mode=SubViewport.UPDATE_ALWAYS
@@ -47,7 +53,12 @@ func render_heads() -> void:
 		view.add_child(rim)
 		var camera:=Camera3D.new()
 		view.add_child(camera)
-		camera.fov=26.0
+		# An off-centre frustum keeps the head's square exactly as a square
+		# render would frame it; the rest of the width only adds the body.
+		camera.projection=Camera3D.PROJECTION_FRUSTUM
+		camera.near=.05
+		camera.size=2.0*camera.near*tan(deg_to_rad(FOV*.5))
+		camera.frustum_offset=Vector2(camera.size*(WIDE-1.0)*.5,0)
 		camera.current=true
 	for frame in range(4): await process_frame
 	for index in range(RUNNERS):
@@ -59,7 +70,7 @@ func render_heads() -> void:
 		# Framed from the ear tips to below the chin, so the whole face shows
 		# wherever the picture is set.
 		var focus:=poll.lerp(muzzle,.3).lerp(neck,.24)+Vector3.UP*reach*.07
-		var distance:=reach*.86/tan(deg_to_rad(13.0))
+		var distance:=reach*.86/tan(deg_to_rad(FOV*.5))
 		var camera: Camera3D=views[index].get_child(views[index].get_child_count()-1)
 		camera.look_at_from_position(focus+Vector3(-.6,.02,-1.0).normalized()*distance,focus)
 	for frame in range(8): await process_frame
@@ -67,7 +78,8 @@ func render_heads() -> void:
 	var error:=OK
 	for i in range(RUNNERS):
 		var picture:=views[i].get_texture().get_image()
-		var output:=ProjectSettings.globalize_path("res://../public/assets/horse-head-%d.webp" % (i+1))
-		error=maxi(error,picture.save_webp(output,true,.9))
+		error=maxi(error,picture.save_webp(ProjectSettings.globalize_path("res://../public/assets/horse-band-%d.webp" % (i+1)),true,.9))
+		var head:=picture.get_region(Rect2i(0,0,SIZE,SIZE))
+		error=maxi(error,head.save_webp(ProjectSettings.globalize_path("res://../public/assets/horse-head-%d.webp" % (i+1)),true,.9))
 	print("HEADS error=",error)
 	quit(error)

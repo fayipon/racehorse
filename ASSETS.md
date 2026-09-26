@@ -64,7 +64,7 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 - 授權：CC0 1.0，來源與授權連結保存在 `godot/assets/quaternius/LICENSE.md`。
 - 檔案：`godot/assets/quaternius/horse.glb`，保留下載原檔；內場的造型馬也用它。
 - 選馬卡片使用 `public/assets/horse-1.png` 至 `horse-12.png`，由 `scripts/render_horse_portraits.gd` 直接渲染目前的 3D 模型、自然毛色與號碼布，原圖集保留供參考。
-- 手機結算的前三名橫幅使用 `public/assets/horse-head-1.webp` 至 `horse-head-12.webp`，由 `scripts/render_horse_heads.gd` 從同一個 3D 模型渲染頭頸特寫（`godot --path godot -s ../scripts/render_horse_heads.gd`）。
+- 結算的前三名橫幅使用 `public/assets/horse-band-1.webp` 至 `horse-band-12.webp`，大廳使用 `horse-head-1.webp` 至 `horse-head-12.webp`，都由 `scripts/render_horse_heads.gd` 從同一個 3D 模型渲染（`godot --path godot -s ../scripts/render_horse_heads.gd`）。橫幅圖寬 1.5 倍：用偏移的視錐讓頭部維持同樣構圖，右側接著畫出脖子、號碼布與身體，所以馬身延伸到橫條邊緣，不會被方框切斷；大廳的頭像取自其左側正方形。
 
 ## 自然植栽素材
 

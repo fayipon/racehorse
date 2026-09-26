@@ -9,9 +9,9 @@
 /* Upright screens let the stage grow to hold the bands and standings. */
 @media(max-width:700px){div.race-stage.phase-result:not(:fullscreen){height:auto;min-height:0;aspect-ratio:auto}}
 .podium-cutins{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
-.podium-cutin{--metal:#c9d2d3;position:relative;height:84px;margin:0 -12px;padding-left:max(30px,calc(50% - 330px));display:flex;align-items:center;overflow:hidden;color:#fff;background:linear-gradient(100deg,#0f1714f2 0 38%,color-mix(in srgb,var(--horse) 82%,#0f1714) 70%,color-mix(in srgb,var(--horse) 60%,#fff3));border-block:2px solid var(--metal);transform:skewY(-4deg);animation:cutin-left .5s cubic-bezier(.16,.9,.24,1) both}
+.podium-cutin{--metal:#c9d2d3;--band:80px;position:relative;height:calc(var(--band) + 4px);margin:0 -12px;padding-left:max(30px,calc(50% - 330px));display:flex;align-items:center;overflow:hidden;color:#fff;background:linear-gradient(100deg,#0f1714f2 0 38%,color-mix(in srgb,var(--horse) 82%,#0f1714) 70%,color-mix(in srgb,var(--horse) 60%,#fff3));border-block:2px solid var(--metal);transform:skewY(-4deg);animation:cutin-left .5s cubic-bezier(.16,.9,.24,1) both}
 .podium-cutin:before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 16px,#ffffff24 16px 18px,transparent 18px 46px);animation:cut-in-streak .24s linear infinite}
-.podium-cutin.place-1{--metal:#f2d27c;height:112px}
+.podium-cutin.place-1{--metal:#f2d27c;--band:108px}
 .podium-cutin.place-2{animation-name:cutin-right;animation-delay:.3s}
 .podium-cutin.place-3{--metal:#c98f60;animation-delay:.55s}
 .podium-cutin>div{position:relative;z-index:1;display:flex;flex-direction:column;gap:6px;transform:skewY(4deg)}
@@ -21,7 +21,7 @@
 .podium-cutin.place-1 strong{font-size:31px}
 .podium-number{display:grid;place-items:center;flex-shrink:0;width:26px;height:28px;border-radius:5px;background:var(--horse);font-size:17px;font-style:normal;color:white;text-shadow:none}
 .podium-cutin small{font-size:8px;letter-spacing:2px;color:#efe4c4}
-.podium-cutin img{position:absolute;right:max(3%,calc(50% - 360px));top:-9%;height:124%;transform:skewY(4deg);filter:drop-shadow(-4px 4px 8px #0008);animation:cutin-head .6s cubic-bezier(.2,.9,.25,1.15) both;animation-delay:inherit}
+.podium-cutin img{position:absolute;left:calc(100% - max(3%,50% - 360px) - var(--band)*1.24);top:calc(var(--band)*-.09);height:calc(var(--band)*1.24);transform:skewY(4deg);filter:drop-shadow(-4px 4px 8px #0008);animation:cutin-head .6s cubic-bezier(.2,.9,.25,1.15) both;animation-delay:inherit}
 @keyframes cutin-left{from{transform:translateX(-110%) skewY(-4deg)}to{transform:skewY(-4deg)}}
 @keyframes cutin-right{from{transform:translateX(110%) skewY(-4deg)}to{transform:skewY(-4deg)}}
 @keyframes cutin-head{from{opacity:0;transform:translateX(24px) scale(1.2) skewY(4deg)}to{opacity:1;transform:skewY(4deg)}}
