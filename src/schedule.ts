@@ -44,10 +44,14 @@ export function parseSchedule(json: unknown): Schedule {
 }
 
 let clocks = BASELINE
-// Everyone's clock: the device's, unless a service states its time or the
-// device is minutes out. The correction is kept across visits, so a page
-// never opens on the device's own clock after playing on a corrected one:
-// the saved rounds would then lie minutes ahead of it.
+// Everyone races on UTC as the host states it, not as each device reads it:
+// a phone set minutes out would otherwise see another round. The host's Date
+// header is good to about a second, and devices on network time to a fraction
+// of one, so only a clock more than 3 s out is corrected.
+//
+// The correction is measured before the page starts and then held for the
+// whole visit, as changing it mid-race would jump rounds. Later readings are
+// kept for the next visit, which starts from them if its own reading fails.
 const OFFSET_KEY = 'racehorse-clock-offset'
 let offset = (() => {
   try {
@@ -55,20 +59,13 @@ let offset = (() => {
     return Number.isFinite(saved) && Math.abs(saved) < 7 * 86_400_000 ? saved : 0
   } catch { return 0 }
 })()
-function adopt(next: number) {
-  if (next === offset) return
-  offset = next
+let running = false
+function measured(next: number) {
   try { localStorage.setItem(OFFSET_KEY, String(next)) } catch { /* This visit only. */ }
+  if (!running) offset = next
 }
 export const serverNow = () => Date.now() + offset
-// A static host's Date header is good to a second or two, and devices keep
-// better time than that, so only a clock minutes out is corrected. Once
-// corrected it is followed until it comes within half a minute; wobble of a
-// few seconds between readings is left alone.
-export function correctedOffset(current: number, skew: number) {
-  if (Math.abs(skew) <= (current ? 30_000 : 120_000)) return 0
-  return Math.abs(skew - current) > 5_000 ? skew : current
-}
+export const clockOffset = (skew: number) => Math.abs(skew) > 3000 ? Math.round(skew) : 0
 export const currentClocks = () => clocks
 function install(schedule: Schedule) {
   clocks = schedule.clocks
@@ -86,17 +83,22 @@ async function load(timeout: number) {
     if (!response.ok) return
     const schedule = parseSchedule(await response.json())
     const received = Date.now()
-    if (schedule.serverTime !== undefined) adopt(schedule.serverTime + (received - sent) / 2 - received)
+    if (schedule.serverTime !== undefined) measured(schedule.serverTime + (received - sent) / 2 - received)
     // A slow answer, as when a phone froze the page mid-request, dates nothing.
     else if (received - sent < 3000) {
-      const stated = Date.parse(response.headers.get('date') ?? '') + 1000 * Number(response.headers.get('age') ?? 0)
-      if (Number.isFinite(stated)) adopt(correctedOffset(offset, stated - (sent + received) / 2))
+      // The header counts whole seconds; the middle of its second is nearest.
+      const stated = Date.parse(response.headers.get('date') ?? '') + 500 + 1000 * Number(response.headers.get('age') ?? 0)
+      if (Number.isFinite(stated)) measured(clockOffset(stated - (sent + received) / 2))
     }
     install(schedule)
   } catch { /* Keep the last good schedule. */ } finally { clearTimeout(timer) }
 }
-// Before the first render, so the first settlement already knows the scripts.
-export const bootSchedule = () => load(2500)
+// Before the first render, so the first settlement already knows the scripts
+// and the clock; from then on the clock holds.
+export async function bootSchedule() {
+  await load(2500)
+  running = true
+}
 export const refreshSchedule = () => load(5000)
 let refreshing = false
 export function startScheduleRefresh() {

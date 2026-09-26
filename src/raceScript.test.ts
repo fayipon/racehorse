@@ -8,7 +8,7 @@ import { planCommentary, realFromVisual, Voice } from './commentary'
 import { advance, alignStore, createGame, createStore, CUPS, gameOf, placeBet, planRound, raceNumber, raceOrder, racePlan, recentResults, roundAt, ROUND_MS, startOf, withGame, type CupId, type Store } from './game'
 import { buildRacePlan, HORSE_LENGTH, planHealth, planProgress, referenceLap, WINNER_FINISH, type Checkpoint } from './raceModel'
 import { installScripts, lockRound, normalizeRace, scriptOf, type RaceScript } from './raceScript'
-import { BASELINE, correctedOffset, parseSchedule } from './schedule'
+import { BASELINE, parseSchedule } from './schedule'
 
 const START = 1_800_000_000_000
 const voices = [en, ja, pt, zh].map(manifest => new Voice(manifest))
@@ -179,17 +179,6 @@ describe('shared schedule', () => {
     const finished = placeBet(createGame(now - 115_000, 'thunder', 998), 'horse:1', 300, now - 115_000).game
     const won = advance(finished, now).balance
     expect(alignStore(withGame(createStore(), finished), now, clocks).balance).toBe(won)
-  })
-  it('corrects only a clock minutes out, and follows it back', () => {
-    expect(correctedOffset(0, 1_800)).toBe(0)
-    expect(correctedOffset(0, -90_000)).toBe(0)
-    expect(correctedOffset(0, 200_000)).toBe(200_000)
-    // Once corrected, a reading a few seconds off is wobble, not news.
-    expect(correctedOffset(200_000, 202_500)).toBe(200_000)
-    expect(correctedOffset(200_000, 150_000)).toBe(150_000)
-    expect(correctedOffset(200_000, 60_000)).toBe(60_000)
-    // A device clock that has come right again drops the correction.
-    expect(correctedOffset(60_000, 20_000)).toBe(0)
   })
   it('gives everyone the same recent winners', () => {
     const results = recentResults(5, 10, 8, 8)
