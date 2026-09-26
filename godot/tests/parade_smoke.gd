@@ -15,7 +15,8 @@ func verify_paddock() -> void:
 	for horse in race.horses: previous.append(horse.position)
 	var moods := {}
 	var walked := 0
-	for frame in range(1,1605):
+	# Through the stroll and the walk into the stalls, done by 56 s.
+	for frame in range(1,1716):
 		race._process(1.0/30.0)
 		assert(race.phase=="betting")
 		for i in range(8):
@@ -23,6 +24,9 @@ func verify_paddock() -> void:
 			var velocity:=(horse.position-previous[i])*30.0
 			previous[i]=horse.position
 			moods[horse.idle_clip]=true
+			# Strolling, no part of a horse (2.2 m ahead of its origin at most) reaches the gate.
+			if race.betting_clock<race.LOAD_FROM:
+				assert(horse.position.x+2.2<race.gate.FRONT-race.gate.DEPTH,"The paddock must stay behind the starting gate")
 			if frame>30 and velocity.length()>.35:
 				walked+=1
 				var facing:=-horse.basis.z
@@ -40,9 +44,9 @@ func verify_paddock() -> void:
 	assert(moods.size()>=3,"Standing horses should graze, look around or rest, not only idle")
 	for i in range(8):
 		var horse: Node3D=race.horses[i]
-		assert(absf(horse.position.x+race.NOSE)<.05,"Every nose lines up on the start line")
-		assert(absf(horse.position.z-race.course.lane_radius(i))<.02,"Every horse is back in its lane")
+		assert(absf(horse.position.x+race.NOSE)<.05,"Every nose is at its stall's front doors")
+		assert(absf(horse.position.z-race.course.stall_radius(i))<.02,"Every horse stands in its own stall")
 		assert(absf(angle_difference(horse.rotation.y,-PI/2))<.35,"Every horse faces down the course")
-	print("PASS: natural paddock stroll with %d idle behaviours; no backing up or overlaps; lined up on time" % moods.size())
+	print("PASS: natural paddock stroll with %d idle behaviours; no backing up or overlaps; loaded into the gate on time" % moods.size())
 	race.queue_free()
 	quit()

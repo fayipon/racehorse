@@ -53,6 +53,19 @@ var race_plan: Dictionary = MOTION.preview_plan()
 var preview_paused := false
 const PARADE = preload("res://scripts/parade_motion.gd")
 var parade_plan: Array = []
+# The paddock sits behind the starting gate. As betting closes each horse
+# crosses onto its stall's line (in a bigger field's tighter lanes it is already
+# close), then walks straight in, nose to the doors well before the off at 60 s.
+const PADDOCK_BACK := 3.2
+const LOAD_FROM := 47.0
+const LOAD_ACROSS := 2.5
+const LOAD_WALK_FROM := 49.7
+const LOAD_IN := 56.0
+# A crossing slower than this is a side-step; faster, the horse turns and walks.
+const SIDE_STEP := .45
+# Out of the stalls, each runner drifts to its own lane within the first 70 m.
+const FAN_OUT = [.012,.06]
+var gate: Node3D
 var betting_clock := 0.0
 var last_betting_snapshot := -1.0
 var finished := false
@@ -265,6 +278,9 @@ func build_environment() -> void:
 	add_child(track_node)
 	# The physical finish and minimap both lie at x=0 on the near straight.
 	track_node.build(course)
+	gate=preload("res://scripts/starting_gate.gd").new()
+	add_child(gate)
+	gate.build(course,COLORS)
 	await loading_checkpoint(4)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)
@@ -468,17 +484,18 @@ func _process(delta: float) -> void:
 				var next: Vector2=stroll.next_heading
 				target_yaw=atan2(-next.x,-next.y)
 				stepping=.3 if absf(angle_difference(horses[i].rotation.y,target_yaw))>.3 or float(stroll.until_move)<.5 else 0.0
-			if betting_clock>=47.0 and (betting_clock<48.0 or betting_clock>=53.0 or velocity.length()<=.05):
+			# Loading, a horse faces down the course unless it is walking across to its stall.
+			if betting_clock>=LOAD_FROM and velocity.length()<=SIDE_STEP:
 				target_yaw=-PI/2
 				if absf(angle_difference(horses[i].rotation.y,target_yaw))>.3: stepping=.3
 			horses[i].rotation.y=lerp_angle(horses[i].rotation.y,target_yaw,minf(delta*2.4,1.0))
 			# Any real translation keeps the walk cycle on, so hooves never slide.
 			moving=clampf(maxf(velocity.length()/1.65,.25 if velocity.length()>.02 else 0.0)+stepping,0,1)
 			horses[i].idle_clip=IDLE_CLIPS[int(stroll.mood)] if betting_clock<46.0 else "Idle"
-			horses[i].position=Vector3(float(stroll.x)-NOSE,0,course.lane_radius(i)+float(stroll.lat))
+			horses[i].position=Vector3(float(stroll.x)-NOSE,0,float(stroll.side))
 		else:
 			horses[i].idle_clip="Idle"
-			sample=course.sample(p,course.lane_radius(i))
+			sample=course.sample(p,lerpf(course.stall_radius(i),course.lane_radius(i),smoothstep(FAN_OUT[0],FAN_OUT[1],p)))
 			var tangent: Vector3=sample.tangent
 			horses[i].position=sample.position-tangent*(winner_nose if i==winner-1 else NOSE)
 			horses[i].rotation.y=atan2(-tangent.x,-tangent.z)
@@ -489,6 +506,9 @@ func _process(delta: float) -> void:
 	# the stride average is brought exactly onto the line.
 	var exact:=smoothstep(44.45,44.6,race_clock)*(1.0-smoothstep(45.8,46.3,race_clock)) if phase=="racing" else 0.0
 	winner_nose=lerpf(NOSE,horses[winner-1].muzzle_reach(),exact)
+	# The gates spring open at the off; the gate goes with the first cut away.
+	gate.visible=phase=="betting" or (phase=="racing" and shot<=1)
+	gate.set_open(1.0-pow(1.0-clampf(race_clock/.3,0.0,1.0),3.0) if phase=="racing" else 0.0)
 	podium.visible=phase=="result"
 	if phase=="result":
 		podium.present(finish_times,COLORS,race_round)
@@ -549,9 +569,10 @@ func _process(delta: float) -> void:
 	var middle_lane:=course.lane_radius((field-1)*.5)
 	match active_shot:
 		0:
+			# High enough to look over the starting gate onto the paddock behind it.
 			fixed=true
-			focus=Vector3(-4,1.3,23.5)
-			cam_pos=Vector3(8.5,6.0,42)
+			focus=Vector3(-9.0,1.2,25.5)
+			cam_pos=Vector3(1.5,9.5,43.5)
 		1:
 			focus=target+outward*1.3
 			cam_pos=focus+forward*12+outward*7+Vector3(0,3.4,0)
@@ -680,7 +701,8 @@ func paddock_poses(delta: float) -> Array:
 	var poses: Array=[]
 	var walking: Array[bool]=[]
 	for i in range(field):
-		var pose: Dictionary=PARADE.pose(betting_clock,parade_plan[i] if parade_plan.size()==field else [])
+		# The shared plan's own line-up walks to the open line; the gate load replaces it.
+		var pose: Dictionary=PARADE.pose(minf(betting_clock,LOAD_FROM),parade_plan[i] if parade_plan.size()==field else [])
 		poses.append(pose)
 		walking.append((pose.velocity as Vector2).length()>.02 or not paddock_settled)
 	var desired:=PackedFloat32Array()
@@ -709,8 +731,28 @@ func paddock_poses(delta: float) -> Array:
 		if walking[i]: paddock_shift[i]=move_toward(before,desired[i],maxf(.12,pace*.5)*delta) if paddock_settled else desired[i]
 		poses[i].lat=float(poses[i].lat)+paddock_shift[i]
 		if paddock_settled and delta>0.0: poses[i].velocity=(poses[i].velocity as Vector2)+Vector2(0,(paddock_shift[i]-before)/delta)
+		load_gate(i,poses[i])
 	paddock_settled=true
 	return poses
+
+# Places a paddock pose behind the gate (`side` is its distance across the
+# track) and, from LOAD_FROM, takes it onto its stall's line and in to the doors.
+# Neighbours only ever close from their paddock gap to the stall spacing.
+func load_gate(i: int, pose: Dictionary) -> void:
+	var x:=float(pose.x)-PADDOCK_BACK
+	var side:=course.lane_radius(i)+float(pose.lat)
+	var velocity: Vector2=pose.velocity
+	if betting_clock>=LOAD_FROM:
+		var across:=course.stall_radius(i)-side
+		var step:=clampf((betting_clock-LOAD_FROM)/LOAD_ACROSS,0,1)
+		var walk_time:=LOAD_IN-LOAD_WALK_FROM
+		var walk:=clampf((betting_clock-LOAD_WALK_FROM)/walk_time,0,1)
+		velocity=Vector2(-x*6.0*walk*(1.0-walk)/walk_time,across*6.0*step*(1.0-step)/LOAD_ACROSS)
+		x*=1.0-smoothstep(0.0,1.0,walk)
+		side+=across*smoothstep(0.0,1.0,step)
+	pose.x=x
+	pose.side=side
+	pose.velocity=velocity
 
 # The infield screen shows live standings, then the official finishing order.
 func update_board(delta: float) -> void:

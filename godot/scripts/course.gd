@@ -11,6 +11,16 @@ func lane_spacing() -> float:
 func lane_radius(lane: float) -> float:
 	return float(config.laneStart) + lane * lane_spacing()
 
+# The starting gate always has twelve stalls, centred across the track, whatever
+# the field: runners load the stalls in number order and fan out to their lanes.
+const STALLS := 12
+const STALL_SPACING := 1.05
+func stall_spacing() -> float:
+	return STALL_SPACING
+
+func stall_radius(stall: float) -> float:
+	return float(config.innerRadius) + float(config.trackWidth)*.5 + (stall - (STALLS-1)*.5) * STALL_SPACING
+
 func sample(progress: float, radius: float) -> Dictionary:
 	var half := float(config.halfStraight)
 	var distance := fposmod(progress,1.0) * (4.0*half + TAU*radius)

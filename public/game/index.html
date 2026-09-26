@@ -19,7 +19,7 @@ window.raceState=null;
 // Each post bumps a version, so the scene only parses a state it has not seen.
 window.raceStateVersion=0;
 window.addEventListener('message',event=>{if(event.source===window.parent&&event.origin===window.location.origin&&event.data?.type==='race-state'){window.raceState=event.data;window.raceStateVersion++;}});
-const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":3077792,"index.wasm":39514754},"focusCanvas":false,"gdextensionLibs":[],"godotPoolSize":4};
+const config={"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":3083020,"index.wasm":39514754},"focusCanvas":false,"gdextensionLibs":[],"godotPoolSize":4};
 const engine=new Engine(config);
 let gameLoaded=false;
 engine.startGame({canvas:document.getElementById('canvas'),onProgress:(current,total)=>{if(gameLoaded)return;window.parent.postMessage({type:'godot-progress',progress:total?Math.round(current/total*100):0},window.location.origin);document.getElementById('status').textContent=total?'準備賽場 '+Math.round(current/total*100)+'%':'準備 3D 賽場…';}}).then(()=>{gameLoaded=true;document.getElementById('status').textContent='';}).catch(error=>{document.getElementById('status').textContent='3D 賽場無法載入，請重新整理';console.error(error);window.parent.postMessage({type:'godot-error'},window.location.origin);});
