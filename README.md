@@ -30,6 +30,10 @@ npm run dev
 
 支援繁體中文、简体中文、English、日本語與 Português (Brasil)。大廳右上角切換，選擇存在瀏覽器（`racehorse-locale`），各盃頁面跟著換；第一次造訪依瀏覽器語言決定，其他語言一律用英文。
 
+- 網址帶語言：大廳是 `/<語言>/`，各盃是 `/<語言>/<盃>/`，例如 `/racehorse/en/sunny/`、`/racehorse/zh-TW/`（`src/route.ts`）。分享的連結會用同一個語言開啟，打開帶語言的網址也會記成下次的預設。
+- 切換語言時網址跟著換；沒有語言的舊網址（`/racehorse/sunny/`）依上次或瀏覽器的語言補上。
+- GitHub Pages 是靜態主機，建置時 `vite.config.ts` 把每一頁在每種語言的資料夾再寫一份（只改 `<html lang>`），開發伺服器則把 `/<語言>/…` 對應到同一頁。`404.html` 把大小寫不同或多餘的路徑（如 `/EN/sunny/x`）導回正確的頁面。
+
 - 介面文字在 `src/locales/<語言>.ts`，以繁中 `zh-TW.ts` 為型別來源，其他語言缺字或多字會在型別檢查時報錯。頁面只載入目前語言那一份（壓縮後約 4 KB）。
 - 字型依語言載入：繁中 Noto Sans TC、簡中 Noto Sans SC、日文 Noto Sans JP，英文與葡文只用 Outfit。
 - 馬名：英文與葡文用英文名，日文用片假名，簡中用簡體字；比賽中的即時排名一律顯示英文名。

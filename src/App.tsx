@@ -11,6 +11,7 @@ import { COURSE, coursePoint, makeParadePlan, paradePositions } from './course'
 import { racePresentationTime } from './presentation'
 import { gameSource } from './mirror'
 import { useI18n } from './i18n'
+import { routePath } from './route'
 
 const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 // Matches the stylesheet's phone breakpoint, where the chat moves onto the stage.
@@ -202,7 +203,7 @@ export default function App({ cup: cupId }: { cup: CupId }) {
     setMuted(!muted)
   }
   return <>
-    <header className="app-header"><a className="brand" href={import.meta.env.BASE_URL} aria-label={m.header.home}><span className="brand-icon">♞</span><span>{cup.en.replace(/ CUP$/, '')}<span className="brand-light">CUP</span><small>{m.site}</small></span></a><nav><a className="nav-active" href={import.meta.env.BASE_URL}><Flag size={16} />{m.header.lobby}</a><button onClick={() => setModal('history')}><History size={16} />{m.header.history}</button><button onClick={() => setModal('rules')}><CircleHelp size={16} />{m.header.rules}</button></nav><div className="header-wallet"><span className="coin-icon"><Coins size={17} /></span><div><small>{m.header.wallet}</small><strong>{n(game.balance)}</strong></div><span className="practice-label">{m.header.practice}</span></div></header>
+    <header className="app-header"><a className="brand" href={routePath(locale)} aria-label={m.header.home}><span className="brand-icon">♞</span><span>{cup.en.replace(/ CUP$/, '')}<span className="brand-light">CUP</span><small>{m.site}</small></span></a><nav><a className="nav-active" href={routePath(locale)}><Flag size={16} />{m.header.lobby}</a><button onClick={() => setModal('history')}><History size={16} />{m.header.history}</button><button onClick={() => setModal('rules')}><CircleHelp size={16} />{m.header.rules}</button></nav><div className="header-wallet"><span className="coin-icon"><Coins size={17} /></span><div><small>{m.header.wallet}</small><strong>{n(game.balance)}</strong></div><span className="practice-label">{m.header.practice}</span></div></header>
     <main className="app-main"><div className="page-heading"><div><span className="overline">THE {cup.en} EXPERIENCE</span><h1>{m.page.heading[0]}<span>{m.page.heading[1]}</span></h1></div><p><span className="online-dot" />{m.page.open(local.venue)} <span className="divider">/</span> {m.page.cadence}</p></div>
       <div className="game-layout"><section className="main-column">
         <div className="race-card"><div className="race-toolbar"><div><span className="live-tag"><Radio size={12} />LIVE</span><b>{local.name}</b><span className="toolbar-detail">{local.name.toUpperCase() === cup.en ? '' : `${cup.en} · `}{m.toolbar.detail(field)}</span></div><div className="toolbar-actions"><button className="icon-button" onClick={event => enterFullscreen(event.currentTarget.closest('.race-card')?.querySelector('.race-stage'))} aria-label={m.toolbar.fullscreen}><Maximize2 size={16} /></button><button className="icon-button" onClick={toggleSound} aria-label={muted ? m.toolbar.soundOn : m.toolbar.soundOff}>{muted ? <VolumeX size={17} /> : <Volume2 size={17} />}</button></div></div>

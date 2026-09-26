@@ -1,14 +1,13 @@
 import { createContext, useContext } from 'react'
+import { HTML_LANG, isLocale, LOCALES, type Locale } from './locale'
 import type { Messages } from './locales/zh-TW'
 
 export type { Messages }
-export const LOCALES = ['zh-TW', 'zh-CN', 'en', 'ja', 'pt-BR'] as const
-export type Locale = typeof LOCALES[number]
+export { isLocale, LOCALES, type Locale }
 // Each language names itself in the picker.
 export const LOCALE_NAMES: Record<Locale, string> = { 'zh-TW': '繁體中文', 'zh-CN': '简体中文', en: 'English', ja: '日本語', 'pt-BR': 'Português (BR)' }
 // The picker's label on narrow screens.
 export const LOCALE_SHORT: Record<Locale, string> = { 'zh-TW': '繁中', 'zh-CN': '简中', en: 'EN', ja: '日本語', 'pt-BR': 'PT' }
-export const isLocale = (value: unknown): value is Locale => typeof value === 'string' && (LOCALES as readonly string[]).includes(value)
 
 export const LOCALE_KEY = 'racehorse-locale'
 const loaders: Record<Locale, () => Promise<{ default: Messages }>> = {
@@ -29,6 +28,10 @@ export function matchLocale(tag: string): Locale | undefined {
   if (lower.startsWith('en')) return 'en'
   return undefined
 }
+// The last language chosen, or opened by address, is where a bare address goes.
+export function rememberLocale(locale: Locale) {
+  try { localStorage.setItem(LOCALE_KEY, locale) } catch { /* The choice lasts this visit only. */ }
+}
 export function detectLocale(): Locale {
   try {
     const saved = localStorage.getItem(LOCALE_KEY)
@@ -43,7 +46,6 @@ export function detectLocale(): Locale {
 
 // Latin text uses Outfit alone; Chinese and Japanese add the Noto face drawn for that script.
 const CJK_FONTS: Partial<Record<Locale, string>> = { 'zh-TW': 'Noto Sans TC', 'zh-CN': 'Noto Sans SC', ja: 'Noto Sans JP' }
-const HTML_LANG: Record<Locale, string> = { 'zh-TW': 'zh-Hant-TW', 'zh-CN': 'zh-Hans-CN', en: 'en', ja: 'ja', 'pt-BR': 'pt-BR' }
 export function applyLocale(locale: Locale) {
   document.documentElement.lang = HTML_LANG[locale]
   // Latin words run wider than single Han characters; the stylesheet sizes a few labels by script.

@@ -1,13 +1,15 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { HORSES } from './game'
-import { applyLocale, I18nContext, loadMessages, LOCALE_KEY, type I18n, type Locale, type Messages } from './i18n'
+import { applyLocale, I18nContext, loadMessages, rememberLocale, type I18n, type Locale, type Messages } from './i18n'
+import { parseRoute, showRoute } from './route'
 
 export function I18nProvider({ locale: initialLocale, messages: initialMessages, children }: { locale: Locale; messages: Messages; children: ReactNode }) {
   const [state, setState] = useState({ locale: initialLocale, m: initialMessages })
   const setLocale = useCallback(async (locale: Locale) => {
     const m = await loadMessages(locale)
-    try { localStorage.setItem(LOCALE_KEY, locale) } catch { /* The choice lasts this visit only. */ }
+    rememberLocale(locale)
     applyLocale(locale)
+    showRoute(locale, parseRoute(location.pathname).cup)
     setState({ locale, m })
   }, [])
   const value = useMemo<I18n>(() => {
