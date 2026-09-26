@@ -1,8 +1,16 @@
 import knots from '../godot/assets/cinematic.json'
 
+// Race seconds of the sprint's camera beats, as in race.gd: the head-on lens
+// out of the final bend, then the special-move cut-in on the leader.
+export const HOME_TURN = 35.8
+export const CUT_IN = 38.3
+
 // Smooth playback timing only. Betting, settlement and the 120s round keep
-// their wall-clock schedule. The 1.2s crossing hold releases into acceleration
-// that keeps building through the end of the race, without dropping back to 1x.
+// their wall-clock schedule. The field runs a touch ahead through the far side
+// (at most 1.13x), banking the time the cut-in's 2.65 s slow motion spends, so
+// the rush back to the post stays near 1.5x. The 1.2s crossing hold releases
+// into acceleration that keeps building through the end of the race, without
+// dropping back to 1x.
 export function racePresentationTime(seconds: number) {
   if(seconds<=knots[0][0]) return seconds
   const last=knots[knots.length-1]

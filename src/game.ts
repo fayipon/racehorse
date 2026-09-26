@@ -1,5 +1,6 @@
 import { buildRacePlan, makeRacePlan, planProgress, type RacePlan } from './raceModel'
 import { scriptOf } from './raceScript'
+import { HOME_TURN } from './presentation'
 
 export const BET_CLOSE_MS = 48_000
 export const BET_MS = 60_000
@@ -146,7 +147,7 @@ export function racePositions(seed: number, round: number, seconds: number, fiel
 export function cameraShot(phase: Phase, seconds: number) {
   if (phase === 'betting') return 0
   if (phase === 'result') return 4
-  return seconds < 7 ? 1 : seconds < 24 ? 2 : seconds < 37 ? 3 : 5
+  return seconds < 7 ? 1 : seconds < 24 ? 2 : seconds < HOME_TURN ? 3 : 5
 }
 export function isGame(value: unknown): value is Game {
   if (!value || typeof value !== 'object') return false

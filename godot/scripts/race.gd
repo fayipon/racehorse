@@ -16,6 +16,12 @@ const UPRIGHT_PODIUM_SHIFT := .135
 # and the open betting panel covers its lower part, so the parade shifts up.
 const WIDE_ASPECT := 16.0/9.0
 const WIDE_BETTING_SHIFT := .18
+# Race seconds of the sprint's camera beats: the head-on lens out of the final
+# bend, then the special-move cut-in on the leader, whose slow motion
+# (cinematic.json) the time banked before it pays for.
+const HOME_TURN := 35.8
+const CUT_IN := 38.3
+const CUT_OUT := 42.6
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df"), Color("38a893"), Color("a8765a"), Color("9ca8b5"), Color("c44f68")]
 # The cup page sets the field size (8, 10 or 12 runners) and the cup's name.
 var field := 8
@@ -454,7 +460,7 @@ func _process(delta: float) -> void:
 		betting_clock=t
 		seconds=maxf(0.0,t-60)
 		race_clock=seconds
-		shot=0 if t<60 else 1 if seconds<7 else 2 if seconds<24 else 3 if seconds<37 else 5 if t<110 else 4
+		shot=0 if t<60 else 1 if seconds<7 else 2 if seconds<24 else 3 if seconds<HOME_TURN else 5 if t<110 else 4
 		for i in range(field): positions[i]=clampf(seconds/(44.5+i*.65),0,1)
 		if phase=="betting" and finished:
 			finished=false
@@ -535,7 +541,7 @@ func _process(delta: float) -> void:
 			front_target+=horses[i].position*weight
 			front_progress+=float(visual_positions[i])*weight
 			total_weight+=weight
-		var frame_front:=smoothstep(34.0,39.0,race_clock)
+		var frame_front:=smoothstep(CUT_IN-5.5,CUT_IN-.5,race_clock)
 		target=target.lerp(front_target/total_weight,frame_front)
 		mean_progress=lerpf(mean_progress,front_progress/total_weight,frame_front)
 	target.y=1.45
@@ -549,9 +555,9 @@ func _process(delta: float) -> void:
 	var active_shot := shot
 	if phase=="racing":
 		if finished and race_clock<45.8: active_shot=10
-		elif finished or race_clock>=42.3: active_shot=6
-		elif race_clock>=39.5: active_shot=8
-		elif race_clock>=37.0: active_shot=5
+		elif finished or race_clock>=CUT_OUT: active_shot=6
+		elif race_clock>=CUT_IN: active_shot=8
+		elif race_clock>=HOME_TURN: active_shot=5
 	if active_shot==8 and previous_shot!=8:
 		featured_runner=visual_positions.find(visual_positions.max())
 	# Follow shots ride along with an anchor, so fast runners never drift out of
@@ -599,7 +605,7 @@ func _process(delta: float) -> void:
 			focus=target+forward*2.0+Vector3(0,.1,0)
 			var half_width:=atan(5.2/cam_pos.distance_to(focus))
 			fov=clampf(rad_to_deg(2.0*atan(tan(half_width)/aspect)),9.0,38.0)
-			lines_target=.3*smoothstep(37.0,39.3,race_clock)
+			lines_target=.3*smoothstep(HOME_TURN,CUT_IN-.2,race_clock)
 		6:
 			fixed=true
 			if finished:
@@ -614,7 +620,7 @@ func _process(delta: float) -> void:
 				fixed=false
 				focus=target+forward*2.6+Vector3(0,.1,0)
 				cam_pos=target+outward*6.2+forward*1.0+Vector3(0,-.5,0)
-				fov=lerpf(58.0,52.0,smoothstep(42.3,44.6,race_clock))
+				fov=lerpf(58.0,52.0,smoothstep(CUT_OUT,44.6,race_clock))
 				roll=-5.0
 				lines_target=.45
 		7:
@@ -628,15 +634,15 @@ func _process(delta: float) -> void:
 			var close_path: Dictionary=course.sample(float(visual_positions[featured_runner]),course.lane_radius(featured_runner))
 			var close_forward: Vector3=close_path.tangent
 			var close_out: Vector3=close_path.outward
-			var sweep:=lerpf(.8,.32,smoothstep(39.5,42.3,race_clock))
-			var punch:=1.0 if reduced_motion else 1.0-pow(1.0-clampf((race_clock-39.5)/.32,0.0,1.0),3.0)
+			var sweep:=lerpf(.8,.32,smoothstep(CUT_IN,CUT_OUT,race_clock))
+			var punch:=1.0 if reduced_motion else 1.0-pow(1.0-clampf((race_clock-CUT_IN)/.32,0.0,1.0),3.0)
 			anchor=horses[featured_runner].position
 			focus=anchor+close_forward*1.75+Vector3(0,2.05,0)
 			cam_pos=focus+(close_out*cos(sweep)+close_forward*sin(sweep))*4.0+Vector3(0,-.35,0)
-			fov=lerpf(60.0,31.0,punch)-4.0*smoothstep(39.9,42.3,race_clock)
-			roll=lerpf(13.0,6.0,smoothstep(39.5,42.3,race_clock))
+			fov=lerpf(60.0,31.0,punch)-4.0*smoothstep(CUT_IN+.4,CUT_OUT,race_clock)
+			roll=lerpf(13.0,6.0,smoothstep(CUT_IN,CUT_OUT,race_clock))
 			crisp=true
-			lines_target=1.0-.35*smoothstep(40.6,42.3,race_clock)
+			lines_target=1.0-.35*smoothstep(CUT_OUT-1.7,CUT_OUT,race_clock)
 		10:
 			# Photo finish: the impact lands with the lens in the plane of the line,
 			# so the line, the winning post and the winner's nose stand in one
@@ -769,7 +775,7 @@ func update_board(delta: float) -> void:
 func update_effects(delta: float) -> void:
 	var celebrate := finished or phase=="result"
 	confetti_rain.advance(delta,celebrate,race_round,reduced_motion)
-	var sprint:=smoothstep(34.0,40.0,race_clock) if phase=="racing" else 0.0
+	var sprint:=smoothstep(CUT_IN-5.5,CUT_IN+.5,race_clock) if phase=="racing" else 0.0
 	# Edge speed blur belongs to moving cameras. The tripod lenses, the slow
 	# motion cut-in, the frozen crossing and the still finish view stay sharp.
 	var rushing:=phase=="racing" and previous_shot==6 and not finished

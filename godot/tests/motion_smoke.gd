@@ -40,14 +40,18 @@ func _initialize() -> void:
 			var now:=MOTION.plan_progress(plan,index,step*.1)
 			assert(now>=start,"No horse ever runs backwards")
 			start=now
-	# The special-move cut-in slows the field to about a third, then makes the
-	# time back so the first horse still reaches the post at 44.6 seconds.
-	assert(clock.presentation(39.5).is_equal_approx(Vector2(39.5,1)),"Normal speed until the cut-in")
-	assert(absf(clock.presentation(40.3).y-.35)<.02,"The cut-in plays in slow motion")
+	# The far side runs a touch ahead, banking the time the special-move cut-in
+	# spends in slow motion at about a third; the release makes the rest back
+	# so the first horse still reaches the post at 44.6 seconds.
+	assert(clock.presentation(28.0).is_equal_approx(Vector2(28,1)),"Normal speed until the far side")
+	for frame in range(619):
+		assert(clock.presentation(28.0+frame/60.0).y<1.14,"Banking time before the cut-in must stay unnoticeable")
+	for frame in range(154):
+		assert(absf(clock.presentation(38.6+frame/60.0).y-.35)<.02,"The cut-in plays in slow motion for over two and a half seconds")
 	assert(clock.presentation(42.5).y>1.2,"The release rushes toward the post")
-	var previous_visual:=clock.presentation(39.0).x
-	for frame in range(1,661):
-		var time:=39.0+frame/60.0
+	var previous_visual:=clock.presentation(28.0).x
+	for frame in range(1,1321):
+		var time:=28.0+frame/60.0
 		var playback: Vector2=clock.presentation(time)
 		assert(playback.x>=previous_visual-.00001,"Cinematic playback may hold but must never reverse")
 		assert(playback.y>=-.00001 and playback.y<1.901,"Acceleration must stay within the intended playback range")

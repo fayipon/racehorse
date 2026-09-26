@@ -1,12 +1,19 @@
 import { expect, it } from 'vitest'
-import { racePresentationTime } from './presentation'
+import { CUT_IN, racePresentationTime } from './presentation'
 
-it('slows the sprint cut-in, then makes the time back before the post', () => {
-  expect(racePresentationTime(39.5)).toBe(39.5)
-  const slow = (racePresentationTime(40.31)-racePresentationTime(40.3))/.01
-  expect(slow).toBeCloseTo(.35,2)
-  const rush = (racePresentationTime(42.51)-racePresentationTime(42.5))/.01
+it('banks time through the far side, then slows the sprint cut-in and makes the time back before the post', () => {
+  const speed = (time: number) => (racePresentationTime(time+.001)-racePresentationTime(time))/.001
+  expect(racePresentationTime(28)).toBe(28)
+  // Running a touch ahead beforehand pays for the long slow motion.
+  for(let time=28;time<=CUT_IN;time+=.05) expect(speed(time)).toBeLessThan(1.14)
+  expect(racePresentationTime(CUT_IN)).toBeGreaterThan(CUT_IN+.8)
+  // The slow motion holds at 0.35x for over two and a half seconds of the cut-in.
+  for(let time=38.6;time<=41.15;time+=.05) expect(speed(time)).toBeCloseTo(.35,2)
+  // The rush back to the post stays near the old 1.45x.
+  let rush=0
+  for(let time=41.8;time<=44.4;time+=.01) rush=Math.max(rush,speed(time))
   expect(rush).toBeGreaterThan(1.2)
+  expect(rush).toBeLessThan(1.55)
   // The first horse still reaches the post exactly when the crossing hold begins.
   expect(racePresentationTime(44.6)).toBeCloseTo(44.5,8)
 })
@@ -31,7 +38,7 @@ it('holds the first crossing for 1.2 seconds, then keeps accelerating through se
   expect((racePresentationTime(50.01)-racePresentationTime(50))/.01).toBeCloseTo(1.9,7)
   // Even eighth place (49.05 visual seconds) crosses before the 50s settlement.
   expect(racePresentationTime(50)).toBeGreaterThan(49.05)
-  for(const boundary of [39.5,39.75,40.9,41.5,44.4,44.6,45.8,46.05,50]) {
+  for(const boundary of [28,38.3,38.55,41.2,41.8,44.4,44.6,45.8,46.05,50]) {
     const h=.0001, at=racePresentationTime(boundary)
     expect(Math.abs((at-racePresentationTime(boundary-h))/h-(racePresentationTime(boundary+h)-at)/h)).toBeLessThan(.002)
   }

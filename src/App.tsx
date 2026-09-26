@@ -8,7 +8,7 @@ import { RaceChat, StageChatCompose, StageChatFeed } from './RaceChat'
 import { useRaceChat } from './useRaceChat'
 import { PodiumResults } from './PodiumResults'
 import { COURSE, coursePoint, makeParadePlan, paradePositions } from './course'
-import { racePresentationTime } from './presentation'
+import { CUT_IN, racePresentationTime } from './presentation'
 import { gameSource } from './mirror'
 import { useI18n } from './i18n'
 import { routePath } from './route'
@@ -81,7 +81,7 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
   const assembling = phase === 'betting' && !bettingOpen(game, now)
   const startCue = phase === 'betting' && remaining <= 7 ? (remaining > 5 ? 'READY' : String(remaining)) : phase === 'racing' && seconds < 1.8 ? 'GO!' : null
   const finishing = phase === 'racing' && (finishRound === raceNumber(game.round) || visualSeconds >= 44.6)
-  const cinematic = phase === 'racing' && seconds >= 39.5
+  const cinematic = phase === 'racing' && seconds >= CUT_IN
   // The special-move banner lands with the crossing freeze, then yields to the announcement.
   const winnerCutIn = phase === 'racing' && (finishing || seconds >= 44.6) && seconds < 46.4
   useEffect(() => {
