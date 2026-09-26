@@ -62,9 +62,7 @@ def build_model(files):
         before = set(bpy.data.objects)
         bpy.ops.import_scene.fbx(filepath=files[f"Animations/Stallion_{source}.fbx"])
         imported = [o for o in bpy.data.objects if o not in before]
-        action = next(o for o in imported if o.type == "ARMATURE").animation_data.action
-        action.name = clip
-        action.use_fake_user = True
+        action = rebake(rig, next(o for o in imported if o.type == "ARMATURE"), clip)
         for ob in imported:
             bpy.data.objects.remove(ob, do_unlink=True)
         track = rig.animation_data.nla_tracks.new()
@@ -91,6 +89,55 @@ def build_model(files):
         export_image_format="NONE",
         export_yup=True,
     )
+
+
+def rebake(rig, source, clip):
+    """The clip on the model's own skeleton, frame by frame.
+
+    Each animation file rests its skeleton in the clip's first frame, not in the
+    model's bind pose, and Blender keys bones relative to their rest; played on
+    the model as it is, every joint turns from the wrong rest. Each bone is
+    posed where the clip puts it in armature space and keyed against the
+    model's rest instead.
+    """
+    scene = bpy.context.scene
+    if max(abs(a - b) for row, other in zip(source.matrix_world, rig.matrix_world) for a, b in zip(row, other)) > 1e-5:
+        raise SystemExit(f"{clip} imports its skeleton elsewhere than the model's")
+    taken = source.animation_data.action
+    start, end = (int(round(f)) for f in taken.frame_range)
+    frames = {}
+    for frame in range(start, end + 1):
+        scene.frame_set(frame)
+        frames[frame] = {b.name: b.matrix.copy() for b in source.pose.bones}
+    bpy.data.actions.remove(taken)
+    rig.animation_data.action = bpy.data.actions.new(clip)
+    rig.animation_data.action.use_fake_user = True
+    for frame, poses in frames.items():
+        for bone in rig.pose.bones:
+            rest = bone.bone.matrix_local
+            if bone.parent:
+                rest = bone.parent.bone.matrix_local.inverted() @ rest
+                basis = rest.inverted() @ poses[bone.parent.name].inverted() @ poses[bone.name]
+            else:
+                basis = rest.inverted() @ poses[bone.name]
+            location, rotation, scale = basis.decompose()
+            bone.rotation_mode = "QUATERNION"
+            bone.location, bone.rotation_quaternion, bone.scale = location, rotation, scale
+            for path in ("location", "rotation_quaternion", "scale"):
+                bone.keyframe_insert(path, frame=frame)
+    # Evaluated on the model, every bone must land where the clip put it.
+    worst = 0.0
+    for frame in (start, (start + end) // 2, end):
+        scene.frame_set(frame)
+        for bone in rig.pose.bones:
+            wanted = frames[frame][bone.name]
+            worst = max(worst, (bone.matrix.translation - wanted.translation).length / 100,
+                        max(abs(a - b) for row, other in zip(bone.matrix.to_3x3(), wanted.to_3x3()) for a, b in zip(row, other)))
+    if worst > 1e-3:
+        raise SystemExit(f"{clip} rebakes {worst:.4f} off its source")
+    action = rig.animation_data.action
+    rig.animation_data.action = None
+    return action
 
 
 def load(path, data=False):

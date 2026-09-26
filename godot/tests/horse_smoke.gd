@@ -35,6 +35,14 @@ func verify_horse() -> void:
 		horse.animate(i/60.0,1.0,true,false,1.0/60.0)
 		other.animate(i/60.0,1.0,true,false,1.0/60.0)
 	assert(absf(horse.player.current_animation_position-other.player.current_animation_position)>.02,"Horse strides must not march in lockstep")
+	# Gaits advance by the ground covered: one stride's distance plays one cycle.
+	var cycle: float=horse.player.get_animation("Gallop").length
+	var from: float=horse.player.current_animation_position
+	for i in range(60):
+		horse.position.z-=float(HORSE.strides.Gallop)/60.0
+		horse.animate(2.0+i/60.0,1.0,true,false,1.0/60.0)
+	var drift:=fposmod(horse.player.current_animation_position-from+cycle*.5,cycle)-cycle*.5
+	assert(absf(drift)<.01,"A galloping horse's planted hooves must not skate over the ground")
 	other.queue_free()
 	print("PASS: horse orientation, scale, authored gallop, walk, idle, loops and stable root")
 	horse.queue_free()

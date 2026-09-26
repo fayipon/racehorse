@@ -12,6 +12,12 @@ static var realistic := ResourceLoader.exists(VIVERNA) and not OS.get_cmdline_us
 static var source: PackedScene = load(VIVERNA if realistic else QUATERNIUS)
 # Phones race the lighter level of detail.
 static var low_power := false
+# How far the body travels over one cycle of each gait while its planted hooves
+# stand still, measured on each model. The gaits advance by the ground a horse
+# covers, so its hooves neither skate nor paddle whatever its speed.
+const STRIDES_VIVERNA := {"Walk":1.39,"Gallop":6.4}
+const STRIDES_QUATERNIUS := {"Walk":1.98,"Gallop":3.44}
+static var strides: Dictionary = STRIDES_VIVERNA if realistic else STRIDES_QUATERNIUS
 var styles: Array=JSON.parse_string(FileAccess.get_file_as_string("res://assets/horse_styles.json"))
 var player: AnimationPlayer
 var model: Node3D
@@ -19,6 +25,7 @@ var motion_blend := 0.0
 var current_clip := "Idle"
 var gait_phase := 0.0
 var cadence := 1.0
+var last_position := Vector3.INF
 # What a standing horse does: Idle, Idle_2 (looks around), Idle_Headlow or Eating.
 var idle_clip := "Idle"
 # Races are judged at the nose: the muzzle tip is tracked on the head bone.
@@ -267,6 +274,11 @@ const CLOTH_HANG := .24
 const CLOTH_ROWS := 20
 const CLOTH_ARC := 16 # steps over each side of the back, from the spine to the widest point
 const CLOTH_DROP := 5
+# The number's centre: up from the hem, and along the flank from the front.
+const CLOTH_NUMBER_UP := .25
+const CLOTH_NUMBER_ALONG := .58
+const CLOTH = preload("res://shaders/saddle_cloth.gdshader")
+const DIGITS = preload("res://assets/cloth_digits.png")
 
 func cloth_shape() -> Dictionary:
 	if shared.has("cloth"): return shared.cloth
@@ -356,14 +368,31 @@ func cloth_shape() -> Dictionary:
 	for r in range(grid.size()-1):
 		for c in range(columns-1):
 			var a:=r*columns+c
-			indices.append_array([a,a+columns,a+1,a+1,a+columns,a+columns+1])
-	# The numbers sit mid-cloth on each side's hanging panel, on the bone under them.
-	var numbers: Array=[]
-	var middle: int=grid.size()/2
-	for side in [-1,1]:
-		var at: Vector3=grid[middle][CLOTH_DROP/2 if side<0 else columns-1-CLOTH_DROP/2]+Vector3(side*.006,.04,0)
-		numbers.append({"side":side,"at":at,"bone":strongest_bone(nearest_point(at,.2,under))})
-	shared.cloth={"vertices":vertices,"normals":normals,"bones":bones,"weights":weights,"indices":indices,"columns":columns,"rows":grid.size(),"numbers":numbers}
+			# Wound clockwise seen from outside, Godot's front face.
+			indices.append_array([a,a+1,a+columns,a+1,a+columns+1,a+columns])
+	# The shader draws the cloth in metres: UV runs across from the spine and
+	# along from the front edge, UV2 holds the distance to the nearer hem and
+	# to the nearer end, both measured over the sheet.
+	var uv:=PackedVector2Array()
+	var edge:=PackedVector2Array()
+	uv.resize(vertices.size())
+	edge.resize(vertices.size())
+	for r in range(grid.size()):
+		var run:=PackedFloat32Array([0.0])
+		for c in range(1,columns): run.append(run[c-1]+(grid[r][c] as Vector3).distance_to(grid[r][c-1]))
+		for c in range(columns):
+			uv[r*columns+c]=Vector2(run[c]-run[CLOTH_DROP+CLOTH_ARC],0)
+			edge[r*columns+c]=Vector2(minf(run[c],run[columns-1]-run[c]),0)
+	var length:=0.0
+	for c in range(columns):
+		var run:=PackedFloat32Array([0.0])
+		for r in range(1,grid.size()): run.append(run[r-1]+(grid[r][c] as Vector3).distance_to(grid[r-1][c]))
+		for r in range(grid.size()):
+			var i:=r*columns+c
+			uv[i]=Vector2(uv[i].x,run[r])
+			edge[i]=Vector2(edge[i].x,minf(run[r],run[grid.size()-1]-run[r]))
+		if c==CLOTH_DROP: length=run[grid.size()-1]
+	shared.cloth={"vertices":vertices,"normals":normals,"bones":bones,"weights":weights,"indices":indices,"uv":uv,"edge":edge,"number_at":Vector2(CLOTH_NUMBER_UP,length*CLOTH_NUMBER_ALONG)}
 	return shared.cloth
 
 # The body's outline where the plane at `z` cuts it, as (x, y) points.
@@ -402,38 +431,27 @@ func nearest_point(at: Vector3, within: float, among:=PackedInt32Array()) -> int
 	# A sparse low-poly body can leave the window empty; then look everywhere.
 	return best if best>=0 or within==INF else nearest_point(at,INF,among)
 
-func strongest_bone(point: int) -> int:
-	var body:=body_points()
-	var per: int=body.per
-	var best:=0
-	for k in range(per):
-		if body.weights[point*per+k]>body.weights[point*per+best]: best=k
-	return bind_bone(body.bones[point*per+best])
-
 func add_race_cloth(index: int, color: Color) -> void:
 	var shape:=cloth_shape()
 	var body:=body_points()
-	# Double-sided vertex-colour paint, the same shader as the stand's sails.
-	# The cloth and its trim are one sheet coloured per vertex: one draw call.
-	var colors:=PackedColorArray()
-	var columns: int=shape.columns
-	var rows: int=shape.rows
-	for r in range(rows):
-		for c in range(columns):
-			var edge:=r==0 or r==rows-1 or c==0 or c==columns-1
-			colors.append(Color("ddd0ac") if edge else color)
 	var arrays: Array=[]
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX]=shape.vertices
 	arrays[Mesh.ARRAY_NORMAL]=shape.normals
-	arrays[Mesh.ARRAY_COLOR]=colors
+	arrays[Mesh.ARRAY_TEX_UV]=shape.uv
+	arrays[Mesh.ARRAY_TEX_UV2]=shape.edge
 	arrays[Mesh.ARRAY_BONES]=shape.bones
 	arrays[Mesh.ARRAY_WEIGHTS]=shape.weights
 	arrays[Mesh.ARRAY_INDEX]=shape.indices
 	var sheet_mesh:=ArrayMesh.new()
 	sheet_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays,[],{},Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if body.per==8 else 0)
-	var mat := KIT.painted(.96,.5)
-	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+	var mat:=ShaderMaterial.new()
+	mat.shader=CLOTH
+	mat.set_shader_parameter("cloth",color)
+	mat.set_shader_parameter("ink",Color("fff7e7") if index in [0,3,7,8,9,11] else Color("202822"))
+	mat.set_shader_parameter("number",index+1)
+	mat.set_shader_parameter("number_at",shape.number_at)
+	mat.set_shader_parameter("digits",DIGITS)
 	sheet_mesh.surface_set_material(0,mat)
 	var drawn:=body_mesh()
 	var sheet:=MeshInstance3D.new()
@@ -441,26 +459,10 @@ func add_race_cloth(index: int, color: Color) -> void:
 	sheet.skin=drawn.skin
 	sheet.transform=drawn.transform
 	sheet.layers=3
+	# The body's stand-in already casts the horse's shadow.
+	sheet.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	skeleton.add_child(sheet)
 	sheet.skeleton=sheet.get_path_to(skeleton)
-	var skeleton_from_horse:=horse_from_skeleton.affine_inverse()
-	for number_at: Dictionary in shape.numbers:
-		var attachment:=BoneAttachment3D.new()
-		attachment.bone_name=skeleton.get_bone_name(number_at.bone)
-		skeleton.add_child(attachment)
-		var side: int=number_at.side
-		var number := Label3D.new()
-		number.text=str(index+1)
-		number.font_size=96
-		# Two-digit numbers set smaller to stay on the cloth.
-		number.pixel_size=.0034 if index<9 else .0026
-		number.outline_size=0
-		number.shaded=true
-		number.layers=3
-		number.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		number.modulate=Color("fff7e7") if index in [0,3,7,8,9,11] else Color("202822")
-		number.transform=skeleton.get_bone_global_rest(number_at.bone).affine_inverse()*skeleton_from_horse*Transform3D(Basis(Vector3.UP,side*PI/2),number_at.at)
-		attachment.add_child(number)
 
 # The champion's garland: a ring of blooms round the base of the neck, fitted
 # to the neck's cross-section there and carried by the neck's base bone.
@@ -539,7 +541,7 @@ func garland_mesh() -> ArrayMesh:
 	st.set_material(mat)
 	return st.commit()
 
-func animate(time: float, motion: float, running: bool, _celebration: bool, delta := .016, sprint_effort := 0.0) -> void:
+func animate(time: float, motion: float, running: bool, _celebration: bool, delta := .016) -> void:
 	motion_blend=lerpf(motion_blend,clampf(motion,0,1),1.0-exp(-delta*8))
 	# Hysteresis keeps tiny changes near standstill from repeatedly restarting clips.
 	var clip := current_clip
@@ -552,9 +554,14 @@ func animate(time: float, motion: float, running: bool, _celebration: bool, delt
 		player.play(clip,.32)
 		# Offset once on clip entry; never restart a stride for a new snapshot.
 		player.seek(gait_phase*player.get_animation(clip).length,false)
-	var speed := 1.0
-	if current_clip=="Walk": speed=lerpf(.55,1.15,motion_blend)
-	if current_clip=="Gallop": speed=lerpf(.75,1.20,motion_blend)
-	if current_clip=="Gallop": speed*=1.0+clampf(sprint_effort,0.0,1.0)*.1
-	speed*=cadence*(1.0+sin(time*.83+gait_phase*TAU)*.025)
-	player.advance(delta*speed)
+	var moved:=0.0
+	if last_position.is_finite(): moved=Vector2(position.x-last_position.x,position.z-last_position.z).length()
+	last_position=position
+	# A jump of metres is a new phase placing the horse, not a stride.
+	if moved>2.0: moved=0.0
+	var step:=delta*cadence*(1.0+sin(time*.83+gait_phase*TAU)*.025)
+	if strides.has(current_clip):
+		# Turning on the spot, or held at the off, a horse still steps; a
+		# frozen frame (delta 0) holds every leg.
+		step=maxf(moved/float(strides[current_clip])*player.get_animation(current_clip).length,delta*(.55 if current_clip=="Walk" else .3))
+	player.advance(step)

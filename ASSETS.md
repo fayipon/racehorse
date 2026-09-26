@@ -47,12 +47,14 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 - **授權不允許散佈素材本身**，所以原始檔與處理後的檔案都不提交：購買下載的 `horses_blender292.zip`、`fbx_72.zip`、`tex.zip` 放在 `vendor/viverna/`，處理後的模型與貼圖在 `godot/assets/viverna/`，兩者都列在 `.gitignore`。只有匯出的遊戲（`public/game/index.pck`）含有它。
 - 重建：`blender -b --factory-startup --python scripts/prepare_viverna_horse.py`。
   - 模型：取種馬的 LOD1（約 7,000 面，桌機）、LOD2（約 2,400 面，手機）、LOD3（780 面，只負責投影子）。
-  - 動畫：取 6 段並改用比賽程式的名稱：Idle_1 → Idle、Idle_2、Idle_4 → Idle_Headlow、Eat → Eating、Walk、Gallop。
+  - 動畫：取 6 段並改用比賽程式的名稱：Idle_1 → Idle、Idle_2、Idle_4 → Idle_Headlow、Eat → Eating、Walk、Gallop。每個動畫檔的骨架以該動畫第一格為靜止姿勢，和模型的綁定姿勢不同；直接套用會讓每個關節從錯的基準轉動（腳亂擺）。腳本逐格取出每根骨頭在骨架空間的位置，再以模型的靜止姿勢重新設定關鍵格，並檢查結果與原動畫一致。
   - 貼圖：5 種毛色（Black、Creame、Gray、GrayRose、White）與法線、鬃毛貼圖縮成 1024；材質參數圖（MADS）轉成 Godot 用的 ORM；以有損 WebP 匯入。
 - `godot/scripts/asset_horse.gd` 的處理：
   - 放大 1.36 倍，和原本的馬一樣大（鼻尖到原點 2.2 米）。
   - 12 匹馬的毛色照 `horse_styles.json` 設定：栗色、棕色、金色由灰色或淡色貼圖染色（灰色貼圖的黑腿染成黑腳棕馬），黑、灰、白、雜色直接用原貼圖；鬃毛依設定色染色。
   - 號碼布依馬身橫切面自動貼合，並沿用馬身的骨架權重跟著身體動；冠軍花環依頸根的截面貼合。
+  - 號碼布由 `godot/shaders/saddle_cloth.gdshader` 畫出：菱格絎縫、捲邊滾條與車線、圓角下緣，號碼印在兩側布面上。布面座標以公尺計，換模型時細節大小不變。號碼取自 `godot/assets/cloth_digits.png`（Godot 預設字型渲染的 0–9），可用 `godot --path godot -s res://tools/bake_cloth_digits.gd` 重建（需開視窗）。號碼布不投影，馬身的影子由 LOD3 投出。
+  - 走路和奔跑依馬實際移動的距離推進（每個循環分別是 1.39 米與 6.4 米，量自著地蹄不滑動的速度），蹄不會在地上滑。
 - 沒有這批素材時（例如從公開 repo clone），自動改用下方的 CC0 馬；也可用 `-- --cc0-horse` 參數強制使用。
 
 ### 備援：Quaternius 馬（CC0）

@@ -461,7 +461,6 @@ func _process(delta: float) -> void:
 	var playback: Vector2=motion_clock.presentation(race_clock)
 	var presentation_clock:=playback.x
 	var slow_motion:=playback.y if phase=="racing" else 1.0
-	var sprint_effort:=smoothstep(34.0,41.5,race_clock) if phase=="racing" else 0.0
 	animation_clock+=delta*slow_motion
 	var strolls: Array=paddock_poses(delta) if phase=="betting" else []
 	for i in range(field):
@@ -502,7 +501,7 @@ func _process(delta: float) -> void:
 			horses[i].rotation.y=atan2(-tangent.x,-tangent.z)
 		var celebration := phase=="result" and i==winner-1
 		horses[i].visible=phase!="result"
-		horses[i].call("animate",animation_clock,moving,running,celebration,delta*slow_motion,sprint_effort)
+		horses[i].call("animate",animation_clock,moving,running,celebration,delta*slow_motion)
 	# As the winner slows into the crossing hold, its measured muzzle rather than
 	# the stride average is brought exactly onto the line.
 	var exact:=smoothstep(44.45,44.6,race_clock)*(1.0-smoothstep(45.8,46.3,race_clock)) if phase=="racing" else 0.0
