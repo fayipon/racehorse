@@ -19,7 +19,7 @@ const WIDE_BETTING_SHIFT := .18
 # Race seconds of the sprint's camera beats: the head-on lens out of the final
 # bend, then the special-move cut-in on the leader, whose slow motion
 # (cinematic.json) the time banked before it pays for.
-const HOME_TURN := 35.8
+const HOME_TURN := 34.3
 const CUT_IN := 38.3
 const CUT_OUT := 42.6
 const COLORS = [Color("e75d56"), Color("91ac6b"), Color("efc54f"), Color("b394d0"), Color("eca05b"), Color("e787b4"), Color("79c9d8"), Color("7299df"), Color("38a893"), Color("a8765a"), Color("9ca8b5"), Color("c44f68")]

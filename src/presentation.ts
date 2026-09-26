@@ -2,7 +2,7 @@ import knots from '../godot/assets/cinematic.json'
 
 // Race seconds of the sprint's camera beats, as in race.gd: the head-on lens
 // out of the final bend, then the special-move cut-in on the leader.
-export const HOME_TURN = 35.8
+export const HOME_TURN = 34.3
 export const CUT_IN = 38.3
 
 // Smooth playback timing only. Betting, settlement and the 120s round keep
