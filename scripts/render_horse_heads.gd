@@ -55,9 +55,11 @@ func render_heads() -> void:
 		var poll: Vector3=horse.horse_from_skeleton*horse.skeleton.get_bone_global_pose(horse.head_bone).origin
 		var neck: Vector3=horse.horse_from_skeleton*horse.skeleton.get_bone_global_pose(horse.skeleton.find_bone("Neck1")).origin
 		var muzzle: Vector3=horse.muzzle_position()
-		var focus:=poll.lerp(muzzle,.3).lerp(neck,.24)
 		var reach:=maxf(poll.distance_to(muzzle),poll.distance_to(neck))
-		var distance:=reach*.78/tan(deg_to_rad(13.0))
+		# Framed from the ear tips to below the chin, so the whole face shows
+		# wherever the picture is set.
+		var focus:=poll.lerp(muzzle,.3).lerp(neck,.24)+Vector3.UP*reach*.07
+		var distance:=reach*.86/tan(deg_to_rad(13.0))
 		var camera: Camera3D=views[index].get_child(views[index].get_child_count()-1)
 		camera.look_at_from_position(focus+Vector3(-.6,.02,-1.0).normalized()*distance,focus)
 	for frame in range(8): await process_frame

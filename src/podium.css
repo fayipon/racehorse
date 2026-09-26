@@ -21,7 +21,7 @@
 .podium-cutin.place-1 strong{font-size:31px}
 .podium-number{display:grid;place-items:center;flex-shrink:0;width:26px;height:28px;border-radius:5px;background:var(--horse);font-size:17px;font-style:normal;color:white;text-shadow:none}
 .podium-cutin small{font-size:8px;letter-spacing:2px;color:#efe4c4}
-.podium-cutin img{position:absolute;right:max(3%,calc(50% - 360px));top:-18%;height:190%;transform:skewY(4deg);filter:drop-shadow(-4px 4px 8px #0008);animation:cutin-head .6s cubic-bezier(.2,.9,.25,1.15) both;animation-delay:inherit}
+.podium-cutin img{position:absolute;right:max(3%,calc(50% - 360px));top:-9%;height:124%;transform:skewY(4deg);filter:drop-shadow(-4px 4px 8px #0008);animation:cutin-head .6s cubic-bezier(.2,.9,.25,1.15) both;animation-delay:inherit}
 @keyframes cutin-left{from{transform:translateX(-110%) skewY(-4deg)}to{transform:skewY(-4deg)}}
 @keyframes cutin-right{from{transform:translateX(110%) skewY(-4deg)}to{transform:skewY(-4deg)}}
 @keyframes cutin-head{from{opacity:0;transform:translateX(24px) scale(1.2) skewY(4deg)}to{opacity:1;transform:skewY(4deg)}}
