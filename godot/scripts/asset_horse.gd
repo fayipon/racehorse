@@ -12,12 +12,19 @@ static var realistic := ResourceLoader.exists(VIVERNA) and not OS.get_cmdline_us
 static var source: PackedScene = load(VIVERNA if realistic else QUATERNIUS)
 # Phones race the lighter level of detail.
 static var low_power := false
-# How far the body travels over one cycle of each gait while its planted hooves
-# stand still, measured on each model. The gaits advance by the ground a horse
-# covers, so its hooves neither skate nor paddle whatever its speed.
-const STRIDES_VIVERNA := {"Walk":1.39,"Gallop":6.4}
-const STRIDES_QUATERNIUS := {"Walk":1.98,"Gallop":3.44}
-static var strides: Dictionary = STRIDES_VIVERNA if realistic else STRIDES_QUATERNIUS
+# How far the body travels over one walk cycle while its planted hooves stand
+# still, measured on each model. The walk advances by the ground a horse
+# covers, so its hooves never skate round the paddock.
+const WALK_STRIDE_VIVERNA := 1.39
+const WALK_STRIDE_QUATERNIUS := 1.98
+static var walk_stride: float = WALK_STRIDE_VIVERNA if realistic else WALK_STRIDE_QUATERNIUS
+# The course is about a third of real size, so the field gallops at 6-7 m/s
+# where racehorses run 17. Matched to that ground, the stallion's 6.4 m stride
+# would come once a second and read as slow motion. The gallop keeps a
+# racehorse's rhythm instead: GALLOP_TEMPO strides a second at the field's
+# pace, quickening as a horse speeds up.
+const GALLOP_TEMPO := 2.1
+const GALLOP_PACE := 6.5
 var styles: Array=JSON.parse_string(FileAccess.get_file_as_string("res://assets/horse_styles.json"))
 var player: AnimationPlayer
 var model: Node3D
@@ -560,8 +567,13 @@ func animate(time: float, motion: float, running: bool, _celebration: bool, delt
 	# A jump of metres is a new phase placing the horse, not a stride.
 	if moved>2.0: moved=0.0
 	var step:=delta*cadence*(1.0+sin(time*.83+gait_phase*TAU)*.025)
-	if strides.has(current_clip):
-		# Turning on the spot, or held at the off, a horse still steps; a
-		# frozen frame (delta 0) holds every leg.
-		step=maxf(moved/float(strides[current_clip])*player.get_animation(current_clip).length,delta*(.55 if current_clip=="Walk" else .3))
+	var cycle:=player.get_animation(current_clip).length
+	# Turning on the spot, or held at the off, a horse still steps; a frozen
+	# frame (delta 0) holds every leg.
+	if current_clip=="Walk":
+		step=maxf(moved/walk_stride*cycle,delta*.55)
+	elif current_clip=="Gallop":
+		# Slow motion slows the ground and delta alike, so this is the true pace.
+		var pace:=minf(moved/delta,20.0) if delta>0.0 else 0.0
+		step=maxf(delta*GALLOP_TEMPO*pow(pace/GALLOP_PACE,.25)*cadence*cycle,delta*.3)
 	player.advance(step)

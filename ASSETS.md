@@ -54,7 +54,7 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
   - 12 匹馬的毛色照 `horse_styles.json` 設定：栗色、棕色、金色由灰色或淡色貼圖染色（灰色貼圖的黑腿染成黑腳棕馬），黑、灰、白、雜色直接用原貼圖；鬃毛依設定色染色。
   - 號碼布依馬身橫切面自動貼合，並沿用馬身的骨架權重跟著身體動；冠軍花環依頸根的截面貼合。
   - 號碼布由 `godot/shaders/saddle_cloth.gdshader` 畫出：菱格絎縫、捲邊滾條與車線、圓角下緣，號碼印在兩側布面上。布面座標以公尺計，換模型時細節大小不變。號碼取自 `godot/assets/cloth_digits.png`（Godot 預設字型渲染的 0–9），可用 `godot --path godot -s res://tools/bake_cloth_digits.gd` 重建（需開視窗）。號碼布不投影，馬身的影子由 LOD3 投出。
-  - 走路和奔跑依馬實際移動的距離推進（每個循環分別是 1.39 米與 6.4 米，量自著地蹄不滑動的速度），蹄不會在地上滑。
+  - 走路依馬實際移動的距離推進（每個循環 1.39 米，量自著地蹄不滑動的速度），蹄不會在地上滑。奔跑維持賽馬的節奏：賽道約為實際的三分之一大，馬群只跑 6–7 m/s，若照地面速度播放，種馬 6.4 米的步幅每秒只跨一步、像慢動作；所以在一般速度下每秒約 2.1 步，速度越快略為加快（`GALLOP_TEMPO`、`GALLOP_PACE`）。
 - 沒有這批素材時（例如從公開 repo clone），自動改用下方的 CC0 馬；也可用 `-- --cc0-horse` 參數強制使用。
 
 ### 備援：Quaternius 馬（CC0）
