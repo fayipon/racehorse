@@ -145,6 +145,7 @@ func _ready() -> void:
 		# planting, no MSAA or glow, and a smaller shadow map.
 		low_power = bool(JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches"))
 	set_frame_rate(30 if low_power else 60)
+	PONY.low_power=low_power
 	if low_power:
 		get_viewport().msaa_3d=Viewport.MSAA_DISABLED
 		RenderingServer.directional_shadow_atlas_set_size(2048,true)

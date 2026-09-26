@@ -11,7 +11,8 @@ func verify_horse() -> void:
 	horse.build(0,Color("e75d56"))
 	var skeleton: Skeleton3D=horse.model.find_children("*","Skeleton3D",true,false)[0]
 	var head := skeleton.find_bone("Head")
-	var body := skeleton.find_bone("Body")
+	# The CC0 rig names its trunk Body; the textured stallion's is Spine1.
+	var body := skeleton.find_bone("Body") if skeleton.find_bone("Body")>=0 else skeleton.find_bone("Spine1")
 	var head_world := skeleton.global_transform*skeleton.get_bone_global_pose(head).origin
 	assert(head_world.z<-.5,"The imported horse must face along the course's -Z forward axis")
 	assert(head_world.y>2.0 and head_world.y<3.1,"Model must fit the existing camera and lane scale")

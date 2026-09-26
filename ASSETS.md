@@ -39,13 +39,28 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 
 3D 比賽中的馬採用下方現成骨架模型，可即時移動與切換攝影機。使用者的影片只用作流程、鏡頭參考，不是預錄賽果。
 
-## 目前試用的現成馬模型
+## 馬模型
+
+### 比賽用：Viverna「Horses (Stallions)」（付費授權）
+
+- 作者：Viverna；來源：[Fab – Horses (Stallions)](https://www.fab.com/listings/5f968a25-2177-433b-a8ae-ea6eea2926d9)，Fab 標準授權。
+- **授權不允許散佈素材本身**，所以原始檔與處理後的檔案都不提交：購買下載的 `horses_blender292.zip`、`fbx_72.zip`、`tex.zip` 放在 `vendor/viverna/`，處理後的模型與貼圖在 `godot/assets/viverna/`，兩者都列在 `.gitignore`。只有匯出的遊戲（`public/game/index.pck`）含有它。
+- 重建：`blender -b --factory-startup --python scripts/prepare_viverna_horse.py`。
+  - 模型：取種馬的 LOD1（約 7,000 面，桌機）、LOD2（約 2,400 面，手機）、LOD3（780 面，只負責投影子）。
+  - 動畫：取 6 段並改用比賽程式的名稱：Idle_1 → Idle、Idle_2、Idle_4 → Idle_Headlow、Eat → Eating、Walk、Gallop。
+  - 貼圖：5 種毛色（Black、Creame、Gray、GrayRose、White）與法線、鬃毛貼圖縮成 1024；材質參數圖（MADS）轉成 Godot 用的 ORM；以有損 WebP 匯入。
+- `godot/scripts/asset_horse.gd` 的處理：
+  - 放大 1.36 倍，和原本的馬一樣大（鼻尖到原點 2.2 米）。
+  - 12 匹馬的毛色照 `horse_styles.json` 設定：栗色、棕色、金色由灰色或淡色貼圖染色（灰色貼圖的黑腿染成黑腳棕馬），黑、灰、白、雜色直接用原貼圖；鬃毛依設定色染色。
+  - 號碼布依馬身橫切面自動貼合，並沿用馬身的骨架權重跟著身體動；冠軍花環依頸根的截面貼合。
+- 沒有這批素材時（例如從公開 repo clone），自動改用下方的 CC0 馬；也可用 `-- --cc0-horse` 參數強制使用。
+
+### 備援：Quaternius 馬（CC0）
 
 - 作者：Quaternius。
 - 來源：[Horse on Poly Pizza](https://poly.pizza/m/qvTrSG9pZF)。
 - 授權：CC0 1.0，來源與授權連結保存在 `godot/assets/quaternius/LICENSE.md`。
-- 檔案：`godot/assets/quaternius/horse.glb`，保留下載原檔。
-- `godot/scripts/asset_horse.gd` 調整比例、朝向、自然馬色、原八色識別，以及跟隨背部骨架的一整片號碼布，使用原檔內的 Idle / Walk / Gallop 動畫並平滑切換。
+- 檔案：`godot/assets/quaternius/horse.glb`，保留下載原檔；內場的造型馬也用它。
 - 選馬卡片使用 `public/assets/horse-1.png` 至 `horse-12.png`，由 `scripts/render_horse_portraits.gd` 直接渲染目前的 3D 模型、自然毛色與號碼布，原圖集保留供參考。
 - 手機結算的前三名橫幅使用 `public/assets/horse-head-1.webp` 至 `horse-head-12.webp`，由 `scripts/render_horse_heads.gd` 從同一個 3D 模型渲染頭頸特寫（`godot --path godot -s ../scripts/render_horse_heads.gd`）。
 

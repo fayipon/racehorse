@@ -45,7 +45,7 @@ const messages = {
     build: '正在建立賽道與小馬…',
     warmup: '正在準備賽場畫面…',
     progress: '賽場載入進度',
-    size: '首次載入約 13 MB · 準備完成後開放操作',
+    size: '首次載入約 15 MB · 準備完成後開放操作',
     retry: '重新載入賽場',
     frame: 'Godot 3D 即時賽馬',
   },

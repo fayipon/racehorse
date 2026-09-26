@@ -46,7 +46,7 @@ const messages: Messages = {
     build: 'Building the track and the ponies…',
     warmup: 'Setting up the view…',
     progress: 'Track loading progress',
-    size: 'About 13 MB the first time · Controls open when ready',
+    size: 'About 15 MB the first time · Controls open when ready',
     retry: 'Reload the track',
     frame: 'Live 3D pony race (Godot)',
   },

@@ -1,9 +1,17 @@
 extends Node3D
 
-# Quaternius / CC0. The imported rig supplies all poses and skin deformation.
-# Keep the same adapter used by race.gd, so timing and results stay independent.
-const HORSE = preload("res://assets/quaternius/horse.glb")
+# The race horse. The imported rig supplies all poses and skin deformation; this
+# adapter keeps race.gd independent of the model, so timing and results stay put.
+# With the licensed Viverna stallion prepared locally (scripts/prepare_viverna_horse.py,
+# never committed) the stable wears textured coats; a checkout without it runs
+# the CC0 Quaternius horse instead, as does `-- --cc0-horse` on the command line.
+const VIVERNA := "res://assets/viverna/stallion.glb"
+const QUATERNIUS := "res://assets/quaternius/horse.glb"
 const KIT = preload("res://scripts/mesh_kit.gd")
+static var realistic := ResourceLoader.exists(VIVERNA) and not OS.get_cmdline_user_args().has("--cc0-horse")
+static var source: PackedScene = load(VIVERNA if realistic else QUATERNIUS)
+# Phones race the lighter level of detail.
+static var low_power := false
 var styles: Array=JSON.parse_string(FileAccess.get_file_as_string("res://assets/horse_styles.json"))
 var player: AnimationPlayer
 var model: Node3D
@@ -25,21 +33,34 @@ func build(index: int, _color: Color) -> void:
 	var coat:=Color(style.coat)
 	gait_phase=fposmod(index*.381966,1.0)
 	cadence=[.96,1.02,1.05,.98,1.01,.94,1.04,.99,1.03,.97,1.0,.95][index]
-	model = HORSE.instantiate()
-	model.scale = Vector3.ONE*.62
-	model.rotation.y = PI # Source faces +Z; the course uses -Z as forward.
-	model.position.y = .018
+	model = source.instantiate()
+	# Both sources face +Z; the course uses -Z as forward. Each is scaled to the
+	# same horse: 2.2 m from origin to muzzle, about 2.95 m to the ears.
+	model.rotation.y = PI
+	if realistic:
+		model.scale = Vector3.ONE*1.36
+	else:
+		model.scale = Vector3.ONE*.62
+		model.position.y = .018
 	add_child(model)
-	if body_material==null:
-		# Vertex colour matches the course paint, so both share one shader.
-		body_material=StandardMaterial3D.new()
-		body_material.vertex_color_use_as_albedo=true
-		body_material.roughness=.9
-		body_material.metallic_specular=.16
-	for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
-		mesh.layers = 3
-		mesh.mesh=painted_body(mesh.mesh,style,coat)
-		mesh.material_override=body_material
+	skeleton = model.find_children("*","Skeleton3D",true,false)[0]
+	var node: Node = skeleton
+	while node!=self:
+		horse_from_skeleton=(node as Node3D).transform*horse_from_skeleton
+		node=node.get_parent()
+	if realistic:
+		dress(index,style)
+	else:
+		if body_material==null:
+			# Vertex colour matches the course paint, so both share one shader.
+			body_material=StandardMaterial3D.new()
+			body_material.vertex_color_use_as_albedo=true
+			body_material.roughness=.9
+			body_material.metallic_specular=.16
+		for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
+			mesh.layers = 3
+			mesh.mesh=painted_body(mesh.mesh,style,coat)
+			mesh.material_override=body_material
 	player = model.find_children("*","AnimationPlayer",true,false)[0]
 	# Advance manually with the race's visual clock, including the finish slowdown.
 	player.callback_mode_process=AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
@@ -50,9 +71,108 @@ func build(index: int, _color: Color) -> void:
 	player.play("Idle")
 	player.advance(0)
 	player.seek(index*.19,true)
-	skeleton = model.find_children("*","Skeleton3D",true,false)[0]
-	add_race_cloth(skeleton,index,Color(style.number))
+	add_race_cloth(index,Color(style.number))
 	find_muzzle()
+
+# The textured stallion. The pack's coats are greys, whites, a black and a roan;
+# bays, chestnuts and palominos are tinted from them, so the stable keeps the
+# colours of horse_styles.json. The grey coat's black legs make a tinted bay;
+# the cream coat tints to chestnut and palomino. The mane takes its style colour.
+const TEXTURES := "res://assets/viverna/textures/"
+const COATS := ["creame","gray","creame","black","creame","gray","white","gray","creame","grayrose","creame","creame"]
+const TINTED := [true,true,true,false,true,false,false,true,true,false,true,true]
+static var shared := {}
+static func texture(name: String) -> Texture2D:
+	if not shared.has(name): shared[name]=load(TEXTURES+name+".png")
+	return shared[name]
+
+# The average linear colour of a texture over a region given in UV, opaque texels only.
+static func average(name: String, region: Rect2) -> Color:
+	var key:="average:"+name
+	if shared.has(key): return shared[key]
+	var image:=texture(name).get_image()
+	if image.is_compressed(): image.decompress()
+	var sum:=Color(0,0,0,0)
+	var count:=0
+	for sy in range(24):
+		for sx in range(24):
+			var pixel:=image.get_pixelv(Vector2i((region.position+region.size*Vector2(sx/23.0,sy/23.0))*Vector2(image.get_size()-Vector2i.ONE)))
+			if pixel.a<.5: continue
+			sum+=pixel.srgb_to_linear()
+			count+=1
+	shared[key]=sum/maxi(count,1)
+	return shared[key]
+
+# The colour that turns a texture's own average into the wanted one, both linear.
+static func tint(wanted: Color, base: Color) -> Color:
+	var goal:=wanted.srgb_to_linear()
+	return Color(minf(goal.r/maxf(base.r,.01),1.4),minf(goal.g/maxf(base.g,.01),1.4),minf(goal.b/maxf(base.b,.01),1.4)).linear_to_srgb()
+
+func dress(index: int, style: Dictionary) -> void:
+	var coat:=ORMMaterial3D.new()
+	var name: String="coat_"+COATS[index]
+	coat.albedo_texture=texture(name)
+	# The body's big UV island, clear of the legs, head and mane.
+	if TINTED[index]: coat.albedo_color=tint(Color(style.coat),average(name,Rect2(.1,.12,.55,.45)))
+	coat.normal_enabled=true
+	coat.normal_texture=texture("body_normal")
+	coat.orm_texture=texture("body_orm")
+	coat.texture_filter=BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	var hair:=StandardMaterial3D.new()
+	hair.albedo_texture=texture("hair_albedo")
+	hair.albedo_color=tint(Color(style.mane),average("hair_albedo",Rect2(0,0,1,1)))
+	hair.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	hair.alpha_scissor_threshold=.4
+	hair.cull_mode=BaseMaterial3D.CULL_DISABLED
+	hair.normal_enabled=true
+	hair.normal_texture=texture("hair_normal")
+	hair.roughness=.62
+	var main:="BodyLow" if low_power else "Body"
+	for mesh: MeshInstance3D in skeleton.find_children("*","MeshInstance3D",true,false):
+		if mesh.name not in [main,"BodyShadow"]:
+			mesh.queue_free()
+			continue
+		mesh.layers=3
+		# A 780-triangle stand-in casts every shadow; the drawn body casts none.
+		mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_SHADOWS_ONLY if mesh.name=="BodyShadow" else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for surface in range(mesh.mesh.get_surface_count()):
+			mesh.set_surface_override_material(surface,hair if mesh.mesh.surface_get_material(surface).resource_name=="Hair" else coat)
+
+# The drawn body mesh, for fitting the cloth and garland and finding the muzzle.
+func body_mesh() -> MeshInstance3D:
+	for mesh: MeshInstance3D in skeleton.find_children("*","MeshInstance3D",true,false):
+		if mesh.is_queued_for_deletion() or mesh.name=="BodyShadow": continue
+		if mesh.skin!=null: return mesh
+	return null
+
+# Rest-pose points of the body (manes and tails left out) in the horse's own
+# space, with each vertex's bones and weights. The same for every horse of a
+# model, so worked out once.
+func body_points() -> Dictionary:
+	if shared.has("body"): return shared.body
+	var mesh:=body_mesh()
+	var skin:=mesh.skin
+	var bind_bone:=skin.get_bind_bone(0)
+	if bind_bone<0: bind_bone=skeleton.find_bone(skin.get_bind_name(0))
+	# In the rest pose every bind maps the mesh to the skeleton alike.
+	var mesh_to_horse:=horse_from_skeleton*skeleton.get_bone_global_rest(bind_bone)*skin.get_bind_pose(0)
+	var points:=PackedVector3Array()
+	var triangles:=PackedInt32Array()
+	var bones:=PackedInt32Array()
+	var weights:=PackedFloat32Array()
+	var per:=4
+	for surface in range(mesh.mesh.get_surface_count()):
+		var material:=mesh.mesh.surface_get_material(surface)
+		if material!=null and material.resource_name=="Hair": continue
+		var arrays:=mesh.mesh.surface_get_arrays(surface)
+		var vertices: PackedVector3Array=arrays[Mesh.ARRAY_VERTEX]
+		per=(arrays[Mesh.ARRAY_BONES] as PackedInt32Array).size()/vertices.size()
+		for i: int in arrays[Mesh.ARRAY_INDEX]: triangles.append(points.size()+i)
+		for v in vertices: points.append(mesh_to_horse*v)
+		bones.append_array(arrays[Mesh.ARRAY_BONES])
+		weights.append_array(arrays[Mesh.ARRAY_WEIGHTS])
+	shared.body={"points":points,"triangles":triangles,"bones":bones,"weights":weights,"per":per,"mesh_to_horse":mesh_to_horse}
+	return shared.body
 
 static func part_color(part: String, style: Dictionary, coat: Color) -> Color:
 	match part:
@@ -96,39 +216,36 @@ static func painted_body(source: Mesh, style: Dictionary, coat: Color) -> ArrayM
 	painted.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,merged,[],{},flags)
 	return painted
 
-# The muzzle tip is the forward-most vertex of the rest pose, stored in the
-# head bone's space so it follows the head through every gait.
+# The skeleton bone a skin bind drives. Imported skins bind by bone name, so
+# the bone index can be -1.
+func bind_bone(bind: int) -> int:
+	var skin:=body_mesh().skin
+	var bone:=skin.get_bind_bone(bind)
+	return bone if bone>=0 else skeleton.find_bone(skin.get_bind_name(bind))
+
+# The muzzle tip is the forward-most rest-pose vertex moved mostly by the head
+# (the head bone or its jaw, lips and nose), stored in the head bone's space so
+# it follows the head through every gait.
 func find_muzzle() -> void:
-	var node: Node = skeleton
-	while node!=self:
-		horse_from_skeleton=(node as Node3D).transform*horse_from_skeleton
-		node=node.get_parent()
 	head_bone=skeleton.find_bone("Head")
-	var best := -INF
-	for mesh_instance: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
-		if mesh_instance.skin==null: continue
-		var skin: Skin=mesh_instance.skin
-		for bind in range(skin.get_bind_count()):
-			# Imported skins bind by bone name, so the bone index can be -1.
-			var bone:=skin.get_bind_bone(bind)
-			if bone<0: bone=skeleton.find_bone(skin.get_bind_name(bind))
-			if bone!=head_bone: continue
-			for surface in range(mesh_instance.mesh.get_surface_count()):
-				var arrays := mesh_instance.mesh.surface_get_arrays(surface)
-				var vertices: PackedVector3Array=arrays[Mesh.ARRAY_VERTEX]
-				var bones: PackedInt32Array=arrays[Mesh.ARRAY_BONES]
-				var weights: PackedFloat32Array=arrays[Mesh.ARRAY_WEIGHTS]
-				var per:=bones.size()/vertices.size()
-				for v in range(vertices.size()):
-					var weight:=0.0
-					for k in range(per):
-						if bones[v*per+k]==bind: weight+=weights[v*per+k]
-					if weight<.5: continue
-					var local: Vector3=skin.get_bind_pose(bind)*vertices[v]
-					var ahead:=-(horse_from_skeleton*(skeleton.get_bone_global_rest(head_bone)*local)).z
-					if ahead<=best: continue
-					best=ahead
-					muzzle_local=local
+	var head:={}
+	for bind in range(body_mesh().skin.get_bind_count()):
+		var bone:=bind_bone(bind)
+		while bone>=0 and bone!=head_bone: bone=skeleton.get_bone_parent(bone)
+		if bone==head_bone: head[bind]=true
+	var body:=body_points()
+	var points: PackedVector3Array=body.points
+	var bones: PackedInt32Array=body.bones
+	var weights: PackedFloat32Array=body.weights
+	var per: int=body.per
+	var best:=INF
+	for v in range(points.size()):
+		var weight:=0.0
+		for k in range(per):
+			if head.has(bones[v*per+k]): weight+=weights[v*per+k]
+		if weight<.5 or points[v].z>=best: continue
+		best=points[v].z
+		muzzle_local=skeleton.get_bone_global_rest(head_bone).affine_inverse()*(horse_from_skeleton.affine_inverse()*points[v])
 
 # The muzzle tip in the horse's own space for the current pose.
 func muzzle_position() -> Vector3:
@@ -138,80 +255,256 @@ func muzzle_position() -> Vector3:
 func muzzle_reach() -> float:
 	return -muzzle_position().z
 
-func add_race_cloth(skeleton: Skeleton3D, index: int, color: Color) -> void:
-	var attachment := BoneAttachment3D.new()
-	attachment.bone_name="Back"
-	skeleton.add_child(attachment)
-	# Convert the authored metre-space cloth into the back bone's rest frame.
-	# Following the spine also follows its tilt, rather than hovering over it.
-	var cloth := Node3D.new()
-	var source_from_meters:=Transform3D(Basis(Vector3.RIGHT,PI/2)*.01,Vector3.ZERO)
-	cloth.transform=skeleton.get_bone_global_rest(skeleton.find_bone("Back")).affine_inverse()*source_from_meters
-	attachment.add_child(cloth)
+# The saddlecloth is fitted to the body it lies on: over the back from behind
+# the withers to the loin, following the coat a few centimetres off it, then
+# hanging straight down each side below the barrel's widest point, like a
+# racing saddlecloth. It takes the weights of the body under it, so it moves
+# with every stride. The shape is worked out once per model; each horse only
+# colours it.
+const CLOTH_SPAN := Vector2(.46,.75) # of the body's length, from the muzzle back
+const CLOTH_OFF := .035
+const CLOTH_HANG := .24
+const CLOTH_ROWS := 20
+const CLOTH_ARC := 16 # steps over each side of the back, from the spine to the widest point
+const CLOTH_DROP := 5
+
+func cloth_shape() -> Dictionary:
+	if shared.has("cloth"): return shared.cloth
+	var body:=body_points()
+	var points: PackedVector3Array=body.points
+	var front:=INF
+	var back:=-INF
+	for p in points:
+		front=minf(front,p.z)
+		back=maxf(back,p.z)
+	var z0:=lerpf(front,back,CLOTH_SPAN.x)
+	var z1:=lerpf(front,back,CLOTH_SPAN.y)
+	# Only the body under the cloth is searched for its nearest vertex.
+	var under:=PackedInt32Array()
+	for i in range(points.size()):
+		if points[i].z>z0-.15 and points[i].z<z1+.15: under.append(i)
+	# Each cross-section is a superellipse through the spine's height and the
+	# barrel's widest point, swelled until no coat pokes through it.
+	var rows: Array=[]
+	for r in range(CLOTH_ROWS+1):
+		var z:=lerpf(z0,z1,float(r)/CLOTH_ROWS)
+		var slab:=section(z)
+		var top:=-INF
+		for p in slab:
+			if absf(p.x)<.1: top=maxf(top,p.y)
+		var widest:=0.0
+		var widest_y:=top-.5
+		for p in slab:
+			if p.y<top-.1 and p.y>top-1.0 and absf(p.x)>widest:
+				widest=absf(p.x)
+				widest_y=p.y
+		rows.append({"z":z,"top":top,"width":widest,"y":widest_y,"slab":slab})
+	# Neighbouring rows are averaged so the cloth lies in one sweep.
+	var shapes: Array=[]
+	for r in range(rows.size()):
+		var near: Array=rows.slice(maxi(r-2,0),mini(r+3,rows.size()))
+		var shape:={"z":rows[r].z,"top":0.0,"width":0.0,"y":0.0}
+		for row: Dictionary in near:
+			for key in ["top","width","y"]: shape[key]+=float(row[key])/near.size()
+		shapes.append(shape)
+	for r in range(rows.size()):
+		var shape: Dictionary=shapes[r]
+		var swell:=1.0
+		for p: Vector2 in rows[r].slab:
+			if p.y<float(shape.y): continue
+			var d:=Vector2(absf(p.x),p.y-float(shape.y))
+			swell=maxf(swell,d.length()/superellipse(atan2(d.x,d.y),shape))
+		shape.swell=swell
+	for r in range(shapes.size()):
+		var most:=1.0
+		for near: Dictionary in shapes.slice(maxi(r-1,0),mini(r+2,shapes.size())): most=maxf(most,float(near.swell))
+		shapes[r].fit=most
+	# The sheet's grid in horse space: left hem, over the spine, right hem.
+	var grid: Array=[]
+	for shape: Dictionary in shapes:
+		var line: Array[Vector3]=[]
+		var side_x:=float(shape.width)*float(shape.fit)+CLOTH_OFF
+		for k in range(CLOTH_DROP):
+			line.append(Vector3(-side_x,float(shape.y)-CLOTH_HANG*(1.0-float(k)/CLOTH_DROP),shape.z))
+		for step in range(-CLOTH_ARC,CLOTH_ARC+1):
+			var angle:=float(step)/CLOTH_ARC*PI*.5
+			var reach:=superellipse(absf(angle),shape)*float(shape.fit)+CLOTH_OFF
+			line.append(Vector3(sin(angle)*reach,float(shape.y)+cos(angle)*reach,shape.z))
+		for k in range(CLOTH_DROP-1,-1,-1):
+			line.append(Vector3(side_x,float(shape.y)-CLOTH_HANG*(1.0-float(k)/CLOTH_DROP),shape.z))
+		grid.append(line)
+	var vertices:=PackedVector3Array()
+	var normals:=PackedVector3Array()
+	var bones:=PackedInt32Array()
+	var weights:=PackedFloat32Array()
+	var per: int=body.per
+	var horse_to_mesh: Transform3D=(body.mesh_to_horse as Transform3D).affine_inverse()
+	var columns: int=grid[0].size()
+	for r in range(grid.size()):
+		for c in range(columns):
+			var p: Vector3=grid[r][c]
+			var across: Vector3=grid[r][mini(c+1,columns-1)]-grid[r][maxi(c-1,0)]
+			var along: Vector3=grid[mini(r+1,grid.size()-1)][c]-grid[maxi(r-1,0)][c]
+			var normal:=along.cross(across).normalized()
+			if normal.dot(Vector3(p.x,p.y-float(shapes[r].y),0))<0: normal=-normal
+			vertices.append(horse_to_mesh*p)
+			normals.append((horse_to_mesh.basis*normal).normalized())
+			var nearest:=nearest_point(p,.12,under)
+			bones.append_array((body.bones as PackedInt32Array).slice(nearest*per,nearest*per+per))
+			weights.append_array((body.weights as PackedFloat32Array).slice(nearest*per,nearest*per+per))
+	var indices:=PackedInt32Array()
+	for r in range(grid.size()-1):
+		for c in range(columns-1):
+			var a:=r*columns+c
+			indices.append_array([a,a+columns,a+1,a+1,a+columns,a+columns+1])
+	# The numbers sit mid-cloth on each side's hanging panel, on the bone under them.
+	var numbers: Array=[]
+	var middle: int=grid.size()/2
+	for side in [-1,1]:
+		var at: Vector3=grid[middle][CLOTH_DROP/2 if side<0 else columns-1-CLOTH_DROP/2]+Vector3(side*.006,.04,0)
+		numbers.append({"side":side,"at":at,"bone":strongest_bone(nearest_point(at,.2,under))})
+	shared.cloth={"vertices":vertices,"normals":normals,"bones":bones,"weights":weights,"indices":indices,"columns":columns,"rows":grid.size(),"numbers":numbers}
+	return shared.cloth
+
+# The body's outline where the plane at `z` cuts it, as (x, y) points.
+func section(z: float) -> Array[Vector2]:
+	var body:=body_points()
+	var points: PackedVector3Array=body.points
+	var triangles: PackedInt32Array=body.triangles
+	var outline: Array[Vector2]=[]
+	for t in range(0,triangles.size(),3):
+		for e in range(3):
+			var a:=points[triangles[t+e]]
+			var b:=points[triangles[t+(e+1)%3]]
+			if (a.z-z)*(b.z-z)>=0.0: continue
+			var c:=a.lerp(b,(z-a.z)/(b.z-a.z))
+			outline.append(Vector2(c.x,c.y))
+	return outline
+
+# Distance from the widest point's height to a section's outline, `angle` up
+# from level: flat over the back, rounding down the sides (exponent 2.6).
+static func superellipse(angle: float, shape: Dictionary) -> float:
+	var n:=2.6
+	var w:=maxf(float(shape.width),.05)
+	var h:=maxf(float(shape.top)-float(shape.y),.05)
+	return 1.0/pow(pow(absf(sin(angle))/w,n)+pow(absf(cos(angle))/h,n),1.0/n)
+
+func nearest_point(at: Vector3, within: float, among:=PackedInt32Array()) -> int:
+	var points: PackedVector3Array=body_points().points
+	var best:=-1
+	var distance:=INF
+	for i in (among if among.size() else range(points.size())):
+		if absf(points[i].z-at.z)>within: continue
+		var d:=points[i].distance_squared_to(at)
+		if d<distance:
+			distance=d
+			best=i
+	# A sparse low-poly body can leave the window empty; then look everywhere.
+	return best if best>=0 or within==INF else nearest_point(at,INF,among)
+
+func strongest_bone(point: int) -> int:
+	var body:=body_points()
+	var per: int=body.per
+	var best:=0
+	for k in range(per):
+		if body.weights[point*per+k]>body.weights[point*per+best]: best=k
+	return bind_bone(body.bones[point*per+best])
+
+func add_race_cloth(index: int, color: Color) -> void:
+	var shape:=cloth_shape()
+	var body:=body_points()
 	# Double-sided vertex-colour paint, the same shader as the stand's sails.
 	# The cloth and its trim are one sheet coloured per vertex: one draw call.
+	var colors:=PackedColorArray()
+	var columns: int=shape.columns
+	var rows: int=shape.rows
+	for r in range(rows):
+		for c in range(columns):
+			var edge:=r==0 or r==rows-1 or c==0 or c==columns-1
+			colors.append(Color("ddd0ac") if edge else color)
+	var arrays: Array=[]
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX]=shape.vertices
+	arrays[Mesh.ARRAY_NORMAL]=shape.normals
+	arrays[Mesh.ARRAY_COLOR]=colors
+	arrays[Mesh.ARRAY_BONES]=shape.bones
+	arrays[Mesh.ARRAY_WEIGHTS]=shape.weights
+	arrays[Mesh.ARRAY_INDEX]=shape.indices
+	var sheet_mesh:=ArrayMesh.new()
+	sheet_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays,[],{},Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if body.per==8 else 0)
 	var mat := KIT.painted(.96,.5)
 	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-	var cloth_color := color
-	var trim_color := Color("ddd0ac")
-	# One connected sheet goes from the left hem, over the spine, to the
-	# right hem. The lower sides hang vertically, like a racing saddlecloth.
-	var surface:=SurfaceTool.new()
-	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for row in range(40):
-		for column in range(12):
-			var edge:=row==0 or row==39 or column==0 or column==11
-			surface.set_color(trim_color if edge else cloth_color)
-			for corner: Vector2i in [Vector2i(row,column),Vector2i(row+1,column),Vector2i(row,column+1),Vector2i(row,column+1),Vector2i(row+1,column),Vector2i(row+1,column+1)]:
-				var u:=corner.x/40.0*2.0-1.0
-				var v:=corner.y/12.0
-				var shoulder:=minf(absf(u)/.57,1.0)*PI*.5
-				var x:=signf(u)*sin(shoulder)*.71
-				var y:=2.90+cos(shoulder)*.69-maxf(0.0,absf(u)-.57)/.43*.60
-				var z:=-.97+v*1.24
-				var point:=Vector3(x,y+.025*cos((v-.5)*PI),z)
-				surface.add_vertex(point)
-	surface.generate_normals()
+	sheet_mesh.surface_set_material(0,mat)
+	var drawn:=body_mesh()
 	var sheet:=MeshInstance3D.new()
-	sheet.mesh=surface.commit()
-	sheet.material_override=mat
+	sheet.mesh=sheet_mesh
+	sheet.skin=drawn.skin
+	sheet.transform=drawn.transform
 	sheet.layers=3
-	cloth.add_child(sheet)
-	for side in [-1,1]:
+	skeleton.add_child(sheet)
+	sheet.skeleton=sheet.get_path_to(skeleton)
+	var skeleton_from_horse:=horse_from_skeleton.affine_inverse()
+	for number_at: Dictionary in shape.numbers:
+		var attachment:=BoneAttachment3D.new()
+		attachment.bone_name=skeleton.get_bone_name(number_at.bone)
+		skeleton.add_child(attachment)
+		var side: int=number_at.side
 		var number := Label3D.new()
 		number.text=str(index+1)
 		number.font_size=96
 		# Two-digit numbers set smaller to stay on the cloth.
-		number.pixel_size=.009 if index<9 else .0066
+		number.pixel_size=.0034 if index<9 else .0026
 		number.outline_size=0
 		number.shaded=true
 		number.layers=3
 		number.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		number.modulate=Color("fff7e7") if index in [0,3,7,8,9,11] else Color("202822")
-		number.position=Vector3(side*.722,2.73,-.35)
-		number.rotation.y=side*PI/2
-		cloth.add_child(number)
+		number.transform=skeleton.get_bone_global_rest(number_at.bone).affine_inverse()*skeleton_from_horse*Transform3D(Basis(Vector3.UP,side*PI/2),number_at.at)
+		attachment.add_child(number)
 
-# The champion's garland: a ring of blooms resting on the base of the neck.
+# The champion's garland: a ring of blooms round the base of the neck, fitted
+# to the neck's cross-section there and carried by the neck's base bone.
+var garland_center := Vector3.ZERO
+var garland_axes := Basis.IDENTITY
+var garland_radii := Vector2.ONE
+
 func add_garland() -> void:
-	var skeleton: Skeleton3D = model.find_children("*","Skeleton3D",true,false)[0]
+	var base:=skeleton.find_bone("Neck")
+	if base<0: base=skeleton.find_bone("Neck1")
+	var next:=-1
+	for child in skeleton.get_bone_children(base):
+		var name:=skeleton.get_bone_name(child)
+		if name.begins_with("Neck") or name.begins_with("Head"): next=child
+	var from:=horse_from_skeleton*skeleton.get_bone_global_rest(base).origin
+	var to:=horse_from_skeleton*skeleton.get_bone_global_rest(next).origin
+	var at:=from.lerp(to,.15)
+	var along:=(to-from).normalized()
+	var side:=Vector3.RIGHT
+	var up:=along.cross(side).normalized()
+	var low:=Vector2(INF,INF)
+	var high:=-low
+	for p: Vector3 in body_points().points:
+		var d:=p-at
+		if absf(d.dot(along))>.05: continue
+		var q:=Vector2(d.dot(side),d.dot(up))
+		low=low.min(q)
+		high=high.max(q)
+	var middle:=(low+high)*.5
+	garland_center=at+side*middle.x+up*middle.y
+	garland_axes=Basis(side,up,along)
+	garland_radii=(high-low)*.5+Vector2(.07,.07)
 	var attachment := BoneAttachment3D.new()
-	attachment.bone_name="Neck1"
+	attachment.bone_name=skeleton.get_bone_name(base)
 	skeleton.add_child(attachment)
-	var holder := Node3D.new()
-	var source_from_meters:=Transform3D(Basis(Vector3.RIGHT,PI/2)*.01,Vector3.ZERO)
-	holder.transform=skeleton.get_bone_global_rest(skeleton.find_bone("Neck1")).affine_inverse()*source_from_meters
-	attachment.add_child(holder)
 	var ring := MeshInstance3D.new()
 	ring.mesh=garland_mesh()
 	ring.layers=3
-	holder.add_child(ring)
+	ring.transform=skeleton.get_bone_global_rest(base).affine_inverse()*horse_from_skeleton.affine_inverse()
+	attachment.add_child(ring)
 
-# Authored like the saddlecloth: +Y is up and +Z points toward the head. The
-# loop rests on the withers and its front drapes down over the chest.
+# In horse space, round the neck; `a` runs once round the ring.
 func garland_point(a: float) -> Vector3:
-	var front:=maxf(0.0,sin(a))
-	return Vector3(cos(a)*.56,2.98-front*front*.62,1.32+sin(a)*.6)
+	return garland_center+garland_axes.x*cos(a)*garland_radii.x+garland_axes.y*sin(a)*garland_radii.y
 
 func garland_mesh() -> ArrayMesh:
 	var st := KIT.begin()
@@ -232,13 +525,13 @@ func garland_mesh() -> ArrayMesh:
 				var b:=TAU*corner.y/minor
 				var center:=garland_point(a)
 				var tangent:=(garland_point(a+.01)-garland_point(a-.01)).normalized()
-				var side:=tangent.cross(Vector3.UP).normalized()
+				var side:=tangent.cross(garland_axes.z).normalized()
 				var up:=side.cross(tangent)
 				var normal:=side*cos(b)+up*sin(b)
 				# Each pair of segments swells into one round bloom.
 				var bloom:=absf(sin(a*major*.5))
 				normals.append(normal)
-				points.append(center+normal*.15*(.72+.5*bloom))
+				points.append(center+normal*.11*(.72+.5*bloom))
 			var color: Color=colors[(i/2)*(minor/2)+j/2]
 			for index: int in [0,2,1,0,3,2]: KIT.vertex(st,points[index],normals[index],color)
 	var mat := KIT.painted(.85,.2)

@@ -46,7 +46,7 @@ const messages: Messages = {
     build: 'Montando a pista e os pôneis…',
     warmup: 'Preparando a imagem…',
     progress: 'Progresso do carregamento',
-    size: 'Cerca de 13 MB no primeiro acesso · Os controles liberam quando estiver pronto',
+    size: 'Cerca de 15 MB no primeiro acesso · Os controles liberam quando estiver pronto',
     retry: 'Recarregar a pista',
     frame: 'Corrida de pôneis ao vivo em 3D (Godot)',
   },

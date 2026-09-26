@@ -46,7 +46,7 @@ const messages: Messages = {
     build: 'コースとポニーを組み立て中…',
     warmup: '画面を準備中…',
     progress: '会場の読み込み状況',
-    size: '初回は約13MB · 準備ができると操作できます',
+    size: '初回は約15MB · 準備ができると操作できます',
     retry: '会場を再読み込み',
     frame: 'Godot 3D ライブ競馬',
   },

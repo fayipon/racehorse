@@ -36,3 +36,5 @@ dev/
 
 # Licensed source assets (paid, not for redistribution): kept local only.
 vendor/
+# Web-sized copies built from them by scripts/prepare_viverna_horse.py.
+godot/assets/viverna/
