@@ -193,13 +193,24 @@ export const RACES_PER_DAY = 86_400_000 / ROUND_MS
 export const raceNumber = (round: number) => (round - 1) % RACES_PER_DAY + 1
 export const roundAt = (clock: CupClock, now: number) => Math.max(1, Math.floor((now - clock.epoch) / ROUND_MS) + 1)
 export const startOf = (clock: CupClock, round: number) => clock.epoch + (round - 1) * ROUND_MS
+// A clock may wobble back a few seconds without re-dealing the round.
+const REWIND_GRACE = 10_000
 // Brings every cup onto its schedule. A cup off schedule (an older save, or a
 // schedule that moved) settles what it can by its old clock, refunds a race that
 // will now never be shown, and starts afresh on the current round.
 export function alignStore(store: Store, now: number, clocks: Record<CupId, CupClock>): Store {
   return (Object.keys(CUPS) as CupId[]).reduce((next, cup) => {
     const clock = clocks[cup], rounds = next.cups[cup]
-    if (rounds && rounds.seed === clock.seed && rounds.startedAt === startOf(clock, rounds.round)) return next
+    if (rounds && rounds.seed === clock.seed && rounds.startedAt === startOf(clock, rounds.round)) {
+      if (rounds.startedAt <= now + REWIND_GRACE) return next
+      // The clock stepped back before this round began, as when a device's
+      // clock was corrected: the page shows the round on air now rather than
+      // a wait of minutes. The early stake comes back; results from that round
+      // on are dropped, to run again.
+      const round = roundAt(clock, now)
+      const refund = rounds.settled ? 0 : rounds.bets.reduce((sum, bet) => sum + bet.amount, 0)
+      return { ...next, balance: next.balance + refund, cups: { ...next.cups, [cup]: { ...rounds, round, startedAt: startOf(clock, round), bets: [], settled: false, history: rounds.history.filter(result => result.round < round) } } }
+    }
     let balance = next.balance
     if (rounds) {
       const old = advance(gameOf(next, cup, now), now)

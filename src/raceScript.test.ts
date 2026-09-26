@@ -8,7 +8,7 @@ import { planCommentary, realFromVisual, Voice } from './commentary'
 import { advance, alignStore, createGame, createStore, CUPS, gameOf, placeBet, planRound, raceNumber, raceOrder, racePlan, recentResults, roundAt, ROUND_MS, startOf, withGame, type CupId, type Store } from './game'
 import { buildRacePlan, HORSE_LENGTH, planHealth, planProgress, referenceLap, WINNER_FINISH, type Checkpoint } from './raceModel'
 import { installScripts, lockRound, normalizeRace, scriptOf, type RaceScript } from './raceScript'
-import { BASELINE, parseSchedule } from './schedule'
+import { BASELINE, correctedOffset, parseSchedule } from './schedule'
 
 const START = 1_800_000_000_000
 const voices = [en, ja, pt, zh].map(manifest => new Voice(manifest))
@@ -148,7 +148,26 @@ describe('shared schedule', () => {
     const store = alignStore(createStore(), now, clocks)
     for (const cup of Object.keys(CUPS) as CupId[]) expect(store.cups[cup]).toMatchObject({ seed: clocks[cup].seed, round: roundAt(clocks[cup], now), startedAt: startOf(clocks[cup], roundAt(clocks[cup], now)), bets: [], history: [] })
     expect(alignStore(store, now, clocks)).toBe(store)
-    expect(alignStore(store, now - 3 * ROUND_MS, clocks)).toBe(store)
+    // A clock wobbling back a few seconds leaves the round alone.
+    expect(alignStore(store, now - 8_000, clocks)).toBe(store)
+  })
+  it('brings a save that runs ahead of the clock back to the round on air', () => {
+    // Played on a corrected clock, the save reached round 13; the page then
+    // opened on a device clock four minutes slow, when round 11 is on air.
+    const later = START + 12 * ROUND_MS + 5_000
+    let ahead = alignStore(createStore(), START + 10 * ROUND_MS + 5_000, clocks)
+    ahead = withGame(ahead, advance(gameOf(ahead, 'sunny', later), later))
+    ahead = withGame(ahead, placeBet(gameOf(ahead, 'sunny', later), 'odd', 200, later).game)
+    expect(ahead.cups.sunny).toMatchObject({ round: 13, bets: [{ amount: 200 }] })
+    expect(ahead.cups.sunny!.history.map(r => r.round)).toEqual([12, 11])
+    const now = later - 4 * 60_000
+    const back = alignStore(ahead, now, clocks)
+    expect(back.cups.sunny).toMatchObject({ round: 11, startedAt: startOf(clocks.sunny, 11), bets: [], settled: false })
+    expect(back.balance).toBe(ahead.balance + 200)
+    expect(back.cups.sunny!.history).toEqual([])
+    // The other cups were on time and stay as they were.
+    expect(back.cups.royal).toBe(ahead.cups.royal)
+    expect(gameOf(back, 'sunny', now).startedAt + 48_000 - now).toBeLessThanOrEqual(48_000)
   })
   it('refunds a race an old save will never see and settles one it already ran', () => {
     const now = START + 10 * ROUND_MS + 5_000
@@ -160,6 +179,17 @@ describe('shared schedule', () => {
     const finished = placeBet(createGame(now - 115_000, 'thunder', 998), 'horse:1', 300, now - 115_000).game
     const won = advance(finished, now).balance
     expect(alignStore(withGame(createStore(), finished), now, clocks).balance).toBe(won)
+  })
+  it('corrects only a clock minutes out, and follows it back', () => {
+    expect(correctedOffset(0, 1_800)).toBe(0)
+    expect(correctedOffset(0, -90_000)).toBe(0)
+    expect(correctedOffset(0, 200_000)).toBe(200_000)
+    // Once corrected, a reading a few seconds off is wobble, not news.
+    expect(correctedOffset(200_000, 202_500)).toBe(200_000)
+    expect(correctedOffset(200_000, 150_000)).toBe(150_000)
+    expect(correctedOffset(200_000, 60_000)).toBe(60_000)
+    // A device clock that has come right again drops the correction.
+    expect(correctedOffset(60_000, 20_000)).toBe(0)
   })
   it('gives everyone the same recent winners', () => {
     const results = recentResults(5, 10, 8, 8)

@@ -44,10 +44,31 @@ export function parseSchedule(json: unknown): Schedule {
 }
 
 let clocks = BASELINE
-let offset = 0
 // Everyone's clock: the device's, unless a service states its time or the
-// device is minutes out (a static host's Date header is only good to a minute).
+// device is minutes out. The correction is kept across visits, so a page
+// never opens on the device's own clock after playing on a corrected one:
+// the saved rounds would then lie minutes ahead of it.
+const OFFSET_KEY = 'racehorse-clock-offset'
+let offset = (() => {
+  try {
+    const saved = Number(localStorage.getItem(OFFSET_KEY))
+    return Number.isFinite(saved) && Math.abs(saved) < 7 * 86_400_000 ? saved : 0
+  } catch { return 0 }
+})()
+function adopt(next: number) {
+  if (next === offset) return
+  offset = next
+  try { localStorage.setItem(OFFSET_KEY, String(next)) } catch { /* This visit only. */ }
+}
 export const serverNow = () => Date.now() + offset
+// A static host's Date header is good to a second or two, and devices keep
+// better time than that, so only a clock minutes out is corrected. Once
+// corrected it is followed until it comes within half a minute; wobble of a
+// few seconds between readings is left alone.
+export function correctedOffset(current: number, skew: number) {
+  if (Math.abs(skew) <= (current ? 30_000 : 120_000)) return 0
+  return Math.abs(skew - current) > 5_000 ? skew : current
+}
 export const currentClocks = () => clocks
 function install(schedule: Schedule) {
   clocks = schedule.clocks
@@ -65,10 +86,11 @@ async function load(timeout: number) {
     if (!response.ok) return
     const schedule = parseSchedule(await response.json())
     const received = Date.now()
-    if (schedule.serverTime !== undefined) offset = schedule.serverTime + (received - sent) / 2 - received
-    else {
+    if (schedule.serverTime !== undefined) adopt(schedule.serverTime + (received - sent) / 2 - received)
+    // A slow answer, as when a phone froze the page mid-request, dates nothing.
+    else if (received - sent < 3000) {
       const stated = Date.parse(response.headers.get('date') ?? '') + 1000 * Number(response.headers.get('age') ?? 0)
-      if (Number.isFinite(stated) && Math.abs(stated - received) > 120_000) offset = stated - received
+      if (Number.isFinite(stated)) adopt(correctedOffset(offset, stated - (sent + received) / 2))
     }
     install(schedule)
   } catch { /* Keep the last good schedule. */ } finally { clearTimeout(timer) }
