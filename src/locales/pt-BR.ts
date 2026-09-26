@@ -57,7 +57,6 @@ const messages: Messages = {
     countdown: 'Apostas fecham em',
     assembling: 'Pôneis se alinhando',
     assemblingNote: 'Apostas encerradas. Prepare-se para a largada!',
-    ready: 'Em posição',
     go: 'Largaram! A toda velocidade',
     counting: 'Contagem regressiva',
     firstAcross: 'Primeiro na chegada',

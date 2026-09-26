@@ -57,7 +57,6 @@ const messages: Messages = {
     countdown: '投票締切まで',
     assembling: 'ポニー集合中',
     assemblingNote: '投票は締め切りました。スタートをお楽しみに！',
-    ready: '位置について',
     go: 'スタート！全力で駆け抜けろ',
     counting: 'スタートまで',
     firstAcross: '先頭でゴール',

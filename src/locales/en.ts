@@ -57,7 +57,6 @@ const messages: Messages = {
     countdown: 'Betting closes in',
     assembling: 'Heading to the start',
     assemblingNote: 'Betting is closed. Get ready for the off!',
-    ready: 'On your marks',
     go: "And they're off!",
     counting: 'Countdown',
     firstAcross: '',

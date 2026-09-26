@@ -57,7 +57,6 @@ const messages: Messages = {
     countdown: '投注倒计时',
     assembling: '小马集合中',
     assemblingNote: '本场已封盘，准备迎接起跑！',
-    ready: '各就各位',
     go: '开跑！全速前进',
     counting: '起跑倒计时',
     firstAcross: '率先冲线',

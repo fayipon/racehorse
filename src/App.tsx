@@ -13,6 +13,9 @@ import { gameSource } from './mirror'
 import { useI18n } from './i18n'
 import { routePath } from './route'
 
+// Seconds counted down on screen before the gates open.
+const COUNTDOWN = 3
+
 const clock = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 // Matches the stylesheet's phone breakpoint, where the chat moves onto the stage.
 const phoneQuery = '(max-width: 580px)'
@@ -79,7 +82,8 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
   const ranking = HORSES.slice(0, field).sort((a, b) => positions[b.id - 1] - positions[a.id - 1] || order.indexOf(a.id) - order.indexOf(b.id))
   const remaining = countdown(game, now)
   const assembling = phase === 'betting' && !bettingOpen(game, now)
-  const startCue = phase === 'betting' && remaining <= 7 ? (remaining > 5 ? 'READY' : String(remaining)) : phase === 'racing' && seconds < 1.8 ? 'GO!' : null
+  // The assembly holds until three seconds before the gates, then 3, 2, 1, GO.
+  const startCue = phase === 'betting' && remaining <= COUNTDOWN ? String(remaining) : phase === 'racing' && seconds < 1.8 ? 'GO!' : null
   const finishing = phase === 'racing' && (finishRound === raceNumber(game.round) || visualSeconds >= 44.6)
   const cinematic = phase === 'racing' && seconds >= CUT_IN
   // The special-move banner lands with the crossing freeze, then yields to the announcement.
@@ -120,8 +124,8 @@ export function RaceStage({ game, now, muted, paused = false, children, notifica
       <div key={`${game.round}-${startCue}`} className="start-cue" role="status" aria-live="polite" aria-atomic="true">
         {startCue === 'GO!' && <span className="start-kicker">THE RACE IS ON</span>}
         <div className="start-number"><i aria-hidden="true" /><strong>{startCue}</strong></div>
-        <b className="start-subtitle">{startCue === 'READY' ? m.stage.ready : startCue === 'GO!' ? m.stage.go : m.stage.counting}</b>
-        <div className="start-lights" aria-hidden="true">{[5,4,3,2,1].map(n => <i key={n} className={startCue === 'GO!' || Number(startCue) <= n ? 'lit' : ''} />)}</div>      </div>
+        <b className="start-subtitle">{startCue === 'GO!' ? m.stage.go : m.stage.counting}</b>
+        <div className="start-lights" aria-hidden="true">{Array.from({ length: COUNTDOWN }, (_, i) => COUNTDOWN - i).map(n => <i key={n} className={startCue === 'GO!' || Number(startCue) <= n ? 'lit' : ''} />)}</div>      </div>
     </div>}
     {cinematic && <div className="finish-shot-bars" />}
     {winnerCutIn && <div key={`cut-in-${game.round}`} className="sprint-cut-in" aria-hidden="true" style={{ '--horse': HORSES[order[0] - 1].color } as CSSProperties}><div className="cut-in-band"><span className="cut-in-kicker">FIRST ACROSS THE LINE{m.stage.firstAcross && <b>{m.stage.firstAcross}</b>}</span><div className="cut-in-name"><HorseNumber id={order[0]} /><strong>{horse(order[0])}</strong>{winnerAlias && <em>{winnerAlias}</em>}<Trophy size={26} /></div></div></div>}

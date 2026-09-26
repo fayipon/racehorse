@@ -56,7 +56,6 @@ const messages = {
     countdown: '投注倒數',
     assembling: '小馬集合中',
     assemblingNote: '本場已封盤，準備迎接起跑！',
-    ready: '各就各位',
     go: '開跑！全速前進',
     counting: '起跑倒數',
     firstAcross: '率先衝線',
