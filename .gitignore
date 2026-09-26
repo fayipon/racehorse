@@ -33,3 +33,6 @@ tmp/
 dev/
 .env
 .env.*
+
+# Licensed source assets (paid, not for redistribution): kept local only.
+vendor/
