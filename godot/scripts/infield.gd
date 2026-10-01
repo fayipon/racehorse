@@ -3,7 +3,6 @@ extends Node3D
 # The infield garden behind the runners: a diamond-mown lawn, a fountain pond
 # on the centre line and a topiary horse at the final-bend end.
 const KIT = preload("res://scripts/mesh_kit.gd")
-const GROUND = preload("res://shaders/ground.gdshader")
 const WATER = preload("res://shaders/water.gdshader")
 const FOLIAGE = preload("res://shaders/foliage.gdshader")
 const HORSE_MODEL = preload("res://assets/quaternius/horse.glb")
@@ -15,11 +14,7 @@ const GARDEN := Vector3(-31,0,0)
 func build(course: RefCounted, reduced: bool) -> void:
 	var lawn := MeshInstance3D.new()
 	lawn.mesh=KIT.course_band(course,.02,13.9,.008,256)
-	var lawn_mat := ShaderMaterial.new()
-	lawn_mat.shader=GROUND
-	lawn_mat.set_shader_parameter("color_dark",Color("4b843b"))
-	lawn_mat.set_shader_parameter("color_light",Color("80ad56"))
-	lawn.material_override=lawn_mat
+	lawn.material_override=KIT.ground(0,Color("4c6e24"),Color("7c9a3a"))
 	add_child(lawn)
 	build_pond()
 	build_fountain(reduced)
@@ -31,6 +26,8 @@ func build_topiary() -> void:
 	var leaves := ShaderMaterial.new()
 	leaves.shader=FOLIAGE
 	leaves.set_shader_parameter("style",1)
+	leaves.set_shader_parameter("leafy",true)
+	leaves.set_shader_parameter("leaf_texture",preload("res://assets/trees/leaves.png"))
 	leaves.set_shader_parameter("leaf_dark",Color("2a5323"))
 	leaves.set_shader_parameter("leaf_light",Color("6f9d45"))
 	var ring := KIT.begin()

@@ -4,10 +4,8 @@ extends Node3D
 # intact. Only the top three horses stand here; the champion wears the garland.
 const HORSE = preload("res://scripts/asset_horse.gd")
 const KIT = preload("res://scripts/mesh_kit.gd")
-const GROUND = preload("res://shaders/ground.gdshader")
 const FOLIAGE = preload("res://shaders/foliage.gdshader")
-const TREE = preload("res://assets/nature/tree_round.gltf")
-const LANDSCAPE = preload("res://scripts/landscape.gd")
+const FLORA = preload("res://scripts/flora.gd")
 const MARBLE = Color("f3eee3")
 const STONE = Color("e2d9c6")
 const GOLD = Color("dcb45c")
@@ -54,10 +52,7 @@ func build_ground() -> void:
 	plane.size=Vector2(140,150)
 	lawn.mesh=plane
 	lawn.position=Vector3(0,-.01,40)
-	var mat := ShaderMaterial.new()
-	mat.shader=GROUND
-	mat.set_shader_parameter("color_dark",Color("3d7433"))
-	mat.set_shader_parameter("color_light",Color("6f9d4a"))
+	var mat := KIT.ground(0,Color("4f7428"),Color("7f9f3f"))
 	mat.set_shader_parameter("band",3.0)
 	lawn.material_override=mat
 	add_child(lawn)
@@ -92,21 +87,19 @@ func build_backdrop() -> void:
 	var studio := KIT.painted()
 	studio.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
 	KIT.finish(st,studio,self,false)
-	# Trees from the course's own nature kit, potted in white planters.
+	# Round trees grown for the course, potted in white planters.
 	var planters := KIT.begin()
-	var nature: Node3D=LANDSCAPE.new()
 	for x in [-9.2,9.2]:
 		var pot := Vector3(x,0,-1.2)
 		KIT.cylinder(planters,pot,pot+Vector3(0,1.1,0),.62,MARBLE,16,.78)
 		KIT.cylinder(planters,pot+Vector3(0,1.1,0),pot+Vector3(0,1.22,0),.84,GOLD,16)
 		KIT.disc(planters,pot+Vector3(0,1.17,0),.78,Color("4d3b2b"),Vector3.UP,16)
-		var tree: Node3D=TREE.instantiate()
+		var tree := MeshInstance3D.new()
+		tree.mesh=FLORA.mesh("tree_round")
 		tree.position=pot+Vector3(0,1.15,0)
 		tree.rotation.y=.6 if x<0 else 2.4
-		tree.scale=Vector3.ONE*.42
-		nature.dress(tree,"tree_round")
+		tree.scale=Vector3.ONE*.3
 		add_child(tree)
-	nature.free()
 	KIT.finish(planters,KIT.painted(.82,.22),self)
 	var hedge := KIT.begin()
 	for i in range(18):
@@ -119,6 +112,8 @@ func build_backdrop() -> void:
 	var leaves := ShaderMaterial.new()
 	leaves.shader=FOLIAGE
 	leaves.set_shader_parameter("style",1)
+	leaves.set_shader_parameter("leafy",true)
+	leaves.set_shader_parameter("leaf_texture",preload("res://assets/trees/leaves.png"))
 	leaves.set_shader_parameter("leaf_dark",Color("2a5323"))
 	leaves.set_shader_parameter("leaf_light",Color("6c9a45"))
 	KIT.finish(hedge,leaves,self)

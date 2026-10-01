@@ -68,7 +68,14 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 
 ## 自然植栽素材
 
-- 採用 [Quaternius Stylized Nature MegaKit](https://quaternius.com/packs/stylizednaturemegakit.html) 免費模型：五種闊葉樹、兩種灌木、三種草叢、兩種花叢、兩種石頭。
+- **樹、灌木、草叢**（2026-10-01 重製，使用者給參考圖、要求寫實且遠近有層次，並要風吹搖動）：全部由 `scripts/bake_trees.py` 自己長出來，不用照片或外部模型，輸出到 `godot/assets/trees/`。
+  - 樹：四種（橡樹 12.9 m、榆樹 15.3 m、圓冠 10.1 m、小樹 7.1 m）。枝幹用空間殖民演算法朝樹冠裡散布的吸引點生長，粗細依管線模型（每段承載它供養的所有枝條），樹冠是一圈分開的葉團、中間露出天空與枝幹。樹葉是貼著細枝的葉片卡，貼圖是程式畫的葉叢（`leaves.png` 2×2：兩種樹葉叢、灌木葉、開黃花的灌木）。頂點色存環境光遮蔽，葉片法線指向所屬葉團外側，整團樹冠像一個柔和的體積受光。
+  - 灌木兩種、草叢兩種（`grass.png`）。
+  - 遠排的樹用看板（impostor）：`godot/tools/bake_impostors.gd`（需開視窗）把每棵樹拍成正面顏色圖與法線圖，`impostor.gdshader` 讓看板轉向鏡頭並用法線打光；陰影階段看板轉向太陽，投出樹的剪影。
+  - 層次由近到遠：內場小樹林與外圍第一排（桌機 3D、手機看板）→ 第二排與外圈樹叢（看板）→ 168～200 m 三排連續林帶（前排有低矮灌叢遮住樹幹）→ 兩圈森林山脊（`hills.gdshader`：樹冠斑紋、草地空地、越遠越藍的空氣透視）。
+  - **風**：樹、灌木、草叢由地面起彎曲，傾斜量隨高度平方增加，陣風沿風向掃過全場，鄰近的植物一起動，葉片另有細碎抖動；樹幹和樹冠用同一組參數一起彎。遠排看板與跑道草葉（草殼）也跟著同一陣風。玩家開了「減少動態」就全部靜止。參數在 `flora.gd` 的 `WIND`。
+  - 樹籬與造型馬改用葉片貼圖三面投影（`foliage.gdshader` 的 `leafy`）。
+- 花叢與石頭仍採用 [Quaternius Stylized Nature MegaKit](https://quaternius.com/packs/stylizednaturemegakit.html) 免費模型（原本的五種樹、灌木、草叢已由上面取代，模型保留但由 `export_presets.cfg` 排除，不打包）。
 - 由作者的 [Poly Pizza 素材集](https://poly.pizza/bundle/Stylized-Nature-MegaKit-T34GZFA0fm) 取得，授權 CC0；各模型來源與原始 SHA-256 記錄於 `godot/assets/nature/manifest.json`，授權說明於同目錄 `LICENSE.md`。
 - 模型重新封裝為 glTF／BIN，共用相同的原始貼圖，未改動模型幾何或貼圖像素。重建工具：`scripts/prepare_nature_assets.py`。原始 PNG 保留不變，Godot 匯入時轉為品質 0.85 的有損 WebP，以縮小 Web 資源包。
 - `godot/scripts/landscape.gd` 負責分群種植與 MultiMesh 空間批次；`foliage.gdshader`／`ground.gdshader` 為專案自製風動與草地材質，未使用付費版 Shader。
@@ -80,14 +87,21 @@ Use case: stylized-concept. Asset type: panoramic background for a cute plush ho
 - 觀眾採用 [Quaternius Background Posed Humans](https://quaternius.com/packs/backgroundposedhumans.html)，從[作者在 OpenGameArt 的發布頁](https://opengameart.org/content/lowpoly-posed-humans)取得完整素材包。使用男女坐姿、坐姿加油、站立揮手與四種髮型，授權 CC0；原始 OBJ／MTL 與作者授權檔保存在 `godot/assets/venue/crowd/`。
 - `godot/assets/venue/manifest.json` 記錄素材來源、壓縮檔及所保留原始檔的 SHA-256。作者的授權檔原樣保留（檔內標頭寫 Knight Pack，但內文署名為 Background characters，發布頁亦明確標示 CC0）。
 - `venue.gd` 依主看台的座位排數與走道排列觀眾，合併人物與髮型並以 MultiMesh 分批繪製；衣服／膚色由自製 `spectators.gdshader` 隨機配置，保留原模型姿勢。
-- 遠景山丘由現有 Nature MegaKit 石頭模型拉寬、壓低並分層排列，使用低對比霧色材質。
+- 遠景山丘（2026-10-01 起）：`landscape.gd` 以雜訊生成兩圈環狀地形（222～282 m、320～455 m），`hills.gdshader` 畫森林樹冠斑紋與空地，越遠的一圈霧氣越重、越藍。取代原本拉寬的石頭模型。
 
 ## 草地跑道、欄杆與內場
 
-- `godot/scripts/race_track.gd` 程序生成草地跑道、沙地訓練道、白色圓管欄杆（內欄鵝頸柱）、終點柱、距離桿與樹籬；材質為自製 `ground`（草皮、沙道）與 `foliage`（樹籬）shader；同類表面共用一個 shader，以減少 Web 首次載入的編譯時間。修剪條紋沿橢圓連續銜接，近景有細微紋理、遠景降低細節以減少閃爍。未使用付費跑道素材。
+- `godot/scripts/race_track.gd` 程序生成草地跑道、沙地訓練道、白色圓管欄杆（內欄鵝頸柱）、終點柱、距離桿與樹籬；材質為自製 `ground`（草皮、沙道）與 `foliage`（樹籬）shader；同類表面共用一個 shader，以減少 Web 首次載入的編譯時間。未使用付費跑道素材。
+- **寫實草皮**（2026-10-01，使用者給參考圖要求「真實草皮」）：
+  - 貼圖由 `scripts/bake_turf.py` 自己畫出來（隨機草葉與沙粒，沒有用照片或外部素材），可無縫拼接，放在 `godot/assets/turf/`：草皮 1 米一格的顏色（1024）與法線（512）、沙道 3 米一格的耙痕與蹄印（顏色 1024、法線 512）。匯入為有損 WebP，整組約 1.2 MB。
+  - 草皮、內場、外圍草地、頒獎台都用 `mesh_kit.gd` 的 `KIT.ground(pattern, 暗色, 亮色)` 建材質：貼圖給草葉細節，兩個顏色決定各區的色調；另外疊兩層放大、旋轉的同一張貼圖，打散重複並保留中距離的草叢紋理。
+  - 割草條紋改為沿跑道方向（跟著彎道），明暗隨觀看方向翻轉：草葉倒向遠離鏡頭的那條偏亮、倒向鏡頭的偏暗，從正上方看幾乎看不出來。
+  - 近景草葉：桌機在跑道上疊 12 層「草殼」，每層只留長得到那個高度的草葉，草葉順著條紋方向傾斜，欄杆邊的草較長。草葉小於約一個像素就逐漸縮回貼圖裡，避免閃爍；草殼切成 28 段，只畫鏡頭 26 米內的段，額外 GPU 成本很小。手機（`low_power`）不畫草殼，只用貼圖。
+  - 跑道內欄一側有馬蹄踩出的偏黃磨損帶與零星草皮翻起的土坑。
+- **欄杆細節**（2026-10-01，使用者指出立柱接頭粗糙）：欄杆是 `KIT.sweep` 沿整圈掃出的一條圓管（桌機 16 面、手機 10 面），相鄰段共用頂點、方向沿路延續，沒有接縫或扭轉。內欄鵝頸柱的頸部是一段平滑彎臂，從內場側水平接進欄杆；外欄與沙道欄杆的直立柱停在最上面那條欄杆的中心裡。每個接點都有 `KIT.collar` 做的模壓套管（端面倒角、圓角法線），立柱入土處有底座套管。
 - `godot/scripts/infield.gd` 與自製 `ground`、`water`、`foliage` shader 建立內場斜格草坪、噴泉池與造型馬花園；造型馬沿用 Quaternius 馬模型，套上樹籬材質。噴泉以 CPUParticles3D 繪製。冠軍圈的盆栽樹沿用 Nature MegaKit 的 `tree_round`。
 - 先前的欄杆模型：3D Assets 的 [Horse Stables and Equestrian Yard — Arena Rail](https://3dassets.dev/assets/equestrian-yard-and-stables-arena-rail-2d66cd48)（CC0 1.0，發布者標示為 AI 製作素材）。原始與轉換後的 GLB、`manifest.json`、`LICENSE.md` 保留在 `godot/assets/equestrian/` 供參考，`scripts/prepare_equestrian_assets.mjs` 仍可重建；現已由 `export_presets.cfg` 排除，不打包進 Web 匯出。
-- 馬蹄後的粒子調整為較小、較淡的草綠色揚屑，取代原本沙地的黃褐色塵霧。
+- 馬蹄後的粒子調整為較小、較淡的草綠色揚屑，取代原本沙地的黃褐色塵霧。2026-10-01 起另有踢起的草皮土塊（深褐土塊、頂上帶草），每步沿短拋物線往後飛、落回草地；全場一批 MultiMesh，與欄杆柱共用同一個 shader，手機減半，減少動態時不顯示。
 
 ## 保留的原程式模型
 

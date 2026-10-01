@@ -49,6 +49,7 @@ var previous_shot := -1
 var rng := RandomNumberGenerator.new()
 var course = preload("res://scripts/course.gd").new()
 const PONY = preload("res://scripts/asset_horse.gd")
+const KIT = preload("res://scripts/mesh_kit.gd")
 var race_clock := 0.0
 const MOTION = preload("res://scripts/race_motion.gd")
 var motion_clock = MOTION.new()
@@ -105,6 +106,13 @@ var dust_cycles: PackedInt32Array = []
 var dust_origins: Array[Vector3] = []
 var dust_forwards: Array[Vector3] = []
 var dust_outwards: Array[Vector3] = []
+# Clods of turf the hooves flick up and back: one batch for the whole field.
+const CLODS := 10
+const CLOD_LIFE := .5
+var clods: MultiMesh
+var clod_origins: Array[Vector3] = []
+var clod_velocities: Array[Vector3] = []
+var clod_cycles: PackedInt32Array = []
 var podium = preload("res://scripts/podium.gd").new()
 var featured_runner := 0
 var winner_nose := NOSE
@@ -150,6 +158,8 @@ func _ready() -> void:
 		# Phones and tablets get the power-saving tier: 30 fps, a lighter crowd and
 		# planting, no MSAA or glow, and a smaller shadow map.
 		low_power = bool(JavaScriptBridge.eval("window.matchMedia('(pointer: coarse)').matches"))
+	# Native previews can try the phone tier: godot --path godot -- --low-power
+	if not OS.has_feature("web") and "--low-power" in OS.get_cmdline_user_args(): low_power=true
 	set_frame_rate(30 if low_power else 60)
 	PONY.low_power=low_power
 	if low_power:
@@ -284,7 +294,7 @@ func build_environment() -> void:
 	track_node=preload("res://scripts/race_track.gd").new()
 	add_child(track_node)
 	# The physical finish and minimap both lie at x=0 on the near straight.
-	track_node.build(course)
+	track_node.build(course,low_power,reduced_motion)
 	gate=preload("res://scripts/starting_gate.gd").new()
 	add_child(gate)
 	gate.build(course,COLORS)
@@ -378,6 +388,21 @@ func build_finish_effects() -> void:
 		dust_origins.append(Vector3.ZERO)
 		dust_forwards.append(Vector3.RIGHT)
 		dust_outwards.append(Vector3.BACK)
+	# A clod is a crumb of soil with its grass still on top; it shares the
+	# painted batch shader of the rail posts, so it adds no shader to compile.
+	var st := KIT.begin()
+	KIT.box(st,Vector3.ZERO,Vector3(.05,.03,.042),Color("4a3524"))
+	KIT.box(st,Vector3(0,.019,0),Vector3(.054,.012,.046),Color("4f7a2a"))
+	var clod_mesh := st.commit()
+	clod_mesh.surface_set_material(0,KIT.painted(1.0,0.0))
+	var count:=field*(CLODS/2 if low_power else CLODS)
+	var hidden:=Transform3D(Basis.from_scale(Vector3.ZERO),Vector3.ZERO)
+	var batch:=KIT.multimesh(clod_mesh,range(count).map(func(_i: int) -> Transform3D: return hidden),self,false)
+	clods=batch.multimesh
+	clod_origins.resize(count)
+	clod_velocities.resize(count)
+	clod_cycles.resize(count)
+	clod_cycles.fill(-1)
 
 func trigger_finish() -> void:
 	finished=true
@@ -413,6 +438,7 @@ func read_bridge() -> void:
 		previous_shot=-1
 		camera_initialized=false
 		dust_cycles.fill(-1)
+		clod_cycles.fill(-1)
 	phase = str(data.get("phase","betting"))
 	var snapshot := float(data.get("seconds",0.0))
 	if snapshot != seconds or reset_clock or not motion_clock.initialized:
@@ -812,6 +838,33 @@ func update_effects(delta: float) -> void:
 			dust[i].position=dust_origins[i]-dust_forwards[i]*t*lerpf(.7,1.6,sprint)+dust_outwards[i]*sin(i*2.1)*t*.4+Vector3(0,.08+t*lerpf(.2,.4,sprint),0)
 			var size: float=.12+sin(t*PI)*lerpf(.4,.75,sprint)
 			dust[i].scale=Vector3(size*1.3,size,size)
-			var tint:=Color("8a9862")
+			var tint:=Color("8c8d62")
 			tint.a=sin(t*PI)*lerpf(.10,.18,sprint)
 			dust_materials[i].albedo_color=tint
+	# Clods leave the hind hooves on a short arc and drop back onto the turf
+	# behind the runner; each one is thrown again every stride.
+	var per_horse:=clods.instance_count/field
+	for i in range(clods.instance_count):
+		var owner:=i%field
+		var p:=float(track_positions[owner])
+		var transform:=Transform3D(Basis.from_scale(Vector3.ZERO),Vector3.ZERO)
+		if phase=="racing" and p>.002 and not reduced_motion and horses[owner].visible:
+			var throw_clock:=animation_clock/.6+float(i/field)/per_horse+owner*.37
+			var cycle:=int(floor(throw_clock))
+			var age:=fposmod(throw_clock,1.0)*.6
+			if cycle!=clod_cycles[i]:
+				clod_cycles[i]=cycle
+				var heading:float=horses[owner].rotation.y
+				var tangent:=Vector3(-sin(heading),0,-cos(heading))
+				var outward:=Vector3(-tangent.z,0,tangent.x)
+				clod_origins[i]=horses[owner].position-tangent*.35+outward*(scatter(i,cycle,1)-.5)*.5+Vector3(0,.05,0)
+				clod_velocities[i]=-tangent*lerpf(1.6,3.4,scatter(i,cycle,2))*lerpf(1.0,1.4,sprint)+outward*(scatter(i,cycle,3)-.5)*1.4+Vector3(0,lerpf(1.3,2.6,scatter(i,cycle,4)),0)
+			var position:Vector3=clod_origins[i]+clod_velocities[i]*age+Vector3(0,-4.9*age*age,0)
+			if age<CLOD_LIFE and position.y>.02:
+				var spin:=Basis(Vector3(scatter(i,cycle,5)-.5,1,scatter(i,cycle,6)-.5).normalized(),age*14.0+scatter(i,cycle,7)*TAU)
+				transform=Transform3D(spin.scaled(Vector3.ONE*lerpf(.6,1.3,scatter(i,cycle,8))),position)
+		clods.set_instance_transform(i,transform)
+
+# A repeatable pseudo-random number in [0,1) for a clod's throw.
+func scatter(index: int, cycle: int, salt: int) -> float:
+	return fposmod(sin(float(index)*12.9898+float(cycle)*78.233+float(salt)*37.719)*43758.5453,1.0)

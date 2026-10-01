@@ -18,4 +18,5 @@ renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.063, 0.11, 0.098, 1)
 textures/default_filters/use_nearest_mipmap_filter=false
+textures/default_filters/anisotropic_filtering_level=4
 anti_aliasing/quality/msaa_3d=1
