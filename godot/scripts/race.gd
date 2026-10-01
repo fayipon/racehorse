@@ -531,6 +531,9 @@ func _process(delta: float) -> void:
 			var tangent: Vector3=sample.tangent
 			horses[i].position=sample.position-tangent*(winner_nose if i==winner-1 else NOSE)
 			horses[i].rotation.y=atan2(-tangent.x,-tangent.z)
+			# The winner times its last strides to cross at full stretch (asset_horse.gd).
+			var lap:=4.0*float(course.config.halfStraight)+TAU*course.lane_radius(i)
+			horses[i].finish_in=(1.0-p)*lap if phase=="racing" and i==winner-1 and not finished and p<1.0 else -1.0
 		var celebration := phase=="result" and i==winner-1
 		horses[i].visible=phase!="result"
 		horses[i].call("animate",animation_clock,moving,running,celebration,delta*slow_motion)

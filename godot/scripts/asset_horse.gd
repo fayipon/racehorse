@@ -8,6 +8,7 @@ extends Node3D
 const VIVERNA := "res://assets/viverna/stallion.glb"
 const QUATERNIUS := "res://assets/quaternius/horse.glb"
 const KIT = preload("res://scripts/mesh_kit.gd")
+const STRIDE_FIT = preload("res://scripts/stride_fit.gd")
 static var realistic := ResourceLoader.exists(VIVERNA) and not OS.get_cmdline_user_args().has("--cc0-horse")
 static var source: PackedScene = load(VIVERNA if realistic else QUATERNIUS)
 # Phones race the lighter level of detail.
@@ -44,6 +45,20 @@ static var body_material: StandardMaterial3D
 # The cloth's own material, told how hard the horse is moving so its skirt swings.
 var cloth_material: ShaderMaterial
 var cloth_stride := -1.0
+# Narrows the gallop's stride to the ground covered (stride_fit.gd).
+var stride_fit: SkeletonModifier3D
+# A galloping horse banks into a bend; it leans by the turn it is making.
+const LEAN_MOST := .2
+# How far the neck turns into a bend, for each radian of lean.
+const LOOK_INTO_TURN := .9
+# Metres to the line while the winner is running in, set by race.gd; -1 otherwise.
+# Over its last strides it quickens or eases its rhythm a little so it crosses
+# at full stretch, not with its legs gathered under it.
+var finish_in := -1.0
+const FINISH_STEER := 1.6
+const STEER_MOST := .3
+var lean := 0.0
+var last_heading := INF
 
 func build(index: int, _color: Color) -> void:
 	var style: Dictionary=styles[index]
@@ -85,11 +100,54 @@ func build(index: int, _color: Color) -> void:
 	for clip in ["Idle","Idle_2","Idle_Headlow","Eating","Walk","Gallop"]:
 		var animation := player.get_animation(clip)
 		animation.loop_mode=Animation.LOOP_LINEAR
-	player.play("Idle")
+		if not shared.has("trimmed:"+clip):
+			trim_held_frame(animation)
+			shared["trimmed:"+clip]=true
+	if realistic:
+		if not shared.has("stride"): shared.stride=STRIDE_FIT.study(skeleton,player,horse_from_skeleton)
+		if not (shared.stride as Dictionary).is_empty():
+			stride_fit=STRIDE_FIT.new()
+			stride_fit.setup(shared.stride)
+			skeleton.add_child(stride_fit)
+	player.play("Idle",0.0)
 	player.advance(0)
 	player.seek(index*.19,true)
 	add_race_cloth(index,Color(style.number))
 	find_muzzle()
+
+# The pack's clips begin on a held frame: their first two frames are the same
+# pose, so every loop stalls for a frame (a hitch in each gallop stride). The
+# first frame is cut and the clip starts on the second, which its last frame
+# already matches. A clip without the held frame is left alone.
+static func trim_held_frame(clip: Animation) -> void:
+	var frame:=INF
+	for t in range(clip.get_track_count()):
+		for k in range(clip.track_get_key_count(t)):
+			var time:=clip.track_get_key_time(t,k)
+			if time>1e-4: frame=minf(frame,time)
+	if not is_finite(frame) or frame>=clip.length*.5: return
+	var held:=0.0
+	var moving:=0.0
+	for t in range(clip.get_track_count()):
+		if clip.track_get_type(t)!=Animation.TYPE_ROTATION_3D: continue
+		var a:=clip.rotation_track_interpolate(t,0.0)
+		var b:=clip.rotation_track_interpolate(t,frame)
+		var c:=clip.rotation_track_interpolate(t,frame*2.0)
+		held+=a.angle_to(b)
+		moving+=b.angle_to(c)
+	if held>moving*.2: return
+	for t in range(clip.get_track_count()):
+		var type:=clip.track_get_type(t)
+		if clip.track_get_key_count(t)<2: continue
+		match type:
+			Animation.TYPE_POSITION_3D: clip.position_track_insert_key(t,frame,clip.position_track_interpolate(t,frame))
+			Animation.TYPE_ROTATION_3D: clip.rotation_track_insert_key(t,frame,clip.rotation_track_interpolate(t,frame))
+			Animation.TYPE_SCALE_3D: clip.scale_track_insert_key(t,frame,clip.scale_track_interpolate(t,frame))
+			Animation.TYPE_VALUE: clip.track_insert_key(t,frame,clip.value_track_interpolate(t,frame))
+			_: continue
+		while clip.track_get_key_count(t)>0 and clip.track_get_key_time(t,0)<frame-1e-4: clip.track_remove_key(t,0)
+		for k in range(clip.track_get_key_count(t)): clip.track_set_key_time(t,k,clip.track_get_key_time(t,k)-frame)
+	clip.length-=frame
 
 # The textured stallion. The pack's coats are greys, whites, a black and a roan;
 # bays, chestnuts and palominos are tinted from them, so the stable keeps the
@@ -813,13 +871,38 @@ func animate(time: float, motion: float, running: bool, _celebration: bool, delt
 	var cycle:=player.get_animation(current_clip).length
 	# Turning on the spot, or held at the off, a horse still steps; a frozen
 	# frame (delta 0) holds every leg.
+	# Slow motion slows the ground and delta alike, so this is the true pace.
+	var pace:=minf(moved/delta,20.0) if delta>0.0 else 0.0
 	if current_clip=="Walk":
 		step=maxf(moved/walk_stride*cycle,delta*.55)
 	elif current_clip=="Gallop":
-		# Slow motion slows the ground and delta alike, so this is the true pace.
-		var pace:=minf(moved/delta,20.0) if delta>0.0 else 0.0
 		step=maxf(delta*GALLOP_TEMPO*pow(pace/GALLOP_PACE,.25)*cadence*cycle,delta*.3)
+		if finish_in>0.0 and pace>.5 and shared.has("stride") and (shared.stride as Dictionary).has("stretch"):
+			# Motion seconds to the line, and the clip time the stride will have
+			# reached by then at this rhythm; the rhythm is bent toward the stretch.
+			var lead:=finish_in/pace
+			var ahead:=step/delta*lead
+			if lead<FINISH_STEER and ahead>.05:
+				var landing:=fposmod(player.current_animation_position+ahead,cycle)
+				var miss:=fposmod(float(shared.stride.stretch)-landing+cycle*.5,cycle)-cycle*.5
+				step*=1.0+clampf(miss/ahead,-STEER_MOST,STEER_MOST)
 	player.advance(step)
+	if stride_fit!=null:
+		stride_fit.fitting=current_clip=="Gallop"
+		# A frozen frame keeps the last fit rather than springing back to the clip's stride.
+		if delta>0.0:
+			stride_fit.pace=pace
+			stride_fit.rate=step/delta
+	# Bank by the sideways pull of the turn (speed times turning rate), as a
+	# rider or a cyclist would; standing turns barely tilt.
+	if delta>0.0:
+		var turning:=angle_difference(last_heading,rotation.y)/delta if is_finite(last_heading) else 0.0
+		last_heading=rotation.y
+		if moved==0.0: turning=0.0
+		var wanted:=clampf(atan(pace*turning/9.8),-LEAN_MOST,LEAN_MOST)
+		lean=lerpf(lean,wanted,1.0-exp(-delta*3.0))
+		model.rotation.z=-lean
+		if stride_fit!=null: stride_fit.look=lean*LOOK_INTO_TURN
 	if cloth_material!=null:
 		var stride:=motion_blend*(1.0 if current_clip=="Gallop" else .35)
 		if absf(stride-cloth_stride)>.02:
