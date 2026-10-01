@@ -12,7 +12,7 @@ func verify_gate() -> void:
 	# Loaded and waiting: every horse in its own stall behind shut doors.
 	race.elapsed=58.0
 	race._process(1.0/60.0)
-	assert(race.gate.visible and race.gate.doors.size()==24,"Twelve stalls stand at the line before the off")
+	assert(race.gate.visible and race.gate.doors.size()==race.field*2,"One stall per runner stands at the line before the off")
 	assert(is_zero_approx(race.gate.opened),"The doors stay shut until the off")
 	for i in range(8):
 		var horse: Node3D=race.horses[i]
@@ -40,6 +40,6 @@ func verify_gate() -> void:
 	race.elapsed=121.0
 	race._process(1.0/60.0)
 	assert(race.gate.visible and is_zero_approx(race.gate.opened),"The next round's gate is back, shut")
-	print("PASS: twelve-stall gate loads, springs open at the off, and is cleared before the finish")
+	print("PASS: one stall per runner, loads, springs open at the off, and is cleared before the finish")
 	race.queue_free()
 	quit()

@@ -61,8 +61,9 @@ var preview_paused := false
 const PARADE = preload("res://scripts/parade_motion.gd")
 var parade_plan: Array = []
 # The paddock sits behind the starting gate. As betting closes each horse
-# crosses onto its stall's line (in a bigger field's tighter lanes it is already
-# close), then walks straight in, nose to the doors well before the off at 60 s.
+# crosses onto its stall's line (eight and ten runners have their stalls on
+# their own lanes, so they are already close), then walks straight in, nose to
+# the doors well before the off at 60 s.
 const PADDOCK_BACK := 3.2
 const LOAD_FROM := 47.0
 const LOAD_ACROSS := 2.5
@@ -70,7 +71,8 @@ const LOAD_WALK_FROM := 49.7
 const LOAD_IN := 56.0
 # A crossing slower than this is a side-step; faster, the horse turns and walks.
 const SIDE_STEP := .45
-# Out of the stalls, each runner drifts to its own lane within the first 70 m.
+# Out of the full field's twelve-stall gate each runner drifts to its own lane
+# within the first 70 m; smaller fields leave their stalls already on their lanes.
 const FAN_OUT = [.012,.06]
 var gate: Node3D
 var betting_clock := 0.0
@@ -520,6 +522,9 @@ func _process(delta: float) -> void:
 			if betting_clock>=LOAD_FROM and velocity.length()<=SIDE_STEP:
 				target_yaw=-PI/2
 				if absf(angle_difference(horses[i].rotation.y,target_yaw))>.3: stepping=.3
+			# A horse already on its stall's line steps off a moment before the walk
+			# in starts, so it never glides forward on a standing clip.
+			if betting_clock>=LOAD_WALK_FROM-.35 and betting_clock<LOAD_WALK_FROM+.5: stepping=maxf(stepping,.3)
 			horses[i].rotation.y=lerp_angle(horses[i].rotation.y,target_yaw,minf(delta*2.4,1.0))
 			# Any real translation keeps the walk cycle on, so hooves never slide.
 			moving=clampf(maxf(velocity.length()/1.65,.25 if velocity.length()>.02 else 0.0)+stepping,0,1)

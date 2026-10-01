@@ -1,12 +1,12 @@
 extends Node3D
 
-# The starting gate across the home straight at the line: twelve stalls whatever
-# the field. Runners stand with their noses at the front doors, which spring
+# The starting gate across the home straight at the line, one stall per runner
+# (course.gd places them). Runners stand with their noses at the front doors, which spring
 # open as the race starts; the gate is cleared away at the first camera cut, so
 # the field comes home to an open line.
 # Sized for the current horse (about 0.9 m wide, 3.5 m nose to tail and 2.9 m
 # to the ears, so it stands inside the frame); a new horse model only needs
-# DEPTH and the heights below adjusted, and the stall width in course.gd.
+# DEPTH and the heights below adjusted; stall widths come from course.gd.
 # Built like a real one: a green steel frame with lattice beams front and back,
 # padded partitions between the stalls, doors padded below and barred above,
 # and open end towers on pneumatic tyres. Everything but the doors is one mesh
@@ -39,7 +39,7 @@ var opened := -1.0
 # no shadow.
 func build(course: RefCounted, colors: Array, low_power := false) -> void:
 	tube=5 if low_power else 8
-	var stalls: int=course.STALLS
+	var stalls: int=course.stall_count()
 	var width: float=course.stall_spacing()
 	var first: float=course.stall_radius(0)-width*.5
 	var last: float=course.stall_radius(stalls-1)+width*.5
@@ -76,10 +76,11 @@ func build(course: RefCounted, colors: Array, low_power := false) -> void:
 		var z: float=course.stall_radius(k)
 		KIT.rounded_box(st,Vector3(FRONT+.005,BOARD_Y,z),Vector3(.04,BOARD_HEIGHT+.07,width-.1),.015,KIT.made_of(Color("f4f1e8"),KIT.PAINT))
 		KIT.rounded_box(st,Vector3(FRONT+.025,BOARD_Y,z),Vector3(.03,BOARD_HEIGHT,width-.17),.012,KIT.made_of(colors[k],KIT.PAINT))
-	# Open end towers on two pneumatic tyres each, braced on their outer face.
+	# Open end towers on two pneumatic tyres each, braced on their outer face;
+	# the tyres stay inside the rails with the full twelve-stall gate.
 	for side: float in [-1.0,1.0]:
 		var edge: float=(first if side<0 else last)
-		var outer := edge+side*.6
+		var outer := edge+side*.22
 		for x: float in [FRONT-.06,back+.06]:
 			KIT.rounded_box(st,Vector3(x,(TOP+.45)*.5+.25,outer),Vector3(.14,TOP+.45-.5,.14),.03,frame)
 			KIT.sweep(st,[Vector3(x,TOP+.42,edge),Vector3(x,TOP+.42,outer)] as Array[Vector3],.05,frame,tube)
@@ -90,7 +91,7 @@ func build(course: RefCounted, colors: Array, low_power := false) -> void:
 		# Chassis rail and axle housings carrying the wheels outside the tower.
 		KIT.rounded_box(st,Vector3(middle,.62,outer),Vector3(DEPTH+.2,.22,.24),.04,frame)
 		for x: float in [back+.75,FRONT-.75]:
-			wheel(st,Vector3(x,.52,outer+side*.32),side)
+			wheel(st,Vector3(x,.52,outer+side*.2),side)
 	KIT.finish(st,KIT.structure(false),self)
 	for k in range(stalls):
 		var number := Label3D.new()

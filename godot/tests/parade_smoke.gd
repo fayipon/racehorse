@@ -38,8 +38,9 @@ func verify_paddock() -> void:
 				assert(false,"A standing horse must not slide")
 			if i<7:
 				var other: Node3D=race.horses[i+1]
-				if absf(horse.position.x-other.position.x)<2.2:
-					assert(other.position.z-horse.position.z>.95,"Neighbours must not walk through each other")
+				if absf(horse.position.x-other.position.x)<2.2 and other.position.z-horse.position.z<=.95:
+					push_error("horses %d and %d %.2f m apart across, %.2f m along at %.2fs" % [i,i+1,other.position.z-horse.position.z,other.position.x-horse.position.x,race.betting_clock])
+					assert(false,"Neighbours must not walk through each other")
 	assert(walked>2000,"Horses should spend a good part of betting on the move")
 	assert(moods.size()>=3,"Standing horses should graze, look around or rest, not only idle")
 	for i in range(8):

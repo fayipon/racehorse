@@ -11,15 +11,22 @@ func lane_spacing() -> float:
 func lane_radius(lane: float) -> float:
 	return float(config.laneStart) + lane * lane_spacing()
 
-# The starting gate always has twelve stalls, centred across the track, whatever
-# the field: runners load the stalls in number order and fan out to their lanes.
-const STALLS := 12
+# Each field has a gate of its own size. Eight and ten runners load a gate of
+# eight or ten stalls set right on their lanes, so they gallop straight out of
+# it; the full field of twelve loads a gate of 1.05 m stalls across the middle
+# of the track and fans out to its lanes (the lanes there are closer than the
+# stalls, so the fan is slight).
+const FULL_GATE := 12
 const STALL_SPACING := 1.05
+func stall_count() -> int:
+	return field
+
 func stall_spacing() -> float:
-	return STALL_SPACING
+	return STALL_SPACING if field>=FULL_GATE else lane_spacing()
 
 func stall_radius(stall: float) -> float:
-	return float(config.innerRadius) + float(config.trackWidth)*.5 + (stall - (STALLS-1)*.5) * STALL_SPACING
+	if field<FULL_GATE: return lane_radius(stall)
+	return float(config.innerRadius) + float(config.trackWidth)*.5 + (stall - (FULL_GATE-1)*.5) * STALL_SPACING
 
 func sample(progress: float, radius: float) -> Dictionary:
 	var half := float(config.halfStraight)
