@@ -297,7 +297,7 @@ func build_environment() -> void:
 	track_node.build(course,low_power,reduced_motion)
 	gate=preload("res://scripts/starting_gate.gd").new()
 	add_child(gate)
-	gate.build(course,COLORS)
+	gate.build(course,COLORS,low_power)
 	await loading_checkpoint(4)
 	venue = preload("res://scripts/venue.gd").new()
 	add_child(venue)

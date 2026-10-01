@@ -3,7 +3,8 @@ render_mode diffuse_lambert, specular_disabled, cull_disabled;
 
 // Every mown or raked surface shares this one shader, so the web build compiles
 // a single program for all of them; `pattern` picks the surface.
-// 0: infield diamonds, 1: outer meadow, 2: racing turf, 3: sand track.
+// 0: infield diamonds, 1: outer meadow, 2: racing turf, 3: sand track,
+// 4: flower bedding.
 // The blades and grains come from baked textures (scripts/bake_turf.py); the
 // colours here set each surface's tone around them.
 uniform int pattern = 0;
@@ -108,6 +109,33 @@ void fragment() {
 		vec3 n=texture(sand_normal,uv).xyz*2.0-1.0;
 		n.xy*=1.0-smoothstep(.02,.12,footprint);
 		surface_normal=normalize(n.x*vec3(along.x,0.0,along.y)+n.z*vec3(0.0,1.0,0.0)-n.y*vec3(outward.x,0.0,outward.y));
+	} else if (pattern==4) {
+		// Carpet bedding: mounded plants packed close, each crowned with blooms.
+		// Two offset layers of five-petalled flowers cover most of the leaves;
+		// from afar they blend into the bed's colour over a darker ground.
+		float mound=noise(world.xz*3.5)*.6+noise(world.xz*8.0)*.4;
+		vec3 leaves=color_dark.rgb*(.55+.6*noise(world.xz*26.0))*(.75+.4*mound);
+		float bloom=0.0;
+		float heart=0.0;
+		vec2 dome=vec2(0.0);
+		for (int k=0;k<2;k++) {
+			vec2 q=world.xz*30.0+vec2(float(k)*.5,float(k)*.37);
+			vec2 id=floor(q)+vec2(float(k)*17.0);
+			vec2 f=fract(q)-(vec2(hash(id+vec2(3.1,1.7)),hash(id+vec2(7.3,4.9)))*.4+.3);
+			float size=.36+.14*hash(id+vec2(5.0,2.0));
+			float petals=1.0+.22*sin(atan(f.y,f.x)*5.0+hash(id)*6.28);
+			float flower=(1.0-smoothstep(size*.8,size,length(f)*petals))*step(.18,hash(id+vec2(.7,9.1)))*smoothstep(.2,.5,mound+.15);
+			heart=max(heart,flower*(1.0-smoothstep(0.0,size*.32,length(f))));
+			dome+=f*flower;
+			bloom=max(bloom,flower);
+		}
+		float far=smoothstep(.012,.05,footprint);
+		vec3 flowers=color_light.rgb*(.86+.2*noise(world.xz*40.0));
+		flowers=mix(flowers,flowers*vec3(.8,.7,.45),heart*.7);
+		vec3 near=mix(leaves,flowers,bloom);
+		vec3 blended=mix(color_dark.rgb*.7,color_light.rgb*.92,.68)*(.85+.25*mound);
+		albedo=mix(near,blended,far);
+		surface_normal=normalize(vec3(dome.x*2.2*(1.0-far)+(noise(world.xz*3.5+.1)-mound)*.5,1.0,dome.y*2.2*(1.0-far)));
 	} else {
 		vec2 uv=world.xz/TURF_TILE;
 		vec3 blades=texture(turf_albedo,uv).rgb;

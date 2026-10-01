@@ -41,6 +41,9 @@ var head_bone := -1
 var muzzle_local := Vector3.ZERO
 var horse_from_skeleton := Transform3D.IDENTITY
 static var body_material: StandardMaterial3D
+# The cloth's own material, told how hard the horse is moving so its skirt swings.
+var cloth_material: ShaderMaterial
+var cloth_stride := -1.0
 
 func build(index: int, _color: Color) -> void:
 	var style: Dictionary=styles[index]
@@ -274,16 +277,27 @@ func muzzle_reach() -> float:
 # hanging straight down each side below the barrel's widest point, like a
 # racing saddlecloth. It takes the weights of the body under it, so it moves
 # with every stride. The shape is worked out once per model; each horse only
-# colours it.
+# colours it. A light racing saddle sits on it and an elastic over-girth runs
+# over the saddle and round the barrel, fitted and skinned the same way; the
+# skirt below the barrel stands a little off the coat and swings with the gait.
 const CLOTH_SPAN := Vector2(.46,.75) # of the body's length, from the muzzle back
 const CLOTH_OFF := .035
 const CLOTH_HANG := .24
 const CLOTH_ROWS := 20
 const CLOTH_ARC := 16 # steps over each side of the back, from the spine to the widest point
 const CLOTH_DROP := 5
+# How far the hem stands off the coat, and the cloth's thickness at its edges.
+const CLOTH_FLARE := .035
+const CLOTH_THICK := .012
 # The number's centre: up from the hem, and along the flank from the front.
 const CLOTH_NUMBER_UP := .25
-const CLOTH_NUMBER_ALONG := .58
+const CLOTH_NUMBER_ALONG := .62
+# Along the cloth from its front edge: the saddle seat's centre and the
+# over-girth's centre line, in metres; the shader draws the saddle's outline.
+const SADDLE_AT := .4
+const GIRTH_AT := .36
+const GIRTH_WIDTH := .065
+const GIRTH_CLEAR := .012
 const CLOTH = preload("res://shaders/saddle_cloth.gdshader")
 const DIGITS = preload("res://assets/cloth_digits.png")
 
@@ -344,13 +358,15 @@ func cloth_shape() -> Dictionary:
 		var line: Array[Vector3]=[]
 		var side_x:=float(shape.width)*float(shape.fit)+CLOTH_OFF
 		for k in range(CLOTH_DROP):
-			line.append(Vector3(-side_x,float(shape.y)-CLOTH_HANG*(1.0-float(k)/CLOTH_DROP),shape.z))
+			var hang:=1.0-float(k)/CLOTH_DROP
+			line.append(Vector3(-side_x-CLOTH_FLARE*pow(hang,1.5),float(shape.y)-CLOTH_HANG*hang,shape.z))
 		for step in range(-CLOTH_ARC,CLOTH_ARC+1):
 			var angle:=float(step)/CLOTH_ARC*PI*.5
 			var reach:=superellipse(absf(angle),shape)*float(shape.fit)+CLOTH_OFF
 			line.append(Vector3(sin(angle)*reach,float(shape.y)+cos(angle)*reach,shape.z))
 		for k in range(CLOTH_DROP-1,-1,-1):
-			line.append(Vector3(side_x,float(shape.y)-CLOTH_HANG*(1.0-float(k)/CLOTH_DROP),shape.z))
+			var hang:=1.0-float(k)/CLOTH_DROP
+			line.append(Vector3(side_x+CLOTH_FLARE*pow(hang,1.5),float(shape.y)-CLOTH_HANG*hang,shape.z))
 		grid.append(line)
 	var vertices:=PackedVector3Array()
 	var normals:=PackedVector3Array()
@@ -359,6 +375,7 @@ func cloth_shape() -> Dictionary:
 	var per: int=body.per
 	var horse_to_mesh: Transform3D=(body.mesh_to_horse as Transform3D).affine_inverse()
 	var columns: int=grid[0].size()
+	var grid_normals: Array[Vector3]=[]
 	for r in range(grid.size()):
 		for c in range(columns):
 			var p: Vector3=grid[r][c]
@@ -366,6 +383,7 @@ func cloth_shape() -> Dictionary:
 			var along: Vector3=grid[mini(r+1,grid.size()-1)][c]-grid[maxi(r-1,0)][c]
 			var normal:=along.cross(across).normalized()
 			if normal.dot(Vector3(p.x,p.y-float(shapes[r].y),0))<0: normal=-normal
+			grid_normals.append(normal)
 			vertices.append(horse_to_mesh*p)
 			normals.append((horse_to_mesh.basis*normal).normalized())
 			var nearest:=nearest_point(p,.12,under)
@@ -399,8 +417,208 @@ func cloth_shape() -> Dictionary:
 			uv[i]=Vector2(uv[i].x,run[r])
 			edge[i]=Vector2(edge[i].x,minf(run[r],run[grid.size()-1]-run[r]))
 		if c==CLOTH_DROP: length=run[grid.size()-1]
-	shared.cloth={"vertices":vertices,"normals":normals,"bones":bones,"weights":weights,"indices":indices,"uv":uv,"edge":edge,"number_at":Vector2(CLOTH_NUMBER_UP,length*CLOTH_NUMBER_ALONG)}
+	# How freely each column hangs: 1 at the hems, 0 from the barrel's widest
+	# point up over the back. The shader swings the skirt by it.
+	var colors:=PackedColorArray()
+	for r in range(grid.size()):
+		for c in range(columns):
+			var k:=c if c<CLOTH_DROP else columns-1-c if c>=columns-CLOTH_DROP else CLOTH_DROP
+			colors.append(Color(1.0-float(k)/CLOTH_DROP,0,0))
+	var cloth:={"vertices":vertices,"normals":normals,"bones":bones,"weights":weights,"indices":indices,"uv":uv,"edge":edge,"colors":colors,
+		"number_at":Vector2(CLOTH_NUMBER_UP,length*CLOTH_NUMBER_ALONG),"grid":grid,"grid_normals":grid_normals,"columns":columns,"length":length,"horse_to_mesh":horse_to_mesh,"per":per}
+	add_cloth_hems(cloth)
+	shared.cloth=cloth
 	return shared.cloth
+
+# The cloth's thickness: a narrow band turned in from every edge of the sheet,
+# so a hem seen edge-on reads as padded cotton rather than a paper-thin shell.
+static func add_cloth_hems(cloth: Dictionary) -> void:
+	var grid: Array=cloth.grid
+	var columns: int=cloth.columns
+	var rows: int=grid.size()
+	var per: int=cloth.per
+	var horse_to_mesh: Transform3D=cloth.horse_to_mesh
+	var grid_normals: Array[Vector3]=cloth.grid_normals
+	# Each edge as [row, column, inward row, inward column] steps in order.
+	var left: Array=[]
+	var right: Array=[]
+	var front: Array=[]
+	var back: Array=[]
+	for r in range(rows):
+		left.append([r,0,r,1])
+		right.append([r,columns-1,r,columns-2])
+	for c in range(columns):
+		front.append([0,c,1,c])
+		back.append([rows-1,c,rows-2,c])
+	var vertices: PackedVector3Array=cloth.vertices
+	var normals: PackedVector3Array=cloth.normals
+	var uv: PackedVector2Array=cloth.uv
+	var edge: PackedVector2Array=cloth.edge
+	var colors: PackedColorArray=cloth.colors
+	var bones: PackedInt32Array=cloth.bones
+	var weights: PackedFloat32Array=cloth.weights
+	var indices: PackedInt32Array=cloth.indices
+	for run: Array in [left,right,front,back]:
+		var start:=vertices.size()
+		for step: Array in run:
+			var i: int=step[0]*columns+step[1]
+			var p: Vector3=grid[step[0]][step[1]]
+			var inward: Vector3=(grid[step[2]][step[3]] as Vector3)-p
+			var n: Vector3=grid_normals[i]
+			var out:=(-inward).normalized()
+			for depth: float in [0.0,CLOTH_THICK]:
+				vertices.append(horse_to_mesh*(p-n*depth))
+				normals.append((horse_to_mesh.basis*out).normalized())
+				uv.append(uv[i])
+				edge.append(Vector2.ZERO)
+				colors.append(colors[i])
+				bones.append_array(bones.slice(i*per,i*per+per))
+				weights.append_array(weights.slice(i*per,i*per+per))
+		for k in range(run.size()-1):
+			var a:=start+k*2
+			indices.append_array([a,a+1,a+2,a+1,a+3,a+2])
+	cloth.vertices=vertices
+	cloth.normals=normals
+	cloth.uv=uv
+	cloth.edge=edge
+	cloth.colors=colors
+	cloth.bones=bones
+	cloth.weights=weights
+	cloth.indices=indices
+
+# Height of the racing saddle over the cloth at (across, along) in metres: a
+# padded seat rising to a pommel at the front and a cantle behind, its flaps a
+# single layer of leather down each side. The outline itself is the shader's.
+static func saddle_height(a: float, l: float) -> float:
+	var seat:=1.0-pow(a/.17,2.0)-pow((l-SADDLE_AT)/.24,2.0)
+	var h:=.008
+	if seat>0.0: h+=.04*sqrt(seat)
+	h+=.03*exp(-pow((l-(SADDLE_AT-.2))/.05,2.0)-pow(a/.1,2.0))
+	h+=.022*exp(-pow((l-(SADDLE_AT+.21))/.05,2.0)-pow(a/.12,2.0))
+	return h
+
+# The saddle and over-girth, fitted once per model like the cloth.
+func tack_shape() -> Dictionary:
+	if shared.has("tack"): return shared.tack
+	var cloth:=cloth_shape()
+	var body:=body_points()
+	var grid: Array=cloth.grid
+	var columns: int=cloth.columns
+	var per: int=cloth.per
+	var horse_to_mesh: Transform3D=cloth.horse_to_mesh
+	var grid_normals: Array[Vector3]=cloth.grid_normals
+	var uv: PackedVector2Array=cloth.uv
+	# The saddle: the cloth's grid where the saddle may lie, lifted off it.
+	var rows:=PackedInt32Array()
+	var cols:=PackedInt32Array()
+	for r in range(grid.size()):
+		var l: float=uv[r*columns+CLOTH_DROP+CLOTH_ARC].y
+		if l>SADDLE_AT-.34 and l<SADDLE_AT+.34: rows.append(r)
+	for c in range(columns):
+		if absf(uv[c].x)<.58: cols.append(c)
+	var saddle:={"vertices":PackedVector3Array(),"normals":PackedVector3Array(),"uv":PackedVector2Array(),"bones":PackedInt32Array(),"weights":PackedFloat32Array(),"indices":PackedInt32Array()}
+	var lifted: Dictionary={}
+	for r in rows:
+		for c in cols:
+			var i:=r*columns+c
+			var p: Vector3=(grid[r][c] as Vector3)+grid_normals[i]*(saddle_height(uv[i].x,uv[i].y)+.004)
+			lifted[i]=p
+			saddle.vertices.append(horse_to_mesh*p)
+			saddle.normals.append(cloth.normals[i])
+			saddle.uv.append(uv[i])
+			saddle.bones.append_array((cloth.bones as PackedInt32Array).slice(i*per,i*per+per))
+			saddle.weights.append_array((cloth.weights as PackedFloat32Array).slice(i*per,i*per+per))
+	for r in range(rows.size()-1):
+		for c in range(cols.size()-1):
+			var a:=r*cols.size()+c
+			saddle.indices.append_array([a,a+1,a+cols.size(),a+1,a+cols.size()+1,a+cols.size()])
+	# The over-girth: a band round the barrel at GIRTH_AT, clear of the coat,
+	# the cloth and the saddle wherever it passes over them.
+	var z0: float=(grid[0][0] as Vector3).z
+	var z1: float=(grid[grid.size()-1][0] as Vector3).z
+	var girth:={"vertices":PackedVector3Array(),"normals":PackedVector3Array(),"uv":PackedVector2Array(),"bones":PackedInt32Array(),"weights":PackedFloat32Array(),"indices":PackedInt32Array()}
+	var spine_l: float=uv[(grid.size()-1)*columns+CLOTH_DROP+CLOTH_ARC].y
+	for side: float in [-.5,.5]:
+		var z:=lerpf(z0,z1,(GIRTH_AT+side*GIRTH_WIDTH)/spine_l)
+		var ring:=girth_ring(z,grid,lifted,columns,z0,z1)
+		var run:=0.0
+		for k in range(GIRTH_BINS+1):
+			var p: Vector3=ring[k%GIRTH_BINS]
+			if k>0: run+=p.distance_to(ring[k-1])
+			var out: Vector3=Vector3(p.x,p.y-ring_middle.y,0).normalized()
+			girth.vertices.append(horse_to_mesh*p)
+			girth.normals.append((horse_to_mesh.basis*out).normalized())
+			girth.uv.append(Vector2(run,side+.5))
+			var nearest:=nearest_point(p,.12)
+			girth.bones.append_array((body.bones as PackedInt32Array).slice(nearest*per,nearest*per+per))
+			girth.weights.append_array((body.weights as PackedFloat32Array).slice(nearest*per,nearest*per+per))
+	for k in range(GIRTH_BINS):
+		var a:=k
+		var b:=k+GIRTH_BINS+1
+		girth.indices.append_array([a,b,a+1,a+1,b,b+1])
+	shared.tack={"saddle":saddle,"girth":girth}
+	return shared.tack
+
+const GIRTH_BINS := 72
+# The barrel's middle at the last girth section, for the band's normals.
+var ring_middle := Vector2.ZERO
+
+# A closed loop round the body at z, sampled every 5 degrees about the
+# barrel's middle: the farthest of the coat, the cloth and the saddle in each
+# direction, smoothed, plus a little clearance. The legs below the belly are
+# left out.
+func girth_ring(z: float, grid: Array, lifted: Dictionary, columns: int, z0: float, z1: float) -> Array[Vector3]:
+	var slab:=section(z)
+	var top:=-INF
+	for p in slab:
+		if absf(p.x)<.1: top=maxf(top,p.y)
+	var outline: Array[Vector2]=[]
+	for p in slab:
+		if p.y>top-.9: outline.append(p)
+	var belly:=INF
+	for p in outline:
+		if absf(p.x)<.15: belly=minf(belly,p.y)
+	# Cloth and saddle at this z, between their two nearest rows.
+	var t:=(z-z0)/(z1-z0)*(grid.size()-1)
+	var r0:=clampi(floori(t),0,grid.size()-2)
+	var f:=t-r0
+	for c in range(columns):
+		for source: int in [0,1]:
+			var a: Vector3=grid[r0][c]
+			var b: Vector3=grid[r0+1][c]
+			if source==1:
+				if not lifted.has(r0*columns+c) or not lifted.has((r0+1)*columns+c): continue
+				a=lifted[r0*columns+c]
+				b=lifted[(r0+1)*columns+c]
+			var q:=a.lerp(b,f)
+			outline.append(Vector2(q.x,q.y))
+	var middle:=Vector2(0,(top+belly)*.5)
+	ring_middle=middle
+	var reach:=PackedFloat32Array()
+	reach.resize(GIRTH_BINS)
+	reach.fill(-1.0)
+	for p in outline:
+		var d:=p-middle
+		var k:=posmod(roundi(atan2(d.y,d.x)/TAU*GIRTH_BINS),GIRTH_BINS)
+		reach[k]=maxf(reach[k],d.length())
+	# Empty directions take a neighbour's reach, then the loop is eased outward.
+	for pass_index in range(GIRTH_BINS):
+		var done:=true
+		for k in range(GIRTH_BINS):
+			if reach[k]>=0.0: continue
+			done=false
+			if reach[(k+1)%GIRTH_BINS]>=0.0: reach[k]=reach[(k+1)%GIRTH_BINS]
+			elif reach[(k-1+GIRTH_BINS)%GIRTH_BINS]>=0.0: reach[k]=reach[(k-1+GIRTH_BINS)%GIRTH_BINS]
+		if done: break
+	for smooth in range(2):
+		var eased:=reach.duplicate()
+		for k in range(GIRTH_BINS): eased[k]=maxf(reach[k],(reach[(k-1+GIRTH_BINS)%GIRTH_BINS]+reach[k]*2.0+reach[(k+1)%GIRTH_BINS])*.25)
+		reach=eased
+	var ring: Array[Vector3]=[]
+	for k in range(GIRTH_BINS):
+		var angle:=TAU*k/GIRTH_BINS
+		ring.append(Vector3(middle.x+cos(angle)*(reach[k]+GIRTH_CLEAR),middle.y+sin(angle)*(reach[k]+GIRTH_CLEAR),z))
+	return ring
 
 # The body's outline where the plane at `z` cuts it, as (x, y) points.
 func section(z: float) -> Array[Vector2]:
@@ -440,18 +658,6 @@ func nearest_point(at: Vector3, within: float, among:=PackedInt32Array()) -> int
 
 func add_race_cloth(index: int, color: Color) -> void:
 	var shape:=cloth_shape()
-	var body:=body_points()
-	var arrays: Array=[]
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX]=shape.vertices
-	arrays[Mesh.ARRAY_NORMAL]=shape.normals
-	arrays[Mesh.ARRAY_TEX_UV]=shape.uv
-	arrays[Mesh.ARRAY_TEX_UV2]=shape.edge
-	arrays[Mesh.ARRAY_BONES]=shape.bones
-	arrays[Mesh.ARRAY_WEIGHTS]=shape.weights
-	arrays[Mesh.ARRAY_INDEX]=shape.indices
-	var sheet_mesh:=ArrayMesh.new()
-	sheet_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays,[],{},Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if body.per==8 else 0)
 	var mat:=ShaderMaterial.new()
 	mat.shader=CLOTH
 	mat.set_shader_parameter("cloth",color)
@@ -459,6 +665,37 @@ func add_race_cloth(index: int, color: Color) -> void:
 	mat.set_shader_parameter("number",index+1)
 	mat.set_shader_parameter("number_at",shape.number_at)
 	mat.set_shader_parameter("digits",DIGITS)
+	mat.set_shader_parameter("saddle_at",SADDLE_AT)
+	mat.set_shader_parameter("phase",index*1.7)
+	mat.set_shader_parameter("along_axis",((shape.horse_to_mesh as Transform3D).basis*Vector3.BACK).normalized())
+	cloth_material=mat
+	add_skinned(shape,mat)
+	var tack:=tack_shape()
+	if not shared.has("saddle_material"):
+		for part: Array in [["saddle_material",1],["girth_material",2]]:
+			var tack_mat:=ShaderMaterial.new()
+			tack_mat.shader=CLOTH
+			tack_mat.set_shader_parameter("part",part[1])
+			tack_mat.set_shader_parameter("saddle_at",SADDLE_AT)
+			shared[part[0]]=tack_mat
+	add_skinned(tack.saddle,shared.saddle_material)
+	add_skinned(tack.girth,shared.girth_material)
+
+# Gives a fitted sheet the body's skin, so it rides every stride with it.
+func add_skinned(shape: Dictionary, mat: Material) -> void:
+	var body:=body_points()
+	var arrays: Array=[]
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX]=shape.vertices
+	arrays[Mesh.ARRAY_NORMAL]=shape.normals
+	arrays[Mesh.ARRAY_TEX_UV]=shape.uv
+	if shape.has("edge"): arrays[Mesh.ARRAY_TEX_UV2]=shape.edge
+	if shape.has("colors"): arrays[Mesh.ARRAY_COLOR]=shape.colors
+	arrays[Mesh.ARRAY_BONES]=shape.bones
+	arrays[Mesh.ARRAY_WEIGHTS]=shape.weights
+	arrays[Mesh.ARRAY_INDEX]=shape.indices
+	var sheet_mesh:=ArrayMesh.new()
+	sheet_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES,arrays,[],{},Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if body.per==8 else 0)
 	sheet_mesh.surface_set_material(0,mat)
 	var drawn:=body_mesh()
 	var sheet:=MeshInstance3D.new()
@@ -471,7 +708,7 @@ func add_race_cloth(index: int, color: Color) -> void:
 	skeleton.add_child(sheet)
 	sheet.skeleton=sheet.get_path_to(skeleton)
 
-# The champion's garland: a ring of blooms round the base of the neck, fitted
+# The champion's garland: a rope of red roses and leaves round the base of the neck, fitted
 # to the neck's cross-section there and carried by the neck's base bone.
 var garland_center := Vector3.ZERO
 var garland_axes := Basis.IDENTITY
@@ -517,34 +754,40 @@ func garland_point(a: float) -> Vector3:
 
 func garland_mesh() -> ArrayMesh:
 	var st := KIT.begin()
-	var blooms: Array[Color]=[Color("f7c948"),Color("f29a3d"),Color("fbf0d4"),Color("f5b53d"),Color("e8663a")]
 	var random := RandomNumberGenerator.new()
 	random.seed=5150
-	var major := 72
-	var minor := 8
-	var colors: Array[Color]=[]
-	for cell in range(major*minor/4):
-		colors.append(Color("3f7a35") if random.randf()<.12 else blooms[random.randi_range(0,blooms.size()-1)])
-	for i in range(major):
-		for j in range(minor):
-			var points: Array[Vector3]=[]
-			var normals: Array[Vector3]=[]
-			for corner: Vector2i in [Vector2i(i,j),Vector2i(i+1,j),Vector2i(i+1,j+1),Vector2i(i,j+1)]:
-				var a:=TAU*corner.x/major
-				var b:=TAU*corner.y/minor
-				var center:=garland_point(a)
-				var tangent:=(garland_point(a+.01)-garland_point(a-.01)).normalized()
-				var side:=tangent.cross(garland_axes.z).normalized()
-				var up:=side.cross(tangent)
-				var normal:=side*cos(b)+up*sin(b)
-				# Each pair of segments swells into one round bloom.
-				var bloom:=absf(sin(a*major*.5))
-				normals.append(normal)
-				points.append(center+normal*.11*(.72+.5*bloom))
-			var color: Color=colors[(i/2)*(minor/2)+j/2]
-			for index: int in [0,2,1,0,3,2]: KIT.vertex(st,points[index],normals[index],color)
-	var mat := KIT.painted(.85,.2)
-	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
+	# A rope of dark foliage the roses are bound to.
+	var path: Array[Vector3]=[]
+	for i in range(64): path.append(garland_point(TAU*i/64.0))
+	KIT.sweep(st,path,.035,Color("2d5426"),10,true)
+	var roses := 38
+	for i in range(roses):
+		var a := TAU*(i+random.randf_range(-.18,.18))/roses
+		var center := garland_point(a)
+		var tangent := (garland_point(a+.01)-garland_point(a-.01)).normalized()
+		var out := (center-garland_center).normalized()
+		# Each rose faces up the neck toward the head, and a little outward.
+		var facing := (out*.6+garland_axes.z*.8+Vector3(random.randf_range(-.2,.2),random.randf_range(-.2,.2),random.randf_range(-.2,.2))).normalized()
+		var side := tangent.cross(facing).normalized()
+		var basis := Basis(side,facing,side.cross(facing).normalized())
+		var red := Color("a31328") if random.randf()<.84 else Color("efe6d6")
+		red=red.lightened(random.randf_range(-.05,.06))
+		var at := center+out*.012+garland_axes.z*.02
+		# Outer petals, the cupped middle and the tight heart, each smaller and darker.
+		KIT.ellipsoid(st,at,basis,Vector3(.064,.032,.064),red,5,12)
+		KIT.ellipsoid(st,at+facing*.016,basis*Basis(Vector3.UP,.7),Vector3(.044,.034,.044),red.darkened(.1),5,10)
+		KIT.ellipsoid(st,at+facing*.03,basis*Basis(Vector3.UP,1.3),Vector3(.026,.03,.026),red.darkened(.28),4,8)
+		# Two leaves tucked in either side.
+		for s: float in [-1.0,1.0]:
+			var leaf_at := center+tangent*s*.055+out*.02
+			var leaf_basis := Basis(tangent*s,out,tangent.cross(out).normalized()*s)*Basis(Vector3.RIGHT,.5)
+			KIT.ellipsoid(st,leaf_at,leaf_basis.orthonormalized(),Vector3(.05,.008,.026),Color("2f5a2a").lightened(random.randf_range(-.08,.08)),4,8)
+	var mat := KIT.painted(.62,.3)
+	mat.rim_enabled=true
+	mat.rim=.3
+	mat.rim_tint=.6
+	mat.backlight_enabled=true
+	mat.backlight=Color(.35,.05,.05)
 	st.set_material(mat)
 	return st.commit()
 
@@ -577,3 +820,8 @@ func animate(time: float, motion: float, running: bool, _celebration: bool, delt
 		var pace:=minf(moved/delta,20.0) if delta>0.0 else 0.0
 		step=maxf(delta*GALLOP_TEMPO*pow(pace/GALLOP_PACE,.25)*cadence*cycle,delta*.3)
 	player.advance(step)
+	if cloth_material!=null:
+		var stride:=motion_blend*(1.0 if current_clip=="Gallop" else .35)
+		if absf(stride-cloth_stride)>.02:
+			cloth_stride=stride
+			cloth_material.set_shader_parameter("stride",stride)

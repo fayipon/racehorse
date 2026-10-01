@@ -1,140 +1,124 @@
 extends Node3D
 
-# The infield garden behind the runners: a diamond-mown lawn, a fountain pond
-# on the centre line and a topiary horse at the final-bend end.
+# The infield behind the runners, kept like a park: a diamond-mown lawn, a long
+# still lake in a dressed-stone coping on the centre line, a clipped box hedge
+# all the way round inside the sand track, and carpet-bedded borders either
+# side of the lake. Specimen trees stand at both bends (landscape.gd).
 const KIT = preload("res://scripts/mesh_kit.gd")
 const WATER = preload("res://shaders/water.gdshader")
 const FOLIAGE = preload("res://shaders/foliage.gdshader")
-const HORSE_MODEL = preload("res://assets/quaternius/horse.glb")
-const STONE = Color("e4dccb")
-const POOL = Color("8fc3c9")
-const POND := Vector2(12.5,4.3)
-const GARDEN := Vector3(-31,0,0)
+const LEAVES = preload("res://assets/trees/leaves.png")
+const STONE = Color("e0d8c7")
+const LAKE_CENTER := Vector3(-2,0,0)
+const LAKE_HALF := Vector2(20.0,6.2)
+const HEDGE_RADIUS := 12.9
+const SAMPLES := 96
+# Carpet beds: centre, half-length and half-depth, leaf and bloom colours.
+const BEDS = [
+	[Vector3(-11,0,9.3),Vector2(7.5,1.45),Color("2a4521"),Color("b8273b")],
+	[Vector3(8.5,0,9.3),Vector2(7.5,1.45),Color("2c4a24"),Color("f1ece0")],
+	[Vector3(-11,0,-9.3),Vector2(7.5,1.45),Color("2c4a24"),Color("f1ece0")],
+	[Vector3(8.5,0,-9.3),Vector2(7.5,1.45),Color("2a4521"),Color("d9a530")],
+]
 
 func build(course: RefCounted, reduced: bool) -> void:
 	var lawn := MeshInstance3D.new()
 	lawn.mesh=KIT.course_band(course,.02,13.9,.008,256)
 	lawn.material_override=KIT.ground(0,Color("4c6e24"),Color("7c9a3a"))
 	add_child(lawn)
-	build_pond()
-	build_fountain(reduced)
-	build_topiary()
+	build_lake(reduced)
+	var hedge := KIT.begin()
+	var round: Array[Vector3]=[]
+	for i in range(360): round.append(course.sample(float(i)/360,HEDGE_RADIUS).position)
+	KIT.loft(hedge,round,hedge_profile(.7,.78),Color.WHITE)
+	for bed: Array in BEDS:
+		build_bed(bed)
+		KIT.loft(hedge,outline(bed[0],bed[1],2.4,72,1.0,.22),hedge_profile(.3,.32),Color.WHITE)
+	KIT.finish(hedge,box_leaves(),self)
 
-# A clipped topiary horse, caught mid-gallop on a stone plinth inside a ring of
-# box hedge, faces the runners as they come off the final bend.
-func build_topiary() -> void:
+# The clipped box: rounded shoulders on a straight-sided hedge.
+func hedge_profile(width: float, height: float) -> Array[Vector2]:
+	var w := width*.5
+	var r := minf(w*.6,.14)
+	return [Vector2(-w,0),Vector2(-w,height-r),Vector2(-w+r*.3,height-r*.3),Vector2(-w+r,height),Vector2(w-r,height),Vector2(w-r*.3,height-r*.3),Vector2(w,height-r),Vector2(w,0)]
+
+func box_leaves() -> ShaderMaterial:
 	var leaves := ShaderMaterial.new()
 	leaves.shader=FOLIAGE
 	leaves.set_shader_parameter("style",1)
 	leaves.set_shader_parameter("leafy",true)
-	leaves.set_shader_parameter("leaf_texture",preload("res://assets/trees/leaves.png"))
-	leaves.set_shader_parameter("leaf_dark",Color("2a5323"))
-	leaves.set_shader_parameter("leaf_light",Color("6f9d45"))
-	var ring := KIT.begin()
-	for i in range(40):
-		var a := Vector3(cos(TAU*i/40.0),0,sin(TAU*i/40.0))*4.9
-		var b := Vector3(cos(TAU*(i+1)/40.0),0,sin(TAU*(i+1)/40.0))*4.9
-		var tangent := (b-a).normalized()
-		KIT.box(ring,GARDEN+(a+b)*.5+Vector3(0,.26,0),Vector3(a.distance_to(b)+.06,.52,.5),Color.WHITE,Basis(tangent,Vector3.UP,tangent.cross(Vector3.UP)))
-	KIT.finish(ring,leaves,self)
-	var st := KIT.begin()
-	KIT.disc(st,GARDEN+Vector3(0,.03,0),4.6,Color("4d3b2b"),Vector3.UP,40)
-	KIT.cylinder(st,GARDEN,GARDEN+Vector3(0,.62,0),1.35,STONE,24,1.2)
-	KIT.cylinder(st,GARDEN+Vector3(0,.62,0),GARDEN+Vector3(0,.74,0),1.42,STONE.lightened(.08),24)
-	KIT.disc(st,GARDEN+Vector3(0,.74,0),1.42,STONE.lightened(.08),Vector3.UP,24)
-	KIT.finish(st,KIT.painted(.9,.15),self)
-	var sculpture := Node3D.new()
-	sculpture.position=GARDEN+Vector3(0,.74,0)
-	var facing := Vector3(1,0,.45).normalized()
-	sculpture.rotation.y=atan2(-facing.x,-facing.z)
-	add_child(sculpture)
-	var model: Node3D=HORSE_MODEL.instantiate()
-	model.scale=Vector3.ONE*.92
-	model.rotation.y=PI
-	sculpture.add_child(model)
-	for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
-		mesh.material_override=leaves
-	var player: AnimationPlayer=model.find_children("*","AnimationPlayer",true,false)[0]
-	player.play("Gallop")
-	player.seek(.34,true)
-	player.pause()
+	leaves.set_shader_parameter("leaf_texture",LEAVES)
+	leaves.set_shader_parameter("leaf_dark",Color("27471f"))
+	leaves.set_shader_parameter("leaf_light",Color("5f8c3c"))
+	return leaves
 
-func build_pond() -> void:
-	var water := KIT.begin()
-	var rim := KIT.begin()
-	var segments := 64
-	for i in range(segments):
-		var a := Vector3(cos(TAU*i/segments)*POND.x,.035,sin(TAU*i/segments)*POND.y)
-		var b := Vector3(cos(TAU*(i+1)/segments)*POND.x,.035,sin(TAU*(i+1)/segments)*POND.y)
-		KIT.triangle(water,b,a,Vector3(0,.035,0),Color.WHITE)
-		var tangent := (b-a).normalized()
-		KIT.box(rim,(a+b)*.5+Vector3(0,.09,0),Vector3(a.distance_to(b)+.08,.2,.5),STONE,Basis(tangent,Vector3.UP,tangent.cross(Vector3.UP)))
-	var surface := MeshInstance3D.new()
-	surface.mesh=water.commit()
+# A smooth closed outline round `center`: a superellipse of half-sizes `half`
+# (exponent `power`; 2 is an ellipse, more is squarer), its banks bowed by a
+# slow wave of `wave` metres.
+func outline(center: Vector3, half: Vector2, power: float, samples: int, scale := 1.0, wave := 0.0) -> Array[Vector3]:
+	var points: Array[Vector3]=[]
+	for i in range(samples):
+		var a := TAU*i/samples
+		var c := cos(a)
+		var s := sin(a)
+		var x := signf(c)*pow(absf(c),2.0/power)*half.x
+		var z := signf(s)*pow(absf(s),2.0/power)*half.y
+		var bow := wave*sin(a*2.0+.7)*absf(s)
+		points.append(center+Vector3(x,0,z+bow)*scale)
+	return points
+
+func build_lake(reduced: bool) -> void:
+	var shore := outline(LAKE_CENTER,LAKE_HALF,2.6,SAMPLES,1.0,.9)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	# Rings in from the coping; the outer ones are shallows.
+	var rings := [0.0,.45,.72,.86,.94,1.0]
+	for r in range(rings.size()-1):
+		for i in range(SAMPLES):
+			var j := (i+1)%SAMPLES
+			var corners: Array=[]
+			for pair: Array in [[i,rings[r]],[j,rings[r]],[j,rings[r+1]],[i,rings[r+1]]]:
+				var p: Vector3=LAKE_CENTER.lerp(shore[int(pair[0])],float(pair[1]))
+				corners.append([Vector3(p.x,.03,p.z),smoothstep(.55,1.0,float(pair[1]))])
+			for index: int in [0,2,1,0,3,2]:
+				st.set_color(Color(corners[index][1],0,0))
+				st.set_normal(Vector3.UP)
+				st.add_vertex(corners[index][0])
+	var water := MeshInstance3D.new()
+	water.mesh=st.commit()
 	var mat := ShaderMaterial.new()
 	mat.shader=WATER
-	surface.material_override=mat
-	surface.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(surface)
-	KIT.finish(rim,KIT.painted(.9,.15),self)
+	mat.set_shader_parameter("ripple",0.0 if reduced else 1.0)
+	water.material_override=mat
+	water.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(water)
+	# A low dressed-stone coping with a rounded nosing over the water.
+	var coping := KIT.begin()
+	var profile: Array[Vector2]=[Vector2(-.04,0),Vector2(-.02,.12),Vector2(.04,.17),Vector2(.34,.17),Vector2(.4,.12),Vector2(.42,0)]
+	KIT.loft(coping,shore,profile,KIT.made_of(STONE,KIT.CONCRETE))
+	KIT.finish(coping,KIT.structure(false),self)
 
-func build_fountain(reduced: bool) -> void:
-	var st := KIT.begin()
-	KIT.cylinder(st,Vector3.ZERO,Vector3(0,.55,0),1.8,STONE,24)
-	KIT.cylinder(st,Vector3(0,.55,0),Vector3(0,.62,0),1.9,STONE,24)
-	KIT.disc(st,Vector3(0,.6,0),1.72,POOL,Vector3.UP,24)
-	KIT.cylinder(st,Vector3(0,.55,0),Vector3(0,1.55,0),.3,STONE,12,.22)
-	KIT.cylinder(st,Vector3(0,1.55,0),Vector3(0,1.8,0),.25,STONE,16,.95)
-	KIT.disc(st,Vector3(0,1.8,0),.95,POOL,Vector3.UP,16)
-	KIT.finish(st,KIT.painted(.85,.2),self)
-	var spray := spray_mesh()
-	var density := .5 if reduced else 1.0
-	jet(spray,Vector3(0,1.8,0),Vector3.UP,9.0,roundi(110*density),3.0,.55)
-	for i in range(6):
-		var angle := TAU*i/6.0
-		var outward := Vector3(cos(angle),0,sin(angle))
-		jet(spray,outward*1.55+Vector3(0,.62,0),(outward+Vector3(0,1.5,0)).normalized(),4.6,roundi(30*density),4.0,.3)
-
-func spray_mesh() -> QuadMesh:
-	var gradient := Gradient.new()
-	gradient.offsets=PackedFloat32Array([0.0,.45,1.0])
-	gradient.colors=PackedColorArray([Color(1,1,1,.9),Color(1,1,1,.35),Color(1,1,1,0)])
-	var soft := GradientTexture2D.new()
-	soft.gradient=gradient
-	soft.width=32
-	soft.height=32
-	soft.fill=GradientTexture2D.FILL_RADIAL
-	soft.fill_from=Vector2(.5,.5)
-	soft.fill_to=Vector2(.5,1.0)
-	var mat := StandardMaterial3D.new()
-	mat.albedo_texture=soft
-	mat.vertex_color_use_as_albedo=true
-	mat.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.billboard_mode=BaseMaterial3D.BILLBOARD_ENABLED
-	mat.cull_mode=BaseMaterial3D.CULL_DISABLED
-	var quad := QuadMesh.new()
-	quad.size=Vector2(.5,.5)
-	quad.material=mat
-	return quad
-
-func jet(mesh: Mesh, origin: Vector3, direction: Vector3, speed: float, amount: int, spread: float, size: float) -> void:
-	var fade := Gradient.new()
-	fade.offsets=PackedFloat32Array([0.0,.7,1.0])
-	fade.colors=PackedColorArray([Color(.97,.99,1,.75),Color(.93,.97,1,.5),Color(.9,.96,1,0)])
-	var particles := CPUParticles3D.new()
-	particles.mesh=mesh
-	particles.amount=amount
-	particles.lifetime=2.0*speed*direction.y/9.8+.15
-	particles.preprocess=particles.lifetime
-	particles.position=origin
-	particles.direction=direction
-	particles.spread=spread
-	particles.gravity=Vector3(0,-9.8,0)
-	particles.initial_velocity_min=speed*.93
-	particles.initial_velocity_max=speed
-	particles.scale_amount_min=size*.6
-	particles.scale_amount_max=size
-	particles.color_ramp=fade
-	particles.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(particles)
+# A carpet bed: a low dome of bedding plants inside its own little box hedge.
+func build_bed(bed: Array) -> void:
+	var center: Vector3=bed[0]
+	var half: Vector2=bed[1]
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var edge := outline(center,half,2.4,72,1.0,.22)
+	var steps := [0.0,.35,.6,.8,.93,1.0]
+	for r in range(steps.size()-1):
+		for i in range(edge.size()):
+			var j := (i+1)%edge.size()
+			var corners: Array=[]
+			for pair: Array in [[i,steps[r]],[j,steps[r]],[j,steps[r+1]],[i,steps[r+1]]]:
+				var t: float=pair[1]
+				var p: Vector3=center.lerp(edge[int(pair[0])],t)
+				corners.append(Vector3(p.x,.03+.24*(1.0-t*t),p.z))
+			for index: int in [0,2,1,0,3,2]:
+				st.set_normal(Vector3.UP)
+				st.add_vertex(corners[index])
+	var mesh := MeshInstance3D.new()
+	mesh.mesh=st.commit()
+	mesh.material_override=KIT.ground(4,bed[2],bed[3])
+	mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mesh)

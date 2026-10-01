@@ -1,23 +1,20 @@
 extends Node3D
 
 # The course's planting, instanced in spatial batches for WebGL: trees, bushes
-# and grass tufts grown by scripts/bake_trees.py (flora.gd), Quaternius flowers
-# and stones, and the far country in layers: impostor cards for the outer tree
-# rows and a continuous wood, then two ridges of forested hills in haze.
+# and grass tufts grown by scripts/bake_trees.py (flora.gd), and the far
+# country in layers: impostor cards for the outer tree rows and a continuous
+# wood, then two ridges of forested hills in haze.
 const FLORA = preload("res://scripts/flora.gd")
 const TREE_NAMES = FLORA.TREES
 const GRASS_NAMES = ["tuft_short","tuft_short","tuft_tall"]
 const BUSHES = ["bush_green","bush_flowers"]
-const FOLIAGE = preload("res://shaders/foliage.gdshader")
 const HILLS = preload("res://shaders/hills.gdshader")
 const KIT = preload("res://scripts/mesh_kit.gd")
 var random := RandomNumberGenerator.new()
 var batches: Dictionary = {}
-var materials: Dictionary = {}
 var plant_count := 0
 var batch_count := 0
 var reduce_motion := false
-static var flat_normal: ImageTexture
 
 func build(course: RefCounted, reduced: bool, sparse := false) -> void:
 	reduce_motion = reduced
@@ -32,34 +29,16 @@ func build(course: RefCounted, reduced: bool, sparse := false) -> void:
 	ground.position.y = -.045
 	ground.material_override = KIT.ground(1,Color("4f6c26"),Color("7f973f"))
 	add_child(ground)
-	# Informal planted borders follow the infield edge inside the sand track.
-	for i in range(136):
-		var progress := (i+random.randf_range(-.3,.3))/136.0
-		var radius := 13.9-random.randf_range(1.2,2.4)
-		var p: Vector3 = course.sample(progress,radius).position
-		if i%11 < 9:
-			place(BUSHES[1] if i%3==0 else BUSHES[0],p,random.randf_range(.6,.9))
-		for j in range(random.randi_range(7,13)):
-			var g: Vector3 = course.sample(progress+random.randf_range(-.006,.006),radius+random.randf_range(-1.5,1.1)).position
-			place(GRASS_NAMES[j%3],g,random.randf_range(.5,.9))
-		if i%4==0:
-			place("flowers_a" if i%8==0 else "flowers_b",p+Vector3(random.randf_range(-.9,.9),0,.7),random.randf_range(.20,.34))
-	# The topiary garden at the final-bend end: blooms outside its box hedge and
-	# on the mulch around the plinth.
-	for i in range(40):
-		var angle := TAU*i/40.0+random.randf_range(-.04,.04)
-		place("flowers_a" if i%2==0 else "flowers_b",Vector3(-31+cos(angle)*5.8,0,sin(angle)*5.8),random.randf_range(.24,.34))
-	for i in range(26):
-		var angle := TAU*i/26.0+random.randf_range(-.08,.08)
-		var reach := random.randf_range(2.1,4.1)
-		place("flowers_b" if i%3==0 else "flowers_a",Vector3(-31+cos(angle)*reach,0,sin(angle)*reach),random.randf_range(.22,.32))
-	# Small groves frame the pond and the far end; the centre line stays open.
-	for center in [Vector3(33,0,-5),Vector3(35,0,6),Vector3(-19,0,-9),Vector3(21,0,8)]:
-		for i in range(3):
+	# The infield is a kept garden (infield.gd): its lake, hedges and beds are
+	# built there; only specimen trees stand on its lawn, in loose groups at
+	# both bends and beside the lake, each over a few clipped shrubs.
+	for group: Array in [[Vector3(33,0,-5),3],[Vector3(35,0,6),2],[Vector3(-33,0,-2),3],[Vector3(-30,0,7),1],[Vector3(-20,0,-10),2],[Vector3(19,0,9.5),1]]:
+		var center: Vector3=group[0]
+		for i in range(int(group[1])):
 			var p: Vector3 = center+Vector3(random.randf_range(-3,3),0,random.randf_range(-2,2))
-			place(TREE_NAMES[random.randi_range(2,3)],p,random.randf_range(.62,.86))
-			understory(p,12)
-		place("rock_a",center+Vector3(2,0,-2),random.randf_range(.28,.48))
+			place(TREE_NAMES[random.randi_range(0,2) if center.x<-25 else random.randi_range(2,3)],p,random.randf_range(.66,.9))
+			for k in range(2):
+				place(BUSHES[0],p+Vector3(random.randf_range(-2.2,2.2),0,random.randf_range(-1.8,1.8)),random.randf_range(.5,.75))
 	# Mixed tree clusters beyond the camera lanes and grandstands: grown trees
 	# (phones draw these as impostor cards too).
 	var near_tree := "imp:" if sparse else ""
@@ -80,13 +59,6 @@ func build(course: RefCounted, reduced: bool, sparse := false) -> void:
 		for i in range(19):
 			var p := Vector3(-105+i*11.5+random.randf_range(-3,3),0,side*random.randf_range(98,111))
 			place("imp:"+TREE_NAMES[(i+3)%4],p,random.randf_range(.95,1.3))
-	# Small flower/stone groupings in grass, never on the racing surface.
-	for center in [Vector3(-7,0,-9),Vector3(10,0,-8),Vector3(-39,0,3),Vector3(39,0,-4)]:
-		place("rock_b",center,random.randf_range(.26,.40))
-		for i in range(14):
-			var p: Vector3 = center+Vector3(random.randf_range(-2.8,2.8),0,random.randf_range(-1.8,1.8))
-			place("flowers_a" if i%3==0 else "flowers_b",p,random.randf_range(.16,.32))
-			place("tuft_tall",p+Vector3(.4,0,.2),random.randf_range(.5,.8))
 	# Sparse tufts break up the flat apron outside the rails, below camera height.
 	for i in range(tufts):
 		var progress := random.randf()
@@ -101,7 +73,6 @@ func understory(center: Vector3, amount: int) -> void:
 		var p := center+Vector3(random.randf_range(-3,3),0,random.randf_range(-2.5,2.5))
 		if i%5==0: place(BUSHES[i%2],p,random.randf_range(.55,.85))
 		else: place(GRASS_NAMES[i%3],p,random.randf_range(.6,1.0))
-	if random.randf()<.35: place("rock_a",center+Vector3(1.6,0,.8),random.randf_range(.25,.45))
 
 func place(asset: String, position: Vector3, size: float) -> void:
 	# Quadrant cells around the course keep draw calls low on phones while the
@@ -116,78 +87,14 @@ func place(asset: String, position: Vector3, size: float) -> void:
 	batches[key].colors.append(Color(tone,random.randf_range(.94,1.03),tone*.94))
 	plant_count += 1
 
-func adapt_material(source: StandardMaterial3D, asset: String) -> Material:
-	var name := source.resource_name
-	var foliage := name.contains("Leaves") or name.contains("Grass") or name=="Flowers"
-	var key := name+(":tree" if asset.begins_with("tree_") else ":ground")
-	if materials.has(key): return materials[key]
-	var result: Material
-	if foliage:
-		var leaf := ShaderMaterial.new()
-		leaf.shader = FOLIAGE
-		leaf.set_shader_parameter("leaf_texture",source.albedo_texture)
-		leaf.set_shader_parameter("tint",Color("d4e3c8") if name.contains("Leaves") else Color("e1e5ce"))
-		leaf.set_shader_parameter("cutout",source.transparency!=BaseMaterial3D.TRANSPARENCY_DISABLED)
-		leaf.set_shader_parameter("wind_strength",0.0 if reduce_motion else .04 if asset.begins_with("tree_") else .065)
-		leaf.set_shader_parameter("soft_normals",.55 if name.contains("Leaves") else .18)
-		leaf.set_shader_parameter("green_palette",name=="Leaves_TwistedTree" or name=="Grass")
-		leaf.set_shader_parameter("leaf_dark",Color("3c5e28"))
-		leaf.set_shader_parameter("leaf_light",Color("83a54e"))
-		result=leaf
-	else:
-		var solid := source.duplicate() as StandardMaterial3D
-		solid.roughness=1.0
-		solid.metallic_specular=0.08
-		solid.vertex_color_use_as_albedo=true
-		# A flat normal map on the plain solids keeps every textured solid on one
-		# shader, which the web build then compiles only once.
-		if not solid.normal_enabled:
-			solid.normal_enabled=true
-			solid.normal_texture=flat_normal_texture()
-		result=solid
-	materials[key]=result
-	return result
-
-static func flat_normal_texture() -> ImageTexture:
-	if flat_normal==null:
-		var image := Image.create(1,1,false,Image.FORMAT_RGB8)
-		image.fill(Color(.5,.5,1.0))
-		flat_normal=ImageTexture.create_from_image(image)
-	return flat_normal
-
-# Gives a single placed nature model the planted ones' materials, and shaders.
-func dress(model: Node3D, asset: String) -> void:
-	for mesh: MeshInstance3D in model.find_children("*","MeshInstance3D",true,false):
-		for surface in range(mesh.mesh.get_surface_count()):
-			mesh.set_surface_override_material(surface,adapt_material(mesh.get_active_material(surface),asset))
-
-func mesh_parts(node: Node3D, parent_transform: Transform3D, parts: Array) -> void:
-	var transform := parent_transform*node.transform
-	if node is MeshInstance3D: parts.append({"node":node,"transform":transform})
-	for child in node.get_children():
-		if child is Node3D: mesh_parts(child,transform,parts)
-
 func flush_batches() -> void:
 	var templates: Dictionary={}
 	for batch in batches.values():
 		var asset: String=batch.asset
 		if not templates.has(asset) and (asset.begins_with("imp:") or asset.begins_with("far:")):
 			templates[asset]=[{"mesh":FLORA.impostor_mesh(asset.substr(4)),"transform":Transform3D.IDENTITY}]
-		elif not templates.has(asset) and asset in FLORA.ASSETS:
-			templates[asset]=[{"mesh":FLORA.mesh(asset),"transform":Transform3D.IDENTITY}]
 		elif not templates.has(asset):
-			var scene := load("res://assets/nature/%s.gltf" % asset) as PackedScene
-			var template := scene.instantiate() as Node3D
-			var parts: Array=[]
-			mesh_parts(template,Transform3D.IDENTITY,parts)
-			var meshes: Array=[]
-			for part in parts:
-				var mesh: ArrayMesh=part.node.mesh.duplicate()
-				for surface in range(mesh.get_surface_count()):
-					mesh.surface_set_material(surface,adapt_material(part.node.get_active_material(surface),asset))
-				meshes.append({"mesh":mesh,"transform":part.transform})
-			templates[asset]=meshes
-			template.free()
+			templates[asset]=[{"mesh":FLORA.mesh(asset),"transform":Transform3D.IDENTITY}]
 		for part in templates[asset]:
 			var instances := MultiMesh.new()
 			instances.transform_format=MultiMesh.TRANSFORM_3D
@@ -201,7 +108,7 @@ func flush_batches() -> void:
 			group.multimesh=instances
 			# Cards turn to the view and crowns bend in the wind, beyond their rest bounds.
 			group.extra_cull_margin=10.0 if asset.contains(":") else .8 if asset.begins_with("tree_") else .2
-			var shadows: bool=asset.begins_with("tree_") or asset.begins_with("rock_") or asset.begins_with("imp:")
+			var shadows: bool=asset.begins_with("tree_") or asset.begins_with("imp:")
 			group.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			add_child(group)
 			batch_count += 1
